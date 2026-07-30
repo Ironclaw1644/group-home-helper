@@ -7,12 +7,15 @@
  * environment. Run it once after applying the migrations; from then on staff
  * are added through the app.
  *
- * A temporary password is generated and printed. It is a one-time credential
- * meant to be changed on first sign-in — nothing else is ever printed, and no
- * secret from the environment is echoed.
+ * A temporary password is generated and written to `.admin-credentials` with
+ * 0600 permissions rather than printed. Printing it would put a live credential
+ * into whatever terminal log, CI output, or chat transcript ran the command;
+ * the file is gitignored and meant to be deleted once the password is changed.
  */
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const ORG_ID = '00000000-0000-0000-0000-000000000001';
 const HOME_ID = '00000000-0000-0000-0000-000000000010';
@@ -88,10 +91,24 @@ async function main() {
   // keeps the roster page from having to special-case them.
   await admin.from('staff_homes').insert({ profile_id: created.user.id, home_id: HOME_ID });
 
+  // Written, not printed — see the note at the top of this file.
+  const outFile = path.join(process.cwd(), '.admin-credentials');
+  fs.writeFileSync(
+    outFile,
+    [
+      `# Created ${new Date().toISOString()} for ${org.name}`,
+      '# One-time password. Sign in, change it, then delete this file.',
+      `email=${email}`,
+      `password=${password}`,
+      ''
+    ].join('\n'),
+    { mode: 0o600 }
+  );
+
   console.log(`\nCreated admin for ${org.name}`);
-  console.log(`  email:    ${email}`);
-  console.log(`  password: ${password}`);
-  console.log('\nSign in and change this password immediately.\n');
+  console.log(`  email:       ${email}`);
+  console.log(`  credentials: ${outFile}  (chmod 600, gitignored)`);
+  console.log('\nRead the password from that file, sign in, change it, then delete the file.\n');
 }
 
 main().catch((err) => {

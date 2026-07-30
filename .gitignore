@@ -25,5 +25,13 @@ android/local.properties
 android/capacitor-cordova-android-plugins
 capacitor/www/*.map
 
-# Built APK — shipped via the deploy, not versioned in git
-public/apk/*.apk
+# The built APK IS committed, deliberately.
+#
+# Binary artifacts normally do not belong in git. But deploys build from this
+# repository, so a gitignored APK is simply absent from the deployed site — the
+# download 404s while every local check passes. It is ~5 MB per release and only
+# changes when the native shell changes (rarely), so committing it is the lesser
+# evil. Prune old versions when they stop being useful.
+
+# One-time admin password written by bootstrap:admin — delete after first login
+.admin-credentials
