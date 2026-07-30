@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LayoutGrid, LogOut } from 'lucide-react';
+import { LayoutGrid, LogOut, Users } from 'lucide-react';
 import type { Session } from '@/lib/auth/session';
 import { isSupervisor } from '@/lib/auth/session';
 import { loadBrand } from '@/lib/branding/load';
@@ -26,6 +26,16 @@ export async function AppShell({
           </Link>
 
           <div className="flex items-center gap-3">
+            {/* DSPs get this too — looking up who is in the house is a normal
+                part of a shift, and RLS already limits it to their homes. */}
+            <Link
+              href="/residents"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
+            >
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Residents</span>
+            </Link>
+
             {isSupervisor(session.profile) ? (
               <Link
                 href="/supervisor"

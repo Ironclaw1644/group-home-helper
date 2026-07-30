@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, CloudOff, Loader2, PenLine, Sparkles } from 'lucide-react';
 import { FieldRenderer } from '@/components/form/FieldRenderer';
-import { SignaturePad } from '@/components/form/SignaturePad';
+import { SignaturePad, type SignatureMethod } from '@/components/form/SignaturePad';
 import { Alert, Button, Card } from '@/components/ui';
 import { hasAnySelection, interpolate } from '@/lib/forms/interpolate';
 import {
@@ -14,7 +14,7 @@ import {
   saveLocalDraft
 } from '@/lib/notes/draft-storage';
 import { formatServiceDate } from '@/lib/utils';
-import type { FormTemplate, Note, Resident, StructuredData } from '@/lib/types';
+import { displayName, type FormTemplate, type Note, type Resident, type StructuredData } from '@/lib/types';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'offline';
 
@@ -52,14 +52,15 @@ export default function NoteEditor({
 
   const [signing, setSigning] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signatureMethod, setSignatureMethod] = useState<SignatureMethod>('drawn');
   const [attested, setAttested] = useState(false);
   const [signError, setSignError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<number | null>(null);
   const [overrodeDuplicate, setOverrodeDuplicate] = useState(false);
 
   const ctx = useMemo(
-    () => ({ name: resident.firstName, pronouns: resident.pronouns }),
-    [resident.firstName, resident.pronouns]
+    () => ({ name: displayName(resident), pronouns: resident.pronouns }),
+    [resident, resident.pronouns]
   );
   const label = useCallback((text: string) => interpolate(text, ctx), [ctx]);
 
@@ -180,6 +181,7 @@ export default function NoteEditor({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           signatureImage: signatureData,
+          signatureMethod,
           attested: true,
           acknowledgeDuplicate: force
         })
@@ -316,7 +318,13 @@ export default function NoteEditor({
           {signerName} · {signerTitle} · {formatServiceDate(note.serviceDate)} · {shiftLabel}
         </p>
 
-        <SignaturePad onChange={setSignatureData} />
+        <SignaturePad
+          defaultName={signerName}
+          onChange={(dataUrl, method) => {
+            setSignatureData(dataUrl);
+            setSignatureMethod(method);
+          }}
+        />
 
         <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-brand-navy/10 bg-brand-sand/50 p-3">
           <input
@@ -333,7 +341,7 @@ export default function NoteEditor({
             <Alert tone="warning" title="This looks like the previous note">
               <p>
                 This narrative is {Math.round(duplicateWarning * 100)}% similar to{' '}
-                {resident.firstName}&apos;s last signed note. Near-identical notes across days are a
+                {displayName(resident)}&apos;s last signed note. Near-identical notes across days are a
                 common audit finding. Edit it to describe this shift specifically, or confirm it is
                 accurate.
               </p>

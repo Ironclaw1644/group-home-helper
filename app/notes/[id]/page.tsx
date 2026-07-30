@@ -2,9 +2,11 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FileDown } from 'lucide-react';
 import { requireSession } from '@/lib/auth/session';
-import { getActiveTemplate, getAddenda, getNote, getResident, getShifts } from '@/lib/notes/repo';
+import { getActiveTemplate, getAddenda, getNote, getResident, getRoster, getShifts } from '@/lib/notes/repo';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui';
+import { ResidentSwitcher } from '@/components/note/resident-switcher';
+import { displayName } from '@/lib/types';
 import { formatServiceDate } from '@/lib/utils';
 import NoteEditor from './note-editor';
 import SignedNote from './signed-note';
@@ -20,11 +22,13 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
   // Decrypting the Medicaid ID is a PHI read; we do it here because the number
   // is printed on the form the DSP is filling and on its PDF.
-  const [resident, template, shifts, addenda] = await Promise.all([
+  const [resident, template, shifts, addenda, roster] = await Promise.all([
     getResident(note.residentId, true),
     getActiveTemplate(),
     getShifts(note.homeId),
-    note.status === 'signed' ? getAddenda(note.id) : Promise.resolve([])
+    note.status === 'signed' ? getAddenda(note.id) : Promise.resolve([]),
+    // Powers the resident switcher: everyone on this shift, this date.
+    getRoster(note.homeId, note.serviceDate)
   ]);
 
   if (!resident) notFound();
@@ -33,6 +37,18 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   if (!shift) redirect('/');
 
   const backHref = `/?${new URLSearchParams({ home: note.homeId, date: note.serviceDate }).toString()}`;
+
+  const switcherEntries = roster
+    .filter((entry) => entry.shiftId === note.shiftId)
+    .map((entry) => ({
+      residentId: entry.residentId,
+      name: `${displayName({
+        firstName: entry.residentFirstName,
+        preferredName: entry.residentPreferredName
+      })} ${entry.residentLastName}`,
+      noteId: entry.noteId,
+      status: entry.noteStatus
+    }));
 
   return (
     <AppShell session={session}>
@@ -60,9 +76,17 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      <ResidentSwitcher
+        entries={switcherEntries}
+        currentResidentId={note.residentId}
+        serviceDate={note.serviceDate}
+        shiftId={note.shiftId}
+        homeId={note.homeId}
+      />
+
       <div className="mb-5">
         <h1 className="text-2xl font-semibold tracking-tight text-brand-navy">
-          {resident.firstName} {resident.lastName}
+          {displayName(resident)} {resident.lastName}
         </h1>
         <p className="mt-1 text-sm text-brand-slate">
           {formatServiceDate(note.serviceDate)} · {shift.label}

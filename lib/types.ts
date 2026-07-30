@@ -45,11 +45,49 @@ export type Resident = {
   homeId: string;
   firstName: string;
   lastName: string;
+  /** What staff call them day to day. Falls back to firstName when null. */
+  preferredName?: string | null;
   pronouns: Pronouns;
   isDemo: boolean;
   /** Present only when the server has decrypted it for the active note. */
   medicaidId?: string | null;
 };
+
+/**
+ * A resident as the roster-management screens see them.
+ *
+ * Distinct from `Resident`, which is the slice the note flow needs. This one
+ * carries the organizing fields and never carries a real Medicaid ID — that
+ * stays encrypted and is decrypted only for the note being worked on.
+ */
+export type ResidentRecord = {
+  id: string;
+  orgId: string;
+  homeId: string;
+  firstName: string;
+  lastName: string;
+  preferredName: string | null;
+  room: string | null;
+  grouping: string | null;
+  dob: string | null;
+  pronouns: Pronouns;
+  isDemo: boolean;
+  active: boolean;
+  dischargedOn: string | null;
+  /** Fictional ID, demo residents only. */
+  demoMedicaidId: string | null;
+  createdAt: string;
+};
+
+export type ResidentSort = 'last_name' | 'first_name' | 'room' | 'recent';
+
+/** The name to use in narrative and on screen. */
+export function displayName(r: {
+  firstName: string;
+  preferredName?: string | null;
+}): string {
+  return r.preferredName?.trim() || r.firstName;
+}
 
 // ---------------------------------------------------------------------------
 // Form template
@@ -186,6 +224,8 @@ export type RosterEntry = {
   residentId: string;
   residentFirstName: string;
   residentLastName: string;
+  residentPreferredName: string | null;
+  residentRoom: string | null;
   isDemo: boolean;
   shiftId: string;
   shiftLabel: string;

@@ -16,12 +16,23 @@ import type { DraftResult, ModelProvider } from './provider';
  * default provider is local, which needs none of that.
  */
 
-export const MODEL = 'claude-opus-5';
+/**
+ * Which model to bill.
+ *
+ * A progress note is a short paragraph in a tightly specified voice with the
+ * facts supplied — close to the cheapest thing you can ask a model to do, and
+ * the deterministic guards in guard.ts catch what a weaker model gets wrong.
+ * So the model is a cost dial, not an architectural choice. See the model
+ * comparison in the README for measured pass rates per tier.
+ */
+export const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
- * The note is a short paragraph in a well-specified voice, and Opus 5 is
- * strong at low/medium effort. `medium` keeps latency reasonable for a DSP
- * waiting on a phone mid-shift; raise it if drafts start missing detail.
+ * `medium` keeps latency reasonable for a DSP waiting on a phone mid-shift.
+ *
+ * Not every model accepts an effort setting, and passing it to one that does
+ * not is a 400 that would read to a DSP as "draft failed". generate() retries
+ * once without it rather than surfacing that.
  */
 const EFFORT = 'medium' as const;
 
@@ -49,17 +60,21 @@ function getClient(): Anthropic {
   return client;
 }
 
-export function anthropicProvider(): ModelProvider {
+export function anthropicProvider(modelOverride?: string): ModelProvider {
+  // The override exists so scripts/compare-models.ts can price several tiers in
+  // one process. Nothing in the app passes it — production reads ANTHROPIC_MODEL.
+  const model = modelOverride || MODEL;
+
   return {
     name: 'anthropic',
-    model: MODEL,
+    model,
     sendsDataOffMachine: true,
 
     async health() {
       if (!process.env.ANTHROPIC_API_KEY) {
         return { ok: false, detail: 'ANTHROPIC_API_KEY is not set.' };
       }
-      return { ok: true, detail: `Configured for ${MODEL}.` };
+      return { ok: true, detail: `Configured for ${model}.` };
     },
 
     async generate(system: string, userMessage: string): Promise<DraftResult> {
@@ -74,7 +89,7 @@ export function anthropicProvider(): ModelProvider {
         return {
           ok: false,
           reason: 'unavailable',
-          model: MODEL,
+          model,
           message:
             'The note assistant has not been set up yet — an administrator needs to add an API key. Everything else works; write the note yourself for now.'
         };
@@ -86,22 +101,34 @@ export function anthropicProvider(): ModelProvider {
         // cache rather than re-billed on every note. Keep everything variable
         // in userMessage — interpolating a name or date into the system prompt
         // would silently invalidate the cache on every request.
-        const response = await getClient().messages.parse({
-          model: MODEL,
+        const request = (withEffort: boolean) => ({
+          model,
           max_tokens: 4000,
           output_config: {
-            effort: EFFORT,
+            ...(withEffort ? { effort: EFFORT } : {}),
             format: zodOutputFormat(NoteDraftSchema)
           },
           system: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: system,
-              cache_control: { type: 'ephemeral' }
+              cache_control: { type: 'ephemeral' as const }
             }
           ],
-          messages: [{ role: 'user', content: userMessage }]
+          messages: [{ role: 'user' as const, content: userMessage }]
         });
+
+        const client = getClient();
+        let response;
+        try {
+          response = await client.messages.parse(request(true));
+        } catch (err) {
+          // Models that do not accept an effort setting reject the whole
+          // request. Retry without it rather than failing the draft.
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/effort/i.test(message)) throw err;
+          response = await client.messages.parse(request(false));
+        }
 
         const usage = {
           inputTokens: response.usage?.input_tokens ?? null,
@@ -116,7 +143,7 @@ export function anthropicProvider(): ModelProvider {
           return {
             ok: false,
             reason: 'refusal',
-            model: MODEL,
+            model,
             message: 'The model declined this request. Please write the note manually.'
           };
         }
@@ -126,18 +153,18 @@ export function anthropicProvider(): ModelProvider {
           return {
             ok: false,
             reason: 'empty',
-            model: MODEL,
+            model,
             message: 'The model returned an empty note. Please write it manually.'
           };
         }
 
-        return { ok: true, draft, usage, model: MODEL };
+        return { ok: true, draft, usage, model };
       } catch (err) {
         console.error('[ai] anthropic generation failed', err);
         return {
           ok: false,
           reason: 'error',
-          model: MODEL,
+          model,
           message: 'Could not generate a draft right now. Please write the note manually.'
         };
       }

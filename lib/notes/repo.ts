@@ -56,6 +56,8 @@ export async function getRoster(homeId: string, serviceDate: string): Promise<Ro
     residentId: r.resident_id as string,
     residentFirstName: r.resident_first_name as string,
     residentLastName: r.resident_last_name as string,
+    residentPreferredName: (r.resident_preferred_name as string | null) ?? null,
+    residentRoom: (r.resident_room as string | null) ?? null,
     isDemo: r.is_demo as boolean,
     shiftId: r.shift_id as string,
     shiftLabel: r.shift_label as string,
@@ -140,7 +142,7 @@ export async function getResident(
   const { data, error } = await supabase
     .from('residents')
     .select(
-      'id, org_id, home_id, first_name, last_name, pronoun_subject, pronoun_object, pronoun_possessive, is_demo'
+      'id, org_id, home_id, first_name, last_name, preferred_name, pronoun_subject, pronoun_object, pronoun_possessive, is_demo'
     )
     .eq('id', residentId)
     .maybeSingle();
@@ -153,6 +155,7 @@ export async function getResident(
     homeId: data.home_id,
     firstName: data.first_name,
     lastName: data.last_name,
+    preferredName: data.preferred_name ?? null,
     pronouns: {
       subject: data.pronoun_subject,
       object: data.pronoun_object,

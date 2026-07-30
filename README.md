@@ -122,14 +122,86 @@ a config reload alone is not enough.
 npm run bootstrap:admin -- admin@athomefamilyservices.com "Jane Doe"
 ```
 
-Prints a one-time password. Change it on first sign-in. Every other staff
-account is created from the app.
+Writes a one-time password to `.admin-credentials` (mode 0600, gitignored)
+rather than printing it. Change it on first sign-in, then delete the file.
+
+Add the rest of the staff the same way until there is a UI for it:
+
+```bash
+npm run staff:add -- someone@example.com "Their Name" dsp
+```
+
+Note that **Supabase Auth is project-wide**. If the project hosts other apps, an
+address already registered by one of them cannot be reused here — plus-addressing
+(`you+ahfs@example.com`) gives a distinct identity. An auth user with no row in
+`ghh.profiles` sees nothing at all, so this fails closed.
 
 ### 5. Run it
 
 ```bash
 npm run dev
 ```
+
+---
+
+## Residents
+
+`/residents` is the roster. A DSP can read it — looking up who is in the house
+is part of a shift — but only a supervisor or admin can change it, and that is
+enforced by RLS rather than by hiding buttons.
+
+**Adding people.** One at a time, or `/residents/import` for a spreadsheet. The
+importer parses in the browser and shows what it understood *before* anything is
+written: which column it read as what, dates it could not parse, pronouns it
+defaulted, and names already on the roster. Nothing is created until a human
+approves the preview, because a misread roster puts notes on the wrong chart and
+a signed note cannot be edited or deleted.
+
+It handles what spreadsheet exports actually contain — Excel's UTF-8 BOM, CRLF
+endings, quoted fields with commas, and about thirty header aliases. Run
+`npm run verify:import` for the full list of cases.
+
+**Organizing.** Search covers name, preferred name, and room. Sort by last name,
+first name, room, or recently added. Filter by group (hall, wing, program —
+free text, since every agency organizes differently) and by current versus
+discharged.
+
+**Preferred names.** A resident's legal name and the name staff use are stored
+separately, and they are used in different places on purpose:
+
+| Where | Which name | Why |
+| --- | --- | --- |
+| Roster, note screen, narrative | Preferred | A note about "Alexander" reads as written by someone who does not know him |
+| "Individual's Name" on Form #680 | **Legal** | It is the identity field on a Medicaid document |
+
+**Discharge, not delete.** Unchecking "currently living here" removes someone
+from the daily roster. The row stays, because their signed notes reference it
+and those are permanent records.
+
+**Switching between residents.** Inside a note there is a prev/next control and
+a dropdown listing everyone on that shift with their note status. Writing a
+shift's notes is one continuous task; routing back through the roster each time
+costs two taps per resident.
+
+---
+
+## Signing
+
+Three ways to sign, all producing the same PNG and all recorded in
+`notes.signature_method`:
+
+- **Draw** — the default, matching the paper form.
+- **Type** — rendered in a script face. Legally equivalent to a drawn signature
+  when paired with the attestation, and the only sane option on a desktop with a
+  mouse.
+- **Upload** — a photo of a real signature. Re-encoded to PNG on the way in,
+  which caps the size and **strips EXIF** — a phone photo otherwise carries GPS
+  coordinates of the house into the note record. Optionally remembered in
+  `localStorage` on that device.
+
+The attestation checkbox is required for every note in every mode. That is what
+makes it a signature rather than a picture: the image is evidence of a
+deliberate act, not a substitute for one.
 
 ---
 
@@ -275,6 +347,43 @@ Two things that came out of testing and are now baked in:
 If you swap models, run `npm run verify:ai` before trusting it. Every run must
 pass — a note that invents an event is a falsified record, so "usually correct"
 is not a passing grade.
+
+### Hosted models, and what they cost
+
+A progress note is a short paragraph in a tightly specified voice with all the
+facts supplied. That is close to the cheapest thing you can ask a model to do,
+and the deterministic guards catch what a weaker one gets wrong — so the model
+is a cost dial rather than an architectural choice.
+
+Set the tier with `ANTHROPIC_MODEL`. List prices per million tokens:
+
+| Model | Input | Output | Est. per note | 360 notes/month |
+| --- | --- | --- | --- | --- |
+| `claude-haiku-4-5-20251001` | $1 | $5 | ~$0.004 | **~$1.50** |
+| `claude-sonnet-5` | $3 | $15 | ~$0.012 | ~$4.30 |
+| `claude-opus-5` | $5 | $25 | ~$0.020 | ~$7.20 |
+
+360 notes/month is 6 residents × 2 shifts × 30 days. The system prompt is
+identical on every note and marked with `cache_control`, so in steady state most
+input bills at the 10% cached rate — which is why even the top tier is single
+digits per month for one house.
+
+**Haiku 4.5 is the default, and it has not been measured here.** There is no
+Anthropic key on this machine, so the table above is list pricing and estimated
+token counts, not observed behavior. Before trusting it on real notes:
+
+```bash
+npm run compare:models
+```
+
+That runs the same grounding cases `verify:ai` gates on against each tier and
+prints measured pass rates, latency, and cost per note. Anything short of a
+perfect pass rate disqualifies a model at any price.
+
+The cheapest option remains **$0**: `qwen2.5:7b` runs locally, passes every run,
+and is faster than any hosted tier — at the cost of needing the app to run on a
+machine in the building. Both paths are built; `AI_PROVIDER` switches between
+them.
 
 ---
 

@@ -6,6 +6,7 @@ import { Lock, Loader2, Plus } from 'lucide-react';
 import { Alert, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
+import { displayName } from '@/lib/types';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
 
 /**
@@ -41,7 +42,7 @@ export default function SignedNote({
   const [error, setError] = useState<string | null>(null);
 
   const label = (text: string) =>
-    interpolate(text, { name: resident.firstName, pronouns: resident.pronouns });
+    interpolate(text, { name: displayName(resident), pronouns: resident.pronouns });
 
   async function submitAddendum() {
     setBusy(true);

@@ -20,7 +20,9 @@
     "dev:lan": "next dev -H 0.0.0.0",
     "dev:local-ai": "AI_PROVIDER=local OLLAMA_MODEL=qwen3.5:9b next dev -H 0.0.0.0",
     "dev:local-ai-fast": "AI_PROVIDER=local OLLAMA_MODEL=qwen2.5:7b next dev -H 0.0.0.0",
-    "staff:add": "tsx --tsconfig scripts/tsconfig.json scripts/create-staff.ts"
+    "staff:add": "tsx --tsconfig scripts/tsconfig.json scripts/create-staff.ts",
+    "compare:models": "tsx --tsconfig scripts/tsconfig.json scripts/compare-models.ts",
+    "verify:import": "tsx --tsconfig scripts/tsconfig.json scripts/verify-import.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

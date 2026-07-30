@@ -2,6 +2,7 @@ import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/render
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
+import { displayName } from '@/lib/types';
 
 /**
  * Form #680 — Daily Progress Note.
@@ -125,7 +126,10 @@ export function Form680({
   logoSrc,
   signatureSrc
 }: Form680Props) {
-  const ctx = { name: resident.firstName, pronouns: resident.pronouns };
+  // The five printed questions read naturally with the preferred name...
+  const ctx = { name: displayName(resident), pronouns: resident.pronouns };
+  // ...but "Individual's Name" is the identity field on a Medicaid document
+  // and must carry the legal name, whatever the house calls them.
   const residentName = `${resident.firstName} ${resident.lastName}`;
   const serviceDate = formatServiceDate(note.serviceDate);
   const config = template.renderConfig;

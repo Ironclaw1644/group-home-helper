@@ -16,6 +16,7 @@ import { deidentifyEnabled, findResidualIdentifiers, prepareName, scrubFreeText 
 import { checkClosingSentence, checkGrounding } from '@/lib/ai/guard';
 import { finalizeNarrative } from '@/lib/ai/postprocess';
 import { logAccess } from '@/lib/audit';
+import { displayName } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -69,7 +70,9 @@ export async function POST(req: Request) {
   const offMachine = provider.sendsDataOffMachine;
   const deidentified = deidentifyEnabled(offMachine);
 
-  const { outboundName, rehydrate } = prepareName(resident.firstName, offMachine);
+  // The narrative uses the name staff use. The legal name still appears in the
+  // form's identity field, which is rendered from the record, not from here.
+  const { outboundName, rehydrate } = prepareName(displayName(resident), offMachine);
   const outboundCtx = {
     name: outboundName,
     pronouns: resident.pronouns
@@ -113,7 +116,7 @@ export async function POST(req: Request) {
   // payload, do not send it.
   const residual = findResidualIdentifiers(
     userMessage,
-    [resident.firstName, resident.lastName, resident.medicaidId],
+    [resident.firstName, resident.preferredName, resident.lastName, resident.medicaidId],
     offMachine
   );
   if (residual.length > 0) {

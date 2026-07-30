@@ -11,6 +11,9 @@ const SignBody = z.object({
   // PNG data URL from the signature canvas. Optional: a typed attestation is
   // still a valid signature if the device cannot draw.
   signatureImage: z.string().startsWith('data:image/png;base64,').max(400_000).nullable(),
+  // Recorded so the signing method is part of the permanent record rather than
+  // something an auditor has to infer from the image.
+  signatureMethod: z.enum(['drawn', 'typed', 'uploaded']).default('drawn'),
   attested: z.literal(true),
   acknowledgeDuplicate: z.boolean().default(false)
 });
@@ -103,6 +106,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       signature_name: session.profile.fullName,
       signature_title: session.profile.title,
       signature_image_path: signaturePath,
+      signature_method: parsed.data.signatureMethod,
       attestation_text: template.schema.signature.attestation,
       similarity_prev: previous ? Number(similarity.toFixed(3)) : null
     })
@@ -115,7 +119,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   await logAccess(supabase, req, 'note.sign', 'note', id, {
     similarity_prev: similarity,
-    acknowledged_duplicate: parsed.data.acknowledgeDuplicate
+    acknowledged_duplicate: parsed.data.acknowledgeDuplicate,
+    signature_method: parsed.data.signatureMethod
   });
 
   return NextResponse.json({ ok: true });
