@@ -355,30 +355,62 @@ facts supplied. That is close to the cheapest thing you can ask a model to do,
 and the deterministic guards catch what a weaker one gets wrong — so the model
 is a cost dial rather than an architectural choice.
 
-Set the tier with `ANTHROPIC_MODEL`. List prices per million tokens:
+Three providers, selected by `AI_PROVIDER`:
 
-| Model | Input | Output | Est. per note | 360 notes/month |
-| --- | --- | --- | --- | --- |
-| `claude-haiku-4-5-20251001` | $1 | $5 | ~$0.004 | **~$1.50** |
-| `claude-sonnet-5` | $3 | $15 | ~$0.012 | ~$4.30 |
-| `claude-opus-5` | $5 | $25 | ~$0.020 | ~$7.20 |
+| Value | What it uses |
+| --- | --- |
+| `local` | Ollama on this machine. Free, nothing leaves the building. |
+| `anthropic` | Claude API. `ANTHROPIC_MODEL` picks the tier. |
+| `openai` | OpenAI API. `OPENAI_MODEL` picks the tier; `OPENAI_BASE_URL` also covers Azure OpenAI and compatible gateways. |
+
+All three return the same `NoteDraft` and go through the same guards, so
+switching vendors is one env var, not a rewrite. That is deliberate: model
+pricing moves fast, and being able to re-price the system by changing one line
+is worth more than any single vendor choice.
+
+List prices per million tokens:
+
+| Model | Input | Output | 360 notes/month |
+| --- | --- | --- | --- |
+| `gpt-4o-mini` | $0.15 | $0.60 | well under $1 |
+| `claude-haiku-4-5-20251001` | $1 | $5 | ~$1.50 |
+| `gpt-4o` | $2.50 | $10 | ~$4 |
+| `claude-sonnet-5` | $3 | $15 | ~$4.30 |
+| `claude-opus-5` | $5 | $25 | ~$7.20 |
 
 360 notes/month is 6 residents × 2 shifts × 30 days. The system prompt is
-identical on every note and marked with `cache_control`, so in steady state most
-input bills at the 10% cached rate — which is why even the top tier is single
-digits per month for one house.
+byte-identical on every note and sits first, so most input bills at the cached
+rate — which is why even the top tier is single digits per month for one house.
 
-**Haiku 4.5 is the default, and it has not been measured here.** There is no
-Anthropic key on this machine, so the table above is list pricing and estimated
-token counts, not observed behavior. Before trusting it on real notes:
+At these volumes **the price difference between the cheapest and dearest option
+is a few dollars a month.** Pick on measured grounding, not on cost.
+
+### Using the API is not the same as using ChatGPT
+
+Staff pasting a resident's information into chatgpt.com is a different thing
+from this app calling the OpenAI API: the consumer product is not covered by a
+BAA, and it would be an unlogged disclosure of PHI with no audit trail and no
+way to know it happened. The same goes for claude.ai, Gemini, or Copilot.
+
+Wiring the API in is partly a control for that — it gives staff a sanctioned
+path that is logged in `ai_generations`, grounded to what they actually
+recorded, and de-identified before it leaves the building.
+
+**No hosted model has been measured here.** There is no Anthropic or OpenAI key
+on this machine, so every hosted row above is list pricing and estimated tokens,
+not observed behavior — and OpenAI's lineup in particular turns over faster than
+this file does, so confirm the model names and prices before relying on them.
+Before trusting any of it on real notes:
 
 ```bash
 npm run compare:models
 ```
 
-That runs the same grounding cases `verify:ai` gates on against each tier and
-prints measured pass rates, latency, and cost per note. Anything short of a
-perfect pass rate disqualifies a model at any price.
+That runs the same grounding cases `verify:ai` gates on against every tier it
+has a key for — across both vendors — and prints measured pass rate, latency,
+and cost per note derived from real token counts. Models with no key are skipped
+rather than failed. Anything short of a perfect pass rate disqualifies a model
+at any price.
 
 The cheapest option remains **$0**: `qwen2.5:7b` runs locally, passes every run,
 and is faster than any hosted tier — at the cost of needing the app to run on a

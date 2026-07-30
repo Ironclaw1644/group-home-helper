@@ -3,20 +3,23 @@
  *
  *   npm run compare:models
  *   COMPARE_RUNS=5 npm run compare:models
- *   COMPARE_MODELS=claude-haiku-4-5-20251001,claude-sonnet-5 npm run compare:models
+ *   COMPARE_MODELS=gpt-4o-mini,claude-haiku-4-5-20251001 npm run compare:models
  *
  * "Cheapest that works" is an empirical question, not a spec-sheet one. This
- * runs the same grounding cases `verify:ai` gates on against several models and
- * reports pass rate, latency, and the monthly bill at this house's volume, so
- * the cost tier is chosen against measured behavior.
+ * runs the same grounding cases `verify:ai` gates on against several models —
+ * across vendors — and reports pass rate, latency, and the monthly bill at this
+ * house's volume, so the cost tier is chosen against measured behavior.
  *
  * A model that fails even one run is not a candidate at any price: an invented
  * event in a Medicaid record is a falsified document.
+ *
+ * Models whose key is missing are skipped rather than counted as failures.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { SYSTEM_PROMPT } from '../lib/ai/prompts';
 import { finalizeNarrative } from '../lib/ai/postprocess';
+import type { ModelProvider } from '../lib/ai/provider';
 import { buildMessage, CASES, evaluateRun } from './grounding-cases';
 
 const RUNS = Number(process.env.COMPARE_RUNS || 3);
@@ -26,19 +29,39 @@ const RESIDENTS = Number(process.env.COMPARE_RESIDENTS || 6);
 const SHIFTS_PER_DAY = Number(process.env.COMPARE_SHIFTS || 2);
 const NOTES_PER_MONTH = RESIDENTS * SHIFTS_PER_DAY * 30;
 
-/** USD per million tokens. */
-type Price = { input: number; output: number };
+type Vendor = 'anthropic' | 'openai' | 'local';
 
-const PRICING: Record<string, Price> = {
-  'claude-haiku-4-5-20251001': { input: 1, output: 5 },
-  'claude-sonnet-5': { input: 3, output: 15 },
-  'claude-opus-5': { input: 5, output: 25 }
+type Candidate = {
+  id: string;
+  vendor: Vendor;
+  /** USD per million tokens. Null for local models, which cost nothing. */
+  price: { input: number; output: number } | null;
+  /** Fraction of the input price charged for a cached prefix read. */
+  cacheDiscount: number;
 };
 
-const DEFAULT_MODELS = [
-  'claude-haiku-4-5-20251001',
-  'claude-sonnet-5',
-  'claude-opus-5'
+/**
+ * List prices, USD per million tokens.
+ *
+ * These move. The script reports measured token counts alongside the cost it
+ * derives, so a stale price here is visible rather than silently wrong — and
+ * the pass rate, which is the part that actually disqualifies a model, does not
+ * depend on this table at all.
+ */
+const CANDIDATES: Candidate[] = [
+  // Anthropic — cached prefix reads bill at 10% of input.
+  { id: 'claude-haiku-4-5-20251001', vendor: 'anthropic', price: { input: 1, output: 5 }, cacheDiscount: 0.1 },
+  { id: 'claude-sonnet-5', vendor: 'anthropic', price: { input: 3, output: 15 }, cacheDiscount: 0.1 },
+  { id: 'claude-opus-5', vendor: 'anthropic', price: { input: 5, output: 25 }, cacheDiscount: 0.1 },
+
+  // OpenAI — automatic prefix caching, cached input billed at a discount.
+  // Confirm current model names and prices before relying on the cost column;
+  // the OpenAI lineup turns over faster than this file does.
+  { id: 'gpt-4o-mini', vendor: 'openai', price: { input: 0.15, output: 0.6 }, cacheDiscount: 0.5 },
+  { id: 'gpt-4o', vendor: 'openai', price: { input: 2.5, output: 10 }, cacheDiscount: 0.5 },
+
+  // Local — free, and the baseline everything else has to beat on value.
+  { id: 'qwen2.5:7b', vendor: 'local', price: null, cacheDiscount: 0 }
 ];
 
 function loadEnv() {
@@ -53,8 +76,27 @@ function loadEnv() {
   }
 }
 
+async function providerFor(candidate: Candidate): Promise<ModelProvider> {
+  switch (candidate.vendor) {
+    case 'anthropic': {
+      const { anthropicProvider } = await import('../lib/ai/anthropic');
+      return anthropicProvider(candidate.id);
+    }
+    case 'openai': {
+      const { openaiProvider } = await import('../lib/ai/openai');
+      return openaiProvider(candidate.id);
+    }
+    default: {
+      process.env.OLLAMA_MODEL = candidate.id;
+      const { ollamaProvider } = await import('../lib/ai/ollama');
+      return ollamaProvider();
+    }
+  }
+}
+
 type Row = {
-  model: string;
+  id: string;
+  vendor: Vendor;
   passed: number;
   total: number;
   medianSeconds: number | null;
@@ -66,9 +108,14 @@ type Row = {
   failures: string[];
 };
 
-async function measure(model: string): Promise<Row> {
-  const { anthropicProvider } = await import('../lib/ai/anthropic');
-  const provider = anthropicProvider(model);
+async function measure(candidate: Candidate): Promise<Row | null> {
+  const provider = await providerFor(candidate);
+  const health = await provider.health();
+
+  if (!health.ok) {
+    console.log(`  skipped — ${health.detail}`);
+    return null;
+  }
 
   let passed = 0;
   let total = 0;
@@ -87,6 +134,7 @@ async function measure(model: string): Promise<Row> {
 
       if (!result.ok) {
         failures.push(`${testCase.title}: ${result.reason} — ${result.message}`);
+        process.stdout.write('!');
         continue;
       }
 
@@ -117,20 +165,20 @@ async function measure(model: string): Promise<Row> {
   const avgOutput = mean(outputs);
   const avgCacheRead = mean(cacheReads);
 
-  const price = PRICING[model];
   let costPerNote: number | null = null;
-  if (price && (avgInput || avgOutput)) {
-    // Cached prefix reads bill at 10% of the input rate; the system prompt is
-    // the same on every note, so in steady state most input is cache reads.
+  if (candidate.price === null) {
+    costPerNote = 0;
+  } else if (avgInput || avgOutput) {
     const freshInput = Math.max(0, avgInput - avgCacheRead);
     costPerNote =
-      (freshInput / 1_000_000) * price.input +
-      (avgCacheRead / 1_000_000) * price.input * 0.1 +
-      (avgOutput / 1_000_000) * price.output;
+      (freshInput / 1_000_000) * candidate.price.input +
+      (avgCacheRead / 1_000_000) * candidate.price.input * candidate.cacheDiscount +
+      (avgOutput / 1_000_000) * candidate.price.output;
   }
 
   return {
-    model,
+    id: candidate.id,
+    vendor: candidate.vendor,
     passed,
     total,
     medianSeconds: median,
@@ -146,30 +194,41 @@ async function measure(model: string): Promise<Row> {
 async function main() {
   loadEnv();
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error('ANTHROPIC_API_KEY is not set — nothing to compare.');
-    process.exit(2);
-  }
+  const requested = process.env.COMPARE_MODELS?.split(',').map((m) => m.trim()).filter(Boolean);
+  const candidates = requested
+    ? requested.map((id) => {
+        const known = CANDIDATES.find((c) => c.id === id);
+        if (known) return known;
+        // An unlisted model still runs; it just cannot be priced.
+        const vendor: Vendor = id.startsWith('claude')
+          ? 'anthropic'
+          : id.startsWith('gpt') || id.startsWith('o')
+            ? 'openai'
+            : 'local';
+        return { id, vendor, price: null, cacheDiscount: 0 } satisfies Candidate;
+      })
+    : CANDIDATES;
 
-  const models = (process.env.COMPARE_MODELS || DEFAULT_MODELS.join(','))
-    .split(',')
-    .map((m) => m.trim())
-    .filter(Boolean);
-
-  console.log(`Comparing ${models.length} models — ${CASES.length} cases x ${RUNS} runs each`);
+  console.log(`Comparing ${candidates.length} models — ${CASES.length} cases x ${RUNS} runs each`);
   console.log(`Volume assumption: ${RESIDENTS} residents x ${SHIFTS_PER_DAY} shifts x 30 days`);
   console.log(`                   = ${NOTES_PER_MONTH} notes/month\n`);
 
   const rows: Row[] = [];
-  for (const model of models) {
-    console.log(`--- ${model}`);
-    rows.push(await measure(model));
+  for (const candidate of candidates) {
+    console.log(`--- ${candidate.id} (${candidate.vendor})`);
+    const row = await measure(candidate);
+    if (row) rows.push(row);
+  }
+
+  if (rows.length === 0) {
+    console.log('\nNothing ran. Set ANTHROPIC_API_KEY / OPENAI_API_KEY, or start Ollama.\n');
+    process.exit(2);
   }
 
   const usd = (n: number | null) =>
-    n === null ? '     ?' : n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
+    n === null ? '     ?' : n === 0 ? 'free' : n < 0.01 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
 
-  console.log(`\n${'='.repeat(78)}`);
+  console.log(`\n${'='.repeat(80)}`);
   console.log(
     'model'.padEnd(30) +
       'grounding'.padEnd(12) +
@@ -177,24 +236,23 @@ async function main() {
       'per note'.padEnd(11) +
       'per month'
   );
-  console.log('-'.repeat(78));
+  console.log('-'.repeat(80));
 
   for (const r of rows) {
-    const rate = `${r.passed}/${r.total}`;
     console.log(
-      r.model.padEnd(30) +
-        rate.padEnd(12) +
+      r.id.padEnd(30) +
+        `${r.passed}/${r.total}`.padEnd(12) +
         `${r.medianSeconds ?? '?'}s`.padEnd(9) +
         usd(r.costPerNote).padEnd(11) +
         usd(r.monthly)
     );
   }
-  console.log('='.repeat(78));
+  console.log('='.repeat(80));
 
-  console.log('\ntoken averages (input / cache read / output):');
+  console.log('\ntoken averages (input / cached / output):');
   for (const r of rows) {
     console.log(
-      `  ${r.model.padEnd(30)} ${Math.round(r.avgInput)} / ${Math.round(r.avgCacheRead)} / ${Math.round(r.avgOutput)}`
+      `  ${r.id.padEnd(30)} ${Math.round(r.avgInput)} / ${Math.round(r.avgCacheRead)} / ${Math.round(r.avgOutput)}`
     );
   }
 
@@ -202,7 +260,7 @@ async function main() {
   if (failing.length) {
     console.log('\nfailures:');
     for (const r of failing) {
-      console.log(`\n  ${r.model}`);
+      console.log(`\n  ${r.id}`);
       for (const f of r.failures.slice(0, 6)) console.log(`    ! ${f}`);
       if (r.failures.length > 6) console.log(`    ... and ${r.failures.length - 6} more`);
     }
@@ -212,7 +270,7 @@ async function main() {
   if (clean.length) {
     const cheapest = clean.reduce((a, b) => (a.costPerNote! <= b.costPerNote! ? a : b));
     console.log(
-      `\nCheapest model that passed every run: ${cheapest.model} ` +
+      `\nCheapest model that passed every run: ${cheapest.id} ` +
         `(${usd(cheapest.monthly)}/month at ${NOTES_PER_MONTH} notes)\n`
     );
   } else {

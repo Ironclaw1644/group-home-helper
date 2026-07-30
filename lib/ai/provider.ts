@@ -5,8 +5,13 @@ import 'server-only';
  *
  * The free, downloadable version runs entirely on the operator's own machine
  * against a local model, so no PHI ever leaves the building and no BAA is
- * needed with anyone. The hosted Anthropic path stays available for agencies
- * that would rather not run a model locally, but it is opt-in.
+ * needed with anyone. The hosted paths stay available for agencies that would
+ * rather not run a model locally, but they are opt-in.
+ *
+ * Every provider produces the same NoteDraft and goes through the same guards,
+ * so switching vendors is an env var rather than a rewrite. That is deliberate:
+ * model pricing moves fast, and being able to re-price the whole system by
+ * changing one line is worth more than any single vendor choice.
  */
 
 export const NOTE_DRAFT_SCHEMA = {
@@ -54,12 +59,15 @@ export type DraftResult =
       model: string;
     };
 
-export type ProviderName = 'local' | 'anthropic';
+export type ProviderName = 'local' | 'anthropic' | 'openai';
 
 export function activeProvider(): ProviderName {
   // Local is the default: the downloadable version should work with no
   // account, no key, and no data leaving the machine.
-  return process.env.AI_PROVIDER === 'anthropic' ? 'anthropic' : 'local';
+  const configured = process.env.AI_PROVIDER;
+  if (configured === 'anthropic') return 'anthropic';
+  if (configured === 'openai') return 'openai';
+  return 'local';
 }
 
 export type ModelProvider = {
@@ -73,12 +81,20 @@ export type ModelProvider = {
 };
 
 export async function getProvider(): Promise<ModelProvider> {
-  if (activeProvider() === 'anthropic') {
-    const { anthropicProvider } = await import('./anthropic');
-    return anthropicProvider();
+  switch (activeProvider()) {
+    case 'anthropic': {
+      const { anthropicProvider } = await import('./anthropic');
+      return anthropicProvider();
+    }
+    case 'openai': {
+      const { openaiProvider } = await import('./openai');
+      return openaiProvider();
+    }
+    default: {
+      const { ollamaProvider } = await import('./ollama');
+      return ollamaProvider();
+    }
   }
-  const { ollamaProvider } = await import('./ollama');
-  return ollamaProvider();
 }
 
 /** Parse and shape-check a model's JSON response. */
