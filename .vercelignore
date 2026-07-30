@@ -1,0 +1,23 @@
+# Vercel uses this instead of .gitignore when present.
+#
+# The important difference: public/apk/*.apk IS gitignored (binary release
+# artifacts don't belong in git) but MUST ship in the deploy, because the
+# download page serves it from the same origin as the app.
+
+node_modules
+.next
+.git
+
+# Native shell — built locally, not needed by the server
+android
+capacitor
+capacitor.config.ts
+
+# Local-only database and scratch output
+data
+tmp
+
+# Never deploy real environment files
+.env
+.env.local
+.env.*.local
