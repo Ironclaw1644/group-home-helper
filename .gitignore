@@ -33,5 +33,6 @@ capacitor/www/*.map
 # changes when the native shell changes (rarely), so committing it is the lesser
 # evil. Prune old versions when they stop being useful.
 
-# One-time admin password written by bootstrap:admin — delete after first login
+# One-time passwords written by bootstrap:admin / staff:add — delete after first login
 .admin-credentials
+.staff-credentials

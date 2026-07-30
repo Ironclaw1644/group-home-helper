@@ -3,9 +3,8 @@
  *
  *   npm run bootstrap:admin -- admin@example.com "Jane Doe"
  *
- * Reads NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from the
- * environment. Run it once after applying the migrations; from then on staff
- * are added through the app.
+ * Reads Supabase config from `.env.local`. Run it once after applying the
+ * migrations; from then on staff are added through the app.
  *
  * A temporary password is generated and written to `.admin-credentials` with
  * 0600 permissions rather than printed. Printing it would put a live credential
@@ -20,13 +19,31 @@ import path from 'node:path';
 const ORG_ID = '00000000-0000-0000-0000-000000000001';
 const HOME_ID = '00000000-0000-0000-0000-000000000010';
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`Missing env var: ${name}`);
-    process.exit(1);
+/**
+ * Load `.env.local` the way Next does.
+ *
+ * Standalone scripts get no automatic env loading, so without this the script
+ * fails on a machine where the config is only in the file.
+ */
+function loadEnv() {
+  const file = path.join(process.cwd(), '.env.local');
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    if (!line.trim() || line.startsWith('#')) continue;
+    const i = line.indexOf('=');
+    if (i === -1) continue;
+    const key = line.slice(0, i).trim();
+    if (!process.env[key]) process.env[key] = line.slice(i + 1).trim();
   }
-  return value;
+}
+
+function requireEnv(...names: string[]): string {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  console.error(`Missing env var: ${names.join(' or ')}`);
+  process.exit(1);
 }
 
 function generatePassword(): string {
@@ -35,6 +52,8 @@ function generatePassword(): string {
 }
 
 async function main() {
+  loadEnv();
+
   const [email, fullName] = process.argv.slice(2);
   if (!email || !fullName) {
     console.error('Usage: npm run bootstrap:admin -- <email> "<Full Name>"');
@@ -43,7 +62,8 @@ async function main() {
 
   const admin = createClient(
     requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
-    requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    // Prefer the newer revocable secret key, same as lib/supabase/admin.ts.
+    requireEnv('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY'),
     { db: { schema: 'ghh' }, auth: { autoRefreshToken: false, persistSession: false } }
   );
 
