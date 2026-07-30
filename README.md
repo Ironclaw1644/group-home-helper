@@ -17,6 +17,32 @@ Two things it does:
 > If you deploy it, read **PHI handling** below first — a hosted deployment
 > needs BAAs with your host and your model vendor.
 
+
+---
+
+## Live
+
+| | |
+| --- | --- |
+| App | https://group-home-helper.vercel.app |
+| Install page | https://group-home-helper.vercel.app/download |
+| Source | https://github.com/Ironclaw1644/group-home-helper |
+
+Send staff to `/download`. It works without an account — which it has to, since
+nobody has one before their first shift — and covers both the iPhone
+Add-to-Home-Screen steps and the Android app file.
+
+### Updating it
+
+Because the APK is a shell around this server, **the app updates when you
+deploy.** Push to `main` (or run `vercel deploy --prod`) and every phone has the
+new version next time it opens. No reinstall, no store review, no chasing staff.
+
+A new APK is only needed when the *shell* changes — a different server address,
+package id, app name, or native permission. Bump `APK_VERSION` in
+[lib/apk.ts](lib/apk.ts), rebuild, and `/download` will show the new version
+alongside a changelog; `/api/app-version` lets an installed shell check itself.
+
 ---
 
 ## Stack
