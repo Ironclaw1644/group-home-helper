@@ -23,7 +23,8 @@
     "staff:add": "tsx --tsconfig scripts/tsconfig.json scripts/create-staff.ts",
     "compare:models": "tsx --tsconfig scripts/tsconfig.json scripts/compare-models.ts",
     "verify:import": "tsx --tsconfig scripts/tsconfig.json scripts/verify-import.ts",
-    "demo:prune": "tsx --tsconfig scripts/tsconfig.json scripts/prune-demos.ts"
+    "demo:prune": "tsx --tsconfig scripts/tsconfig.json scripts/prune-demos.ts",
+    "billing:set-price": "tsx --tsconfig scripts/tsconfig.json scripts/set-org-price.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

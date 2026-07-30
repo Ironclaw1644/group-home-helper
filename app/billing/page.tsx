@@ -26,7 +26,7 @@ export default async function BillingPage({
 
   const [billing, price] = await Promise.all([
     getBillingState(session.profile.orgId),
-    getPlanPrice()
+    getPlanPrice(session.profile.orgId)
   ]);
 
   const status = STATUS_LABEL[billing.status] ?? STATUS_LABEL.none;

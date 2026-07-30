@@ -163,6 +163,25 @@ export async function syncSubscription(subscription: Stripe.Subscription): Promi
   else await query.eq('stripe_customer_id', customerId);
 }
 
+/**
+ * The price this agency pays.
+ *
+ * An org-level override beats the public price. Negotiated rates and design
+ * partners are the normal case from the first customer onward, and encoding
+ * that in the database rather than in a deploy means changing someone's rate
+ * does not require a release.
+ */
+export async function priceIdFor(orgId: string): Promise<string | null> {
+  const admin = createSupabaseAdminClient();
+  const { data } = await admin
+    .from('organizations')
+    .select('stripe_price_id')
+    .eq('id', orgId)
+    .maybeSingle();
+
+  return data?.stripe_price_id || process.env.STRIPE_PRICE_ID || null;
+}
+
 /** Checkout session for a new subscription. */
 export async function createCheckoutSession(input: {
   orgId: string;
@@ -171,8 +190,8 @@ export async function createCheckoutSession(input: {
   successUrl: string;
   cancelUrl: string;
 }): Promise<string> {
-  const priceId = process.env.STRIPE_PRICE_ID;
-  if (!priceId) throw new Error('Missing env var: STRIPE_PRICE_ID');
+  const priceId = await priceIdFor(input.orgId);
+  if (!priceId) throw new Error('No price configured for this organization');
 
   const customerId = await ensureCustomer(input);
 
@@ -219,9 +238,12 @@ export async function createPortalSession(input: {
  * the one actually charged, and the version the customer sees before clicking
  * should be the version they get billed.
  */
-export async function getPlanPrice(): Promise<{ amount: string; interval: string } | null> {
-  const priceId = process.env.STRIPE_PRICE_ID;
-  if (!priceId || !process.env.STRIPE_SECRET_KEY) return null;
+export async function getPlanPrice(orgId?: string): Promise<{ amount: string; interval: string } | null> {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+
+  // Show the agency the price they will actually be charged, not the list one.
+  const priceId = orgId ? await priceIdFor(orgId) : process.env.STRIPE_PRICE_ID;
+  if (!priceId) return null;
 
   try {
     const price = await getStripe().prices.retrieve(priceId);
