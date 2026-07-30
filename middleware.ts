@@ -1,7 +1,14 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/auth/callback'];
+/**
+ * Reachable without signing in.
+ *
+ * `/download` and `/api/app-version` have to be here: a DSP starting their
+ * first shift has no account yet and still needs to install the app. Neither
+ * carries resident data.
+ */
+const PUBLIC_PATHS = ['/login', '/auth/callback', '/download', '/api/app-version'];
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
@@ -56,5 +63,15 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand/|.*\\.(?:png|jpg|svg|webmanifest)$).*)']
+  // Excluded from the middleware entirely: build assets, brand images, the
+  // downloadable APK, and the PWA files.
+  //
+  // The PWA exclusions matter more than they look. `sw.js`, `offline.html`, and
+  // the manifest have to load *before* a user is authenticated, or the service
+  // worker never registers and "Add to Home Screen" produces a shortcut with no
+  // offline behaviour. `.apk` matters for the same reason as /download — an
+  // unauthenticated phone has to be able to fetch it.
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|brand/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk)$).*)'
+  ]
 };
