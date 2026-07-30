@@ -1,0 +1,29 @@
+node_modules
+.next
+out
+build
+.DS_Store
+
+# Never commit anything that could carry PHI or credentials.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/exports
+/tmp
+
+next-env.d.ts
+tsconfig.tsbuildinfo
+.vercel
+
+# Capacitor / Android
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+android/capacitor-cordova-android-plugins
+capacitor/www/*.map
+
+# Built APK — shipped via the deploy, not versioned in git
+public/apk/*.apk

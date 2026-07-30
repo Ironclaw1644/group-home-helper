@@ -1,0 +1,17 @@
+{
+  // Standalone scripts run through tsx rather than the Next compiler, so they
+  // need the automatic JSX runtime spelled out. The app itself keeps
+  // jsx="preserve" in the root tsconfig, which is what Next expects.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["../*"],
+      "server-only": ["./shims/server-only.ts"]
+    }
+  },
+  "include": ["../lib/**/*", "./**/*"]
+}

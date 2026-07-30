@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Daily Notes</string>
+    <string name="title_activity_main">Daily Notes</string>
+    <string name="package_name">com.athomefamilyservices.notes</string>
+    <string name="custom_url_scheme">com.athomefamilyservices.notes</string>
+</resources>

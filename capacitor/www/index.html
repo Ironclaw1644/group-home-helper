@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Daily Notes</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f5f1ea;
+        color: #0f2d45;
+        font-family: -apple-system, system-ui, sans-serif;
+        text-align: center;
+      }
+      .card {
+        max-width: 22rem;
+        background: #fff;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(15, 45, 69, 0.08);
+      }
+      h1 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+      p { font-size: 0.875rem; line-height: 1.6; color: #536779; margin: 0 0 0.75rem; }
+      button {
+        border: 0;
+        border-radius: 0.75rem;
+        background: #0f2d45;
+        color: #fff;
+        font-weight: 600;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Shown only when the app cannot reach the office server — wrong wifi,
+      server not running, or the address changed. Never shown in normal use.
+    -->
+    <div class="card">
+      <h1>Can't reach the notes server</h1>
+      <p>
+        Make sure this phone is on the house wifi and the office computer is
+        running Daily Notes.
+      </p>
+      <p>Any note you were writing is still saved on this phone.</p>
+      <button onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

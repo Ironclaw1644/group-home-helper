@@ -1,0 +1,48 @@
+{
+  "name": "group-home-helper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run db:bundle && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "pdf:sample": "tsx --tsconfig scripts/tsconfig.json scripts/render-sample-pdf.tsx",
+    "verify:guardrails": "tsx --tsconfig scripts/tsconfig.json scripts/verify-guardrails.ts",
+    "verify:ai": "tsx --tsconfig scripts/tsconfig.json scripts/verify-ai-grounding.ts",
+    "bootstrap:admin": "tsx --tsconfig scripts/tsconfig.json scripts/bootstrap-admin.ts",
+    "db:bundle": "tsx --tsconfig scripts/tsconfig.json scripts/bundle-migrations.ts",
+    "db:verify": "tsx --tsconfig scripts/tsconfig.json scripts/verify-db.ts",
+    "brand:scan": "tsx --tsconfig scripts/tsconfig.json scripts/scan-brand.ts",
+    "db:seed": "tsx --tsconfig scripts/tsconfig.json scripts/seed-supabase.ts",
+    "apk": "bash scripts/build-apk.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@electric-sql/pglite": "^0.5.4",
+    "@react-pdf/renderer": "^4.1.6",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.57.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.511.0",
+    "next": "15.5.12",
+    "pdf-lib": "^1.17.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.1",
+    "typescript": "^5.8.2"
+  }
+}
