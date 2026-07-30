@@ -18,6 +18,7 @@
  *
  * To compare cost tiers rather than gate one, use `npm run compare:models`.
  */
+import { loadEnv } from './load-env';
 import { getProvider } from '../lib/ai/provider';
 import { SYSTEM_PROMPT } from '../lib/ai/prompts';
 import { finalizeNarrative } from '../lib/ai/postprocess';
@@ -26,6 +27,8 @@ import { buildMessage, CASES, evaluateRun } from './grounding-cases';
 const RUNS = Number(process.env.VERIFY_RUNS || 3);
 
 async function main() {
+  loadEnv();
+
   const provider = await getProvider();
   const health = await provider.health();
 

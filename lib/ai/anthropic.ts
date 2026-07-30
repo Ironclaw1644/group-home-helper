@@ -45,7 +45,9 @@ const NoteDraftSchema = z.object({
     .describe('The specific input items this narrative draws on.'),
   unsupported_claims: z
     .array(z.string())
-    .describe('Anything in the narrative not directly supported by the input. Should be empty.')
+    .describe(
+      'Statements present in your narrative that no input supports. Rewording or summarizing the input is NOT unsupported. Do NOT list questions you could not answer, information you lacked, or prompts you left out — those are not claims. Only list something you actually wrote and could not support. Normally empty.'
+    )
 });
 
 let client: Anthropic | null = null;

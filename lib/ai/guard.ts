@@ -87,6 +87,24 @@ function findUnrecordedTopics(
 }
 
 /**
+ * Everything the DSP typed, lowercased.
+ *
+ * Free text is input too, and the option checks below have no other way to know
+ * about it. Without this the guard flags the DSP's own words back at them: a
+ * DSP who writes "redirected by staff and calmed after a short time" on a shift
+ * where the mood was Agitated gets the narrative flagged for mentioning "calm",
+ * because Calm is an unselected option. The event is recorded, in their
+ * handwriting, and the model is repeating it correctly.
+ */
+function recordedFreeText(data: StructuredData): string {
+  const parts: string[] = [];
+  for (const value of Object.values(data)) {
+    if (typeof value === 'string' && value.trim()) parts.push(value);
+  }
+  return parts.join(' ').toLowerCase();
+}
+
+/**
  * Options the DSP did NOT select but which the narrative mentions anyway.
  *
  * This is the check that matters most: an invented outing or an invented meal
@@ -98,6 +116,7 @@ function findUnselectedOptions(
   narrative: string
 ): GroundingFinding[] {
   const text = narrative.toLowerCase();
+  const typed = recordedFreeText(data);
   const findings: GroundingFinding[] = [];
 
   for (const section of schema.sections) {
@@ -124,6 +143,11 @@ function findUnselectedOptions(
           (o) => selected.has(o.value) && distinctiveKeyword(o.label) === keyword
         );
         if (coveredBySelection) continue;
+
+        // The DSP wrote it themselves, so the model is not inventing it.
+        // Matched as a stem so "calmed" in their text covers "calm" in the
+        // narrative — paraphrasing free text is exactly what this step is for.
+        if (typed.includes(keyword)) continue;
 
         if (containsWord(text, keyword)) {
           findings.push({
@@ -197,16 +221,118 @@ export function checkGrounding(params: {
   data: StructuredData;
   narrative: string;
   modelReported: string[];
+  /**
+   * The resident's name, so the self-report check can ignore it. It appears in
+   * every narrative and in no chip label, which would otherwise make every
+   * self-report look like it named something unrecorded.
+   */
+  residentName?: string;
 }): GroundingFinding[] {
   return [
     ...findUnselectedOptions(params.schema, params.data, params.narrative),
     ...findUnrecordedTopics(params.schema, params.data, params.narrative),
     ...findInventedTimes(params.narrative),
     ...findQuotedSpeech(params.narrative),
-    ...params.modelReported
-      .filter((c) => c.trim().length > 0)
-      .map((c): GroundingFinding => ({ kind: 'model_reported', detail: c }))
+    ...findRealSelfReports(
+      params.schema,
+      params.data,
+      params.narrative,
+      params.modelReported,
+      params.residentName
+    )
   ];
+}
+
+/**
+ * Keep only the self-reported claims that are actually claims.
+ *
+ * The model is asked to list anything it wrote that the input did not support.
+ * Smaller models read that field loosely and use it to describe what they
+ * *lacked* rather than what they *invented* — gpt-4o-mini returns entries like
+ * "how Alex enjoyed the activity" on a shift where the narrative never says he
+ * enjoyed anything, and "the mood was agitated" when Agitated was the recorded
+ * mood.
+ *
+ * Taking those at face value fails a model for being conscientious in a
+ * metadata field while its narrative is clean. So each entry is checked against
+ * both sides before it counts:
+ *
+ *   - if everything it names was in the input, it is supported after all
+ *   - if what it names is not in the narrative, the model is describing
+ *     something it did not write
+ *
+ * What survives is a claim the model made and could not support, which is worth
+ * showing a supervisor.
+ */
+function findRealSelfReports(
+  schema: FormTemplateSchema,
+  data: StructuredData,
+  narrative: string,
+  reported: string[],
+  residentName?: string
+): GroundingFinding[] {
+  const text = narrative.toLowerCase();
+  const recorded = (recordedFreeText(data) + ' ' + formVocabulary(schema, data)).toLowerCase();
+  const ignore = new Set(SELF_REPORT_STOP);
+  if (residentName) ignore.add(residentName.trim().toLowerCase());
+  const findings: GroundingFinding[] = [];
+
+  for (const claim of reported) {
+    const trimmed = claim.trim();
+    if (!trimmed) continue;
+
+    const words = trimmed
+      .toLowerCase()
+      .replace(/[^a-z\s]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !ignore.has(w));
+
+    // Nothing testable in it (e.g. "none", "n/a") — not evidence of anything.
+    if (words.length === 0) continue;
+
+    if (words.every((w) => recorded.includes(w))) continue;
+    if (!words.some((w) => text.includes(w))) continue;
+
+    findings.push({ kind: 'model_reported', detail: trimmed });
+  }
+
+  return findings;
+}
+
+/** Words that carry no evidence either way in a self-report. */
+const SELF_REPORT_STOP = new Set([
+  'that', 'this', 'with', 'from', 'have', 'been', 'were', 'about', 'there',
+  'their', 'they', 'them', 'shift', 'note', 'staff', 'input', 'claim',
+  'detail', 'details', 'specific', 'beyond', 'overall', 'during', 'which',
+  'what', 'when', 'where'
+]);
+
+/**
+ * The form's own words: section titles, field labels, and the option labels the
+ * DSP selected.
+ *
+ * A self-report that only uses the form's vocabulary is describing the input,
+ * not something invented — "the overall mood was agitated" is the model
+ * restating a field label and a selected option, which is the opposite of a
+ * fabrication.
+ */
+function formVocabulary(schema: FormTemplateSchema, data: StructuredData): string {
+  const words: string[] = [];
+
+  for (const section of schema.sections) {
+    words.push(section.title);
+    for (const field of section.fields) {
+      words.push(field.label);
+      if (field.type !== 'chips') continue;
+      const value = getFieldValue(data, section.key, field);
+      if (!Array.isArray(value)) continue;
+      for (const option of field.options) {
+        if (value.includes(option.value)) words.push(option.label);
+      }
+    }
+  }
+
+  return words.join(' ');
 }
 
 /**

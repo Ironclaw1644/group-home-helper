@@ -15,8 +15,7 @@
  *
  * Models whose key is missing are skipped rather than counted as failures.
  */
-import fs from 'node:fs';
-import path from 'node:path';
+import { loadEnv } from './load-env';
 import { SYSTEM_PROMPT } from '../lib/ai/prompts';
 import { finalizeNarrative } from '../lib/ai/postprocess';
 import type { ModelProvider } from '../lib/ai/provider';
@@ -63,18 +62,6 @@ const CANDIDATES: Candidate[] = [
   // Local — free, and the baseline everything else has to beat on value.
   { id: 'qwen2.5:7b', vendor: 'local', price: null, cacheDiscount: 0 }
 ];
-
-function loadEnv() {
-  const file = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(file)) return;
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    if (!line.trim() || line.startsWith('#')) continue;
-    const i = line.indexOf('=');
-    if (i === -1) continue;
-    const key = line.slice(0, i).trim();
-    if (!process.env[key]) process.env[key] = line.slice(i + 1).trim();
-  }
-}
 
 async function providerFor(candidate: Candidate): Promise<ModelProvider> {
   switch (candidate.vendor) {

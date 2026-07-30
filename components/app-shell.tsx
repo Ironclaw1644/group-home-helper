@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { IdCard, LayoutGrid, LogOut, Users } from 'lucide-react';
+import { CreditCard, IdCard, LayoutGrid, LogOut, Users } from 'lucide-react';
 import type { Session } from '@/lib/auth/session';
 import { isSupervisor } from '@/lib/auth/session';
 import { loadBrand } from '@/lib/branding/load';
@@ -43,6 +43,16 @@ export async function AppShell({
               >
                 <IdCard className="h-4 w-4" />
                 <span className="hidden sm:inline">Staff</span>
+              </Link>
+            ) : null}
+
+            {isSupervisor(session.profile) ? (
+              <Link
+                href="/billing"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
+              >
+                <CreditCard className="h-4 w-4" />
+                <span className="hidden sm:inline">Billing</span>
               </Link>
             ) : null}
 

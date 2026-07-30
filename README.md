@@ -418,61 +418,134 @@ Three providers, selected by `AI_PROVIDER`:
 | --- | --- |
 | `local` | Ollama on this machine. Free, nothing leaves the building. |
 | `anthropic` | Claude API. `ANTHROPIC_MODEL` picks the tier. |
-| `openai` | OpenAI API. `OPENAI_MODEL` picks the tier; `OPENAI_BASE_URL` also covers Azure OpenAI and compatible gateways. |
+| `openai` | **Current default.** `OPENAI_MODEL` picks the tier; `OPENAI_BASE_URL` also covers Azure OpenAI and compatible gateways. |
 
 All three return the same `NoteDraft` and go through the same guards, so
-switching vendors is one env var, not a rewrite. That is deliberate: model
-pricing moves fast, and being able to re-price the system by changing one line
-is worth more than any single vendor choice.
+switching vendors is one env var, not a rewrite.
 
-List prices per million tokens:
+### Measured: gpt-4o-mini
 
-| Model | Input | Output | 360 notes/month |
-| --- | --- | --- | --- |
-| `gpt-4o-mini` | $0.15 | $0.60 | well under $1 |
-| `claude-haiku-4-5-20251001` | $1 | $5 | ~$1.50 |
-| `gpt-4o` | $2.50 | $10 | ~$4 |
-| `claude-sonnet-5` | $3 | $15 | ~$4.30 |
-| `claude-opus-5` | $5 | $25 | ~$7.20 |
+`npm run compare:models`, 50 runs against the real prompts and the real guards:
 
-360 notes/month is 6 residents × 2 shifts × 30 days. The system prompt is
-byte-identical on every note and sits first, so most input bills at the cached
-rate — which is why even the top tier is single digits per month for one house.
+| | |
+| --- | --- |
+| Grounding | **48/50 (96%)** |
+| Median latency | **1.4s** |
+| Cost per note | $0.0001 |
+| At 360 notes/month | **$0.05** |
 
-At these volumes **the price difference between the cheapest and dearest option
-is a few dollars a month.** Pick on measured grounding, not on cost.
+Five cents a month at one house's volume, and fast enough that a DSP does not
+notice waiting.
+
+**96%, not 100% — and that is the number to design around.** Both failures were
+caught by the guards and surfaced as review flags; neither reached a note
+unchallenged. A 96% model behind a deterministic net is worth more than a 99%
+model with nothing checking it, because the 4% is *visible*.
+
+Getting to 96% took three fixes, and two of them were mine, not the model's:
+
+- **The self-report field was ambiguous.** gpt-4o-mini used `unsupported_claims`
+  to list prompts it *could not answer* rather than claims it *invented* —
+  "how Alex chose the activity" on a shift where nobody recorded that. Scored
+  as fabrication, that alone dropped it to 7/10. The field description now says
+  explicitly not to list missing information.
+- **The guard flagged the DSP's own words.** A DSP wrote "calmed after a short
+  time" in the incident box; the model paraphrased it to "calm"; the guard saw
+  an unselected mood option and called it invented. Free text is input, and
+  `checkGrounding` now knows that.
+- **Self-reports are cross-checked** against both the input and the narrative,
+  so a model naming something it never wrote no longer counts against it.
+
+Both guard fixes have regression tests in `verify:guardrails` — including one
+proving the exemption did not become a blanket amnesty.
+
+### Price per tier
+
+| Model | Input/Output per MTok | 360 notes/month |
+| --- | --- | --- |
+| `gpt-4o-mini` | $0.15 / $0.60 | **$0.05** (measured) |
+| `claude-haiku-4-5-20251001` | $1 / $5 | ~$1.50 (estimated) |
+| `gpt-4o` | $2.50 / $10 | ~$4 (estimated) |
+| `claude-sonnet-5` | $3 / $15 | ~$4.30 (estimated) |
+| `claude-opus-5` | $5 / $25 | ~$7.20 (estimated) |
+
+Only the first row has been measured here. The system prompt is byte-identical
+on every note and sits first, so most input bills at the cached rate.
 
 ### Using the API is not the same as using ChatGPT
 
 Staff pasting a resident's information into chatgpt.com is a different thing
 from this app calling the OpenAI API: the consumer product is not covered by a
-BAA, and it would be an unlogged disclosure of PHI with no audit trail and no
-way to know it happened. The same goes for claude.ai, Gemini, or Copilot.
+BAA, and it would be an unlogged disclosure of PHI with no audit trail. The same
+goes for claude.ai, Gemini, or Copilot.
 
 Wiring the API in is partly a control for that — it gives staff a sanctioned
 path that is logged in `ai_generations`, grounded to what they actually
 recorded, and de-identified before it leaves the building.
 
-**No hosted model has been measured here.** There is no Anthropic or OpenAI key
-on this machine, so every hosted row above is list pricing and estimated tokens,
-not observed behavior — and OpenAI's lineup in particular turns over faster than
-this file does, so confirm the model names and prices before relying on them.
-Before trusting any of it on real notes:
+---
+
+## Billing
+
+The AI draft button is a subscription. **Nothing else is.**
+
+| Paid | Free, always |
+| --- | --- |
+| Writing a note from tapped entries | The daily roster |
+| Training examples on the demo resident | Writing and editing notes |
+| | Signing, and the lock that follows |
+| | Duplicate-note detection |
+| | Form #680 PDFs |
+| | Batch export for audits |
+| | Resident roster management |
+| | The access audit log |
+
+That split is deliberate and load-bearing. A house whose card expires must still
+be able to document a shift: an undocumented shift cannot be billed to Medicaid,
+and the resident is left with no record of their care that day. Exactly one
+route consults entitlement (`app/api/ai/draft/route.ts`); everything else cannot
+be affected by billing state even by accident.
+
+Each agency gets **10 free drafts** before a subscription is required — enough to
+see it work, not enough to run a house on. The count only moves after a draft is
+actually produced, so a model error never burns one.
+
+### How entitlement is decided
+
+- `active` or `trialing` → allowed
+- `past_due` → **still allowed until the paid period ends.** A declined card
+  should not cut someone off mid-shift when the month is already paid for.
+- `canceled`, or the free allowance spent → the AI button returns 402 and the
+  DSP is told to write the note themselves; a supervisor gets a link to billing.
+
+The **webhook is the only thing that grants entitlement**. A completed checkout
+redirect proves nothing — that URL can be closed, replayed, or forged. Stripe
+telling the server directly, with a signature verified over the raw bytes, is
+what counts.
+
+### Setup
 
 ```bash
-npm run compare:models
+STRIPE_SECRET_KEY=...       # from the Stripe dashboard
+STRIPE_PRICE_ID=...         # the recurring price to sell
+STRIPE_WEBHOOK_SECRET=...   # the endpoint's signing secret
 ```
 
-That runs the same grounding cases `verify:ai` gates on against every tier it
-has a key for — across both vendors — and prints measured pass rate, latency,
-and cost per note derived from real token counts. Models with no key are skipped
-rather than failed. Anything short of a perfect pass rate disqualifies a model
-at any price.
+Point a Stripe webhook at `/api/webhooks/stripe` for
+`customer.subscription.*`, `checkout.session.completed`, `invoice.paid`, and
+`invoice.payment_failed`. Locally:
 
-The cheapest option remains **$0**: `qwen2.5:7b` runs locally, passes every run,
-and is faster than any hosted tier — at the cost of needing the app to run on a
-machine in the building. Both paths are built; `AI_PROVIDER` switches between
-them.
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+Without `STRIPE_WEBHOOK_SECRET` the endpoint refuses every request, so no
+subscription ever activates — that is deliberate, since the signature is the
+only authentication that endpoint has.
+
+Card details never touch this app; both flows hand off to Stripe-hosted pages.
+No amount is hardcoded anywhere — the billing page reads the live price from
+Stripe, so changing the plan is a new price id and nothing else.
 
 ---
 

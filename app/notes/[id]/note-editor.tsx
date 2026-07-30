@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, CloudOff, Loader2, PenLine, Sparkles } from 'lucide-react';
 import { FieldRenderer } from '@/components/form/FieldRenderer';
@@ -44,6 +45,9 @@ export default function NoteEditor({
 
   const [drafting, setDrafting] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // A subscription lapse is not a fault — it gets its own message and a link
+  // for the people who can act on it, rather than looking like a broken app.
+  const [aiNeedsPlan, setAiNeedsPlan] = useState(false);
   // Set when the model itself is unreachable (Ollama not running, model not
   // pulled) rather than the model answering badly. Different fix, different
   // message.
@@ -143,6 +147,7 @@ export default function NoteEditor({
     setDrafting(true);
     setAiError(null);
     setAiUnavailable(false);
+    setAiNeedsPlan(false);
     setAiFlags([]);
     try {
       const res = await fetch('/api/ai/draft', {
@@ -153,6 +158,7 @@ export default function NoteEditor({
       const body = await res.json();
       if (!res.ok) {
         setAiUnavailable(res.status === 503 || body?.reason === 'unavailable');
+        setAiNeedsPlan(res.status === 402 || body?.reason === 'payment_required');
         setAiError(body?.error ?? 'Could not generate a draft. Please write the note manually.');
         return;
       }
@@ -270,11 +276,26 @@ export default function NoteEditor({
         {aiError ? (
           <div className="mb-3">
             <Alert
-              tone={aiUnavailable ? 'warning' : 'error'}
-              title={aiUnavailable ? 'Note assistant is not running' : undefined}
+              tone={aiUnavailable || aiNeedsPlan ? 'warning' : 'error'}
+              title={
+                aiNeedsPlan
+                  ? 'The note assistant needs a subscription'
+                  : aiUnavailable
+                    ? 'Note assistant is not running'
+                    : undefined
+              }
             >
               <p>{aiError}</p>
-              {aiUnavailable ? (
+              {aiNeedsPlan ? (
+                <p className="mt-1">
+                  Write the note yourself below — signing, the PDF, and everything else work
+                  exactly as normal. A supervisor can start a plan on the{' '}
+                  <Link href="/billing" className="font-semibold underline">
+                    billing page
+                  </Link>
+                  .
+                </p>
+              ) : aiUnavailable ? (
                 <p className="mt-1">
                   You can write this note manually in the meantime — nothing is lost.
                 </p>

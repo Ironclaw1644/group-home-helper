@@ -28,7 +28,10 @@ const PUBLIC_PATHS = [
   '/signup',
   '/api/auth/join',
   '/api/auth/signup',
-  '/api/auth/demo'
+  '/api/auth/demo',
+  // Stripe has no session to present. The endpoint authenticates the request
+  // by verifying Stripe's signature over the raw body instead.
+  '/api/webhooks/stripe'
 ];
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };

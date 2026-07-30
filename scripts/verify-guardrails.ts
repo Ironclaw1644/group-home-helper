@@ -114,6 +114,107 @@ section('Grounding: an invented outing is caught');
 }
 
 // ---------------------------------------------------------------------------
+section('Grounding: the DSP’s own words are not hallucinations');
+// ---------------------------------------------------------------------------
+{
+  // Observed against gpt-4o-mini. The DSP recorded the mood as Agitated and
+  // typed "calmed after a short time" in the incident box. The model
+  // paraphrased that to "calm" — which is an unselected mood option, so the
+  // guard flagged the DSP's own account of the shift as invented.
+  const data: StructuredData = {
+    'activity.location': ['park'],
+    'status.mood': ['agitated'],
+    'status.incident': true,
+    'status.incident_detail':
+      'Became upset when the walking path was closed; redirected by staff and calmed after a short time.'
+  };
+
+  const paraphrased = checkGrounding({
+    schema,
+    data,
+    narrative:
+      'Alex chose to go to the park but became upset when the walking path was closed. Staff redirected him and he was calm again after a short time.',
+    modelReported: []
+  });
+  check(
+    'does not flag a word the DSP typed in free text',
+    !paraphrased.some((f) => f.kind === 'unselected_option'),
+    JSON.stringify(paraphrased)
+  );
+
+  // The exemption must not become a blanket amnesty: an event nobody recorded
+  // is still invented, whatever else was typed.
+  const stillCaught = checkGrounding({
+    schema,
+    data,
+    narrative:
+      'Alex chose to go to the park and calmed after a short time. Afterwards he was transported to the museum.',
+    modelReported: []
+  });
+  check(
+    'still flags an outing nobody recorded',
+    stillCaught.some((f) => f.kind === 'unselected_option' && /museum/i.test(f.detail)),
+    JSON.stringify(stillCaught)
+  );
+}
+
+// ---------------------------------------------------------------------------
+section('Grounding: self-reported claims are cross-checked');
+// ---------------------------------------------------------------------------
+{
+  const data: StructuredData = {
+    'activity.location': ['park'],
+    'status.mood': ['agitated'],
+    'status.incident': true,
+    'status.incident_detail': 'Became upset when the walking path was closed.'
+  };
+  const narrative =
+    'Alex chose to go to the park but became upset when the walking path was closed. His overall mood was agitated.';
+
+  // Observed against gpt-4o-mini: it lists what it could not answer, not what
+  // it made up. Neither of these is a real finding.
+  const supported = checkGrounding({
+    schema,
+    data,
+    narrative,
+    modelReported: ["Alex's overall mood was agitated."],
+    residentName: 'Alex'
+  });
+  check(
+    'ignores a self-report that the input actually supports',
+    !supported.some((f) => f.kind === 'model_reported'),
+    JSON.stringify(supported)
+  );
+
+  const phantom = checkGrounding({
+    schema,
+    data,
+    narrative,
+    modelReported: ['how Alex enjoyed the activity'],
+    residentName: 'Alex'
+  });
+  check(
+    'ignores a self-report about something not in the narrative',
+    !phantom.some((f) => f.kind === 'model_reported'),
+    JSON.stringify(phantom)
+  );
+
+  // The signal still has to work when it matters.
+  const real = checkGrounding({
+    schema,
+    data,
+    narrative: narrative + ' His sister visited in the afternoon.',
+    modelReported: ['the sister visiting was not in the input'],
+    residentName: 'Alex'
+  });
+  check(
+    'still reports a claim the model made and could not support',
+    real.some((f) => f.kind === 'model_reported'),
+    JSON.stringify(real)
+  );
+}
+
+// ---------------------------------------------------------------------------
 section('Grounding: invented times and quotes');
 // ---------------------------------------------------------------------------
 {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth/session';
+import { getBillingState, recordGeneration } from '@/lib/billing/stripe';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getActiveTemplate, getNote, getResident, getShifts } from '@/lib/notes/repo';
@@ -61,6 +62,24 @@ export async function POST(req: Request) {
           'Training examples can only be generated for the demo resident. For a real resident, record what happened and use "Write from my entries".'
       },
       { status: 400 }
+    );
+  }
+
+  // Subscription gate. Deliberately the last check before generating, and
+  // deliberately the ONLY thing it gates: a lapsed agency keeps the roster,
+  // the form, signing, PDFs, and exports. Losing the ability to document a
+  // shift over a card decline would leave a resident with no record of their
+  // care that day.
+  const billing = await getBillingState(session.profile.orgId);
+  if (!billing.entitled) {
+    return NextResponse.json(
+      {
+        error:
+          'The note assistant needs an active subscription. You can still write this note yourself — nothing else changes.',
+        reason: 'payment_required',
+        billing: { status: billing.status, freeRemaining: 0 }
+      },
+      { status: 402 }
     );
   }
 
@@ -178,7 +197,8 @@ export async function POST(req: Request) {
             schema: template.schema,
             data: note.structuredData,
             narrative,
-            modelReported: result.draft.unsupported_claims ?? []
+            modelReported: result.draft.unsupported_claims ?? [],
+            residentName: displayName(resident)
           }),
           ...checkClosingSentence(narrative, hasConcern)
         ]
@@ -186,6 +206,10 @@ export async function POST(req: Request) {
 
   const unsupported = findings.map((f) => f.detail);
   await logGeneration(unsupported, false);
+
+  // Counted only now, after a draft actually came back. A model error must not
+  // burn a free generation the agency never received.
+  await recordGeneration(session.profile.orgId);
 
   // Mark the note as AI-assisted. Saving the narrative itself stays with the
   // DSP's autosave, so nothing is written to the record they have not seen.

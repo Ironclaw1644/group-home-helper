@@ -29,7 +29,8 @@ export const NOTE_DRAFT_SCHEMA = {
     unsupported_claims: {
       type: 'array',
       items: { type: 'string' },
-      description: 'Anything in the narrative not supported by the input. Should be empty.'
+      description:
+        'Statements present in your narrative that no input supports. Rewording or summarizing the input is NOT unsupported. Do NOT list questions you could not answer, information you lacked, or prompts you left out — those are not claims. Only list something you actually wrote and could not support. Normally empty.'
     }
   },
   required: ['narrative', 'entities_used', 'unsupported_claims'],

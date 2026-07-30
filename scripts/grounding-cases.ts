@@ -231,7 +231,7 @@ export function evaluateRun(
 
   // The same guards that run in production.
   const findings = [
-    ...checkGrounding({ schema, data: testCase.data, narrative, modelReported }),
+    ...checkGrounding({ schema, data: testCase.data, narrative, modelReported, residentName: 'Alex' }),
     ...checkClosingSentence(narrative, testCase.hasConcern)
   ];
   for (const f of findings) problems.push(`guard [${f.kind}]: ${f.detail}`);
