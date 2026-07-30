@@ -190,6 +190,30 @@ anywhere.
 
 ---
 
+## Trying the APK against a local model
+
+The APK contains no model and cannot — the smallest of these is 4.7 GB, and a
+phone-sized model (1–3 GB) is materially worse than the 7B, which is the point
+at which invented events start appearing. The model always runs on a server.
+
+To point the phone at a local model instead of the deployed hosted one, run the
+app on your Mac bound to the LAN and rebuild the shell against that address:
+
+```bash
+# On the Mac — pick a model
+npm run dev:local-ai-fast     # qwen2.5:7b  — ~4s per note
+npm run dev:local-ai          # qwen3.5:9b  — ~12s per note
+
+# In another terminal — point the APK at the Mac's LAN address
+GHH_SERVER_URL=http://10.0.0.5:3000 npm run apk
+```
+
+Both machines have to be on the same wifi, and the Mac has to stay awake. This
+is a testing setup, not a deployment: nobody can write a note while that laptop
+is asleep.
+
+---
+
 ## Choosing a model
 
 Measured on the reference machine with the real prompts and the real guards

@@ -16,7 +16,10 @@
     "db:verify": "tsx --tsconfig scripts/tsconfig.json scripts/verify-db.ts",
     "brand:scan": "tsx --tsconfig scripts/tsconfig.json scripts/scan-brand.ts",
     "db:seed": "tsx --tsconfig scripts/tsconfig.json scripts/seed-supabase.ts",
-    "apk": "bash scripts/build-apk.sh"
+    "apk": "bash scripts/build-apk.sh",
+    "dev:lan": "next dev -H 0.0.0.0",
+    "dev:local-ai": "AI_PROVIDER=local OLLAMA_MODEL=qwen3.5:9b next dev -H 0.0.0.0",
+    "dev:local-ai-fast": "AI_PROVIDER=local OLLAMA_MODEL=qwen2.5:7b next dev -H 0.0.0.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
