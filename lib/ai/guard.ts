@@ -117,6 +117,8 @@ function findUnselectedOptions(
 ): GroundingFinding[] {
   const text = narrative.toLowerCase();
   const typed = recordedFreeText(data);
+  // Keywords from every option the DSP selected, across the whole form.
+  const selectedWords = selectedKeywords(schema, data);
   const findings: GroundingFinding[] = [];
 
   for (const section of schema.sections) {
@@ -137,12 +139,16 @@ function findUnselectedOptions(
         const keyword = distinctiveKeyword(option.label);
         if (!keyword) continue;
 
-        // Only flag if no selected option in the same field already covers the
-        // word — otherwise "ate 100%" and "ate about 75%" flag each other.
-        const coveredBySelection = field.options.some(
-          (o) => selected.has(o.value) && distinctiveKeyword(o.label) === keyword
-        );
-        if (coveredBySelection) continue;
+        // Only flag if nothing the DSP selected anywhere on the form already
+        // accounts for the word.
+        //
+        // Scoping this to the same field was a real bug, caught against
+        // production: the meals option "Eaten at home" and the activity option
+        // "Stayed home" share the keyword "home", so a resident who stayed home
+        // produced a note flagged for mentioning a meal nobody recorded. A
+        // spurious warning is worse than none — it teaches DSPs that the
+        // review banner is noise.
+        if (selectedWords.has(keyword)) continue;
 
         // The DSP wrote it themselves, so the model is not inventing it.
         // Matched as a stem so "calmed" in their text covers "calm" in the
@@ -163,25 +169,66 @@ function findUnselectedOptions(
 }
 
 /**
+ * Every content word of every option selected anywhere on the form.
+ *
+ * All the words, not just the distinctive one: distinctiveKeyword() keeps the
+ * longest, so "Stayed home" reduces to "stayed" while "Eaten at home" reduces
+ * to "home". Comparing only those two would never see that both labels contain
+ * "home", which is exactly the collision this set exists to resolve.
+ */
+function selectedKeywords(schema: FormTemplateSchema, data: StructuredData): Set<string> {
+  const words = new Set<string>();
+
+  for (const section of schema.sections) {
+    for (const field of section.fields) {
+      if (field.type !== 'chips') continue;
+      const value = getFieldValue(data, section.key, field);
+      if (!Array.isArray(value)) continue;
+
+      for (const option of field.options) {
+        if (!value.includes(option.value)) continue;
+        for (const word of contentWords(option.label)) words.add(word);
+      }
+    }
+  }
+
+  return words;
+}
+
+/**
+ * Words carrying no signal in an option label — grammar, and verbs so common
+ * across labels that matching on them would flag everything.
+ */
+const LABEL_STOP = new Set([
+  'the', 'a', 'an', 'with', 'and', 'or', 'of', 'to', 'in', 'at', 'on', 'by',
+  'staff', 'completed', 'required', 'appeared', 'about', 'yes', 'no',
+  'declined', 'prepared', 'ate', 'used', 'part', 'his', 'her', 'their',
+  'usual', 'routine', 'only', 'it', 'did', 'not', 'showed', 'signs',
+  'already', 'needed', 'independently', 'hands', 'verbal', 'first', 'meal',
+  'eaten', 'indicated', 'requested', 'offered', 'choices', 'is', 'was'
+]);
+
+/** Words in a label that could plausibly show up in prose. */
+function contentWords(label: string): string[] {
+  return label
+    .toLowerCase()
+    .replace(/\{[a-z]+\}/g, ' ')
+    .replace(/[^a-z\s%]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !LABEL_STOP.has(w));
+}
+
+/**
  * Pull the content word from an option label — the part that would actually
  * appear in prose. Returns null for labels too generic to test on.
  */
 function distinctiveKeyword(label: string): string | null {
-  const stop = new Set([
-    'the', 'a', 'an', 'with', 'and', 'or', 'of', 'to', 'in', 'at', 'on', 'by',
-    'staff', 'completed', 'required', 'appeared', 'about', 'yes', 'no',
-    'declined', 'prepared', 'ate', 'used', 'part', 'his', 'her', 'their',
-    'usual', 'routine', 'only', 'it', 'did', 'not', 'showed', 'signs',
-    'already', 'needed', 'independently', 'hands', 'verbal', 'first', 'meal',
-    'eaten', 'indicated', 'requested', 'offered', 'choices', 'is', 'was'
-  ]);
-
   const words = label
     .toLowerCase()
     .replace(/\{[a-z]+\}/g, ' ')
     .replace(/[^a-z\s%]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w.length > 3 && !stop.has(w));
+    .filter((w) => w.length > 3 && !LABEL_STOP.has(w));
 
   // Longest remaining word is the most distinctive (museum, library, laundry).
   words.sort((a, b) => b.length - a.length);

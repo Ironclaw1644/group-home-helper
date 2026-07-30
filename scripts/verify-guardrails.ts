@@ -53,6 +53,27 @@ const schema: FormTemplateSchema = {
       ]
     },
     {
+      key: 'meals',
+      title: 'Meals',
+      // Mirrors the seeded template. Option labels alone cannot catch an
+      // invented meal — "Eaten out" reduces to nothing testable — so the
+      // section carries the vocabulary that gives it away.
+      grounding_vocabulary: ['dinner', 'lunch', 'breakfast', 'snack', 'restaurant'],
+      fields: [
+        {
+          key: 'dinner',
+          type: 'chips',
+          label: 'Dinner',
+          multiple: true,
+          options: [
+            // Shares the keyword "home" with the activity option "Stayed home".
+            { value: 'eaten_at_home', label: 'Eaten at home' },
+            { value: 'eaten_out', label: 'Eaten out' }
+          ]
+        }
+      ]
+    },
+    {
       key: 'status',
       title: 'Mood and concerns',
       fields: [
@@ -155,6 +176,45 @@ section('Grounding: the DSP’s own words are not hallucinations');
     'still flags an outing nobody recorded',
     stillCaught.some((f) => f.kind === 'unselected_option' && /museum/i.test(f.detail)),
     JSON.stringify(stillCaught)
+  );
+}
+
+// ---------------------------------------------------------------------------
+section('Grounding: options in different fields do not collide');
+// ---------------------------------------------------------------------------
+{
+  // Caught against production. "Stayed home" was selected; "Eaten at home" was
+  // not. Both reduce to the keyword "home", and the exemption used to be scoped
+  // to a single field, so a resident who stayed home produced a note flagged
+  // for mentioning a meal nobody recorded.
+  const data: StructuredData = { 'activity.location': ['stayed_home'] };
+
+  const stayedHome = checkGrounding({
+    schema,
+    data,
+    narrative:
+      'Alex chose to stay home during the shift. There were no problems or concerns during shift.',
+    modelReported: [],
+    residentName: 'Alex'
+  });
+  check(
+    'a selected option in one field covers the word everywhere',
+    !stayedHome.some((f) => f.kind === 'unselected_option'),
+    JSON.stringify(stayedHome)
+  );
+
+  // The collision fix must not stop a genuinely invented meal being caught.
+  const inventedMeal = checkGrounding({
+    schema,
+    data,
+    narrative: 'Alex chose to stay home. He was later taken out and ate dinner at a restaurant.',
+    modelReported: [],
+    residentName: 'Alex'
+  });
+  check(
+    'an unrecorded meal is still caught',
+    inventedMeal.length > 0,
+    JSON.stringify(inventedMeal)
   );
 }
 
