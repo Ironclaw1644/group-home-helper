@@ -64,6 +64,22 @@ export function anthropicProvider(): ModelProvider {
 
     async generate(system: string, userMessage: string): Promise<DraftResult> {
       const started = Date.now();
+
+      // Distinguish "never configured" from "the call failed". Without this the
+      // missing key falls into the catch below and a DSP is told the draft
+      // failed, which sounds like a bug in the app rather than a setup step
+      // nobody has done yet. `unavailable` is the reason the UI renders as a
+      // warning with "write it manually for now" instead of an error.
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return {
+          ok: false,
+          reason: 'unavailable',
+          model: MODEL,
+          message:
+            'The note assistant has not been set up yet — an administrator needs to add an API key. Everything else works; write the note yourself for now.'
+        };
+      }
+
       try {
         // The system prompt is a fixed prefix marked with cache_control, so
         // after the first call the style guide and exemplar are served from
