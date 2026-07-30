@@ -195,11 +195,22 @@ anywhere.
 Measured on the reference machine with the real prompts and the real guards
 (`npm run verify:ai`, 5 runs per case):
 
-| Model | Latency | Grounding | Verdict |
+| Model | Median latency | Grounding | Verdict |
 | --- | --- | --- | --- |
-| `qwen3.5:9b`, reasoning **off** | ~12s | 10/10 clean | **Default.** |
-| `qwen3.5:9b`, reasoning **on** | ~460s | clean | Unusable — no DSP waits 8 minutes. |
-| `qwen2.5:7b` | ~4–12s | invented events; copied the style example into the note as fact | Not recommended. |
+| `qwen2.5:7b` | **4.4s** | 10/10 clean | Fastest. Slightly looser prose — see below. |
+| `qwen3.5:9b`, reasoning **off** | 12.1s | 10/10 clean | **Default.** Tightest output. |
+| `qwen3.5:9b`, reasoning **on** | ~460s | clean | Unusable — no DSP waits eight minutes. |
+
+**On the 7B:** an earlier round of this table called it unsafe, because it
+invented a meal and lifted sentences out of the style example. That turned out
+to be the prompt's fault rather than the model's — it was being shown a full
+completed note and completing the pattern. With skeleton patterns and the
+closing sentence moved into code, it passes every run and is ~3× faster.
+
+It is still a little looser in register: it will write soft filler like
+"ensuring he remained comfortable and content", which the guards cannot flag
+because it names no specific event. Harmless, but it reads less like the
+agency's own voice. The 9B stays the default for that reason, not for safety.
 
 Two things that came out of testing and are now baked in:
 
