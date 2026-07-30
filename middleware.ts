@@ -5,10 +5,31 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Reachable without signing in.
  *
  * `/download` and `/api/app-version` have to be here: a DSP starting their
- * first shift has no account yet and still needs to install the app. Neither
- * carries resident data.
+ * first shift has no account yet and still needs to install the app.
+ *
+ * So do the three ways in. Every one of them exists to serve someone who has no
+ * session yet, so gating them behind a session would make them unreachable by
+ * definition:
+ *
+ *   /join    — a staff member redeeming an invitation from their supervisor
+ *   /signup  — an agency creating its own workspace
+ *   /api/auth/demo — provisioning a throwaway sandbox
+ *
+ * None of these read resident data. Each one authorizes itself: /join checks
+ * the code server-side, /signup only ever creates an empty org, and the demo
+ * route creates fictional data in an org nobody else can reach.
  */
-const PUBLIC_PATHS = ['/login', '/auth/callback', '/download', '/api/app-version'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/auth/callback',
+  '/download',
+  '/api/app-version',
+  '/join',
+  '/signup',
+  '/api/auth/join',
+  '/api/auth/signup',
+  '/api/auth/demo'
+];
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 

@@ -144,6 +144,63 @@ npm run dev
 
 ---
 
+## Getting people in
+
+Three ways in, all reachable without an account, because everyone using them is
+by definition someone who does not have one yet.
+
+### Invitations — the one real staff use
+
+A supervisor opens **Staff → Invite staff**, picks a role, house, and the title
+that will print on the signature line, and gets a link:
+
+```
+https://your-site.vercel.app/join/<code>
+```
+
+The person opens it, enters their name and a password, and lands in the agency's
+roster with the right role and house. This is the path for real DSPs — plain
+signup would put each of them in an empty workspace of their own, which is
+useless to a house that already exists.
+
+Codes are CSPRNG-generated, expire in 14 days, and carry a use count. Pin one to
+an email address and it becomes single-use and single-person. Revoke at any
+time. Validation happens server-side against expiry, revocation, use count, and
+the pinned address, and the invitations table is **not readable** by anyone below
+supervisor — a readable table would let a DSP enumerate live join codes.
+
+Only an administrator can invite another administrator. Otherwise a supervisor
+could issue themselves an admin invite and sign in as it, which is a promotion
+in disguise.
+
+### Demo — for showing people
+
+**Try the demo** on the sign-in page provisions a throwaway org with three
+fictional residents, its own house, and two shifts, then signs the visitor
+straight in. No form, no email.
+
+Each visitor gets their **own** org, so nothing one person writes is visible to
+the next, and nothing is visible to a real agency. The org carries `is_demo` and
+an expiry; `npm run demo:prune` deletes expired ones and their accounts. Demo
+creation is capped per hour by a database count rather than an in-process
+counter — serverless would give every cold start its own tally, which is no cap
+at all.
+
+### Signup — for other agencies
+
+`/signup` creates a new org, its first house, two shifts, and an admin. The
+workspace starts completely empty, so a bad-faith signup gets a blank workspace
+and no reach into anyone else's data.
+
+### What this does not do
+
+There is no email delivery, so no password reset and no email verification.
+Invite links have to be sent by whatever the agency already uses. Adding SMTP
+would mean changing Supabase Auth settings that are **shared with every other
+app in this project**, which is not a decision this app should make on its own.
+
+---
+
 ## Residents
 
 `/residents` is the roster. A DSP can read it — looking up who is in the house

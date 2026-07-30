@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import LoginForm from './login-form';
+import { DemoButton } from '@/components/onboarding/demo-button';
 
 export const metadata = { title: 'Sign in · AHFS Notes' };
 
@@ -20,6 +22,24 @@ export default function LoginPage() {
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
+
+        <div className="my-6 flex items-center gap-3">
+          <span className="h-px flex-1 bg-brand-navy/10" />
+          <span className="text-xs font-semibold uppercase tracking-wide text-brand-slate">or</span>
+          <span className="h-px flex-1 bg-brand-navy/10" />
+        </div>
+
+        <DemoButton />
+
+        <p className="mt-6 text-center text-xs text-brand-slate">
+          Staff joining an agency need an invitation link from their supervisor.
+        </p>
+        <p className="mt-2 text-center text-xs text-brand-slate">
+          Running a group home?{' '}
+          <Link href="/signup" className="font-semibold text-brand-teal hover:underline">
+            Set up your own workspace
+          </Link>
+        </p>
       </div>
     </main>
   );
