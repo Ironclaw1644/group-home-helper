@@ -61,13 +61,30 @@ function safeFontFamily(value: unknown): string | null {
   return /^[A-Za-z0-9 ,'"-]+$/.test(trimmed) ? trimmed : null;
 }
 
+/**
+ * Raster image data URLs only.
+ *
+ * An uploaded logo is stored inline, so `data:` has to be allowed — but only
+ * for image types a browser renders as a static bitmap. `data:text/html` and
+ * `data:image/svg+xml` are excluded deliberately: SVG is a document format that
+ * can carry script and external references, and a logo is agency-supplied
+ * input that ends up in an <img> on every page and in every PDF.
+ */
+export const LOGO_DATA_URL = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=\s]+$/;
+
 function safeUrl(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
-  if (trimmed.startsWith('/')) return trimmed;
+
+  // Same-origin path, e.g. the shipped /brand/AHFS_logo.png.
+  // `//host` is protocol-relative and would leave the origin, so it is not one.
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed;
+
+  if (LOGO_DATA_URL.test(trimmed)) return trimmed;
+
   try {
     const url = new URL(trimmed);
-    // No javascript: or data: — this ends up in an <img src>.
+    // Still no javascript:, and no arbitrary data: beyond the images above.
     return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
   } catch {
     return null;

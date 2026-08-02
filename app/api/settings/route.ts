@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { getSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logAccess } from '@/lib/audit';
+import { LOGO_DATA_URL } from '@/lib/branding/theme';
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -24,10 +25,16 @@ const Body = z.object({
   orgName: z.string().trim().min(2).max(120).optional(),
   legalName: z.string().trim().max(160).nullable().optional(),
   medicaidProviderId: z.string().trim().max(60).nullable().optional(),
+  // Accepts either a freshly uploaded data URL or the value already stored —
+  // an agency whose logo is a shipped path would otherwise be unable to save
+  // any setting at all, because the form sends the logo back unchanged.
   logoDataUrl: z
     .string()
-    .startsWith('data:image/')
     .max(MAX_LOGO_CHARS)
+    .refine(
+      (v) => LOGO_DATA_URL.test(v) || (v.startsWith('/') && !v.startsWith('//')),
+      'Use a PNG, JPG, GIF or WebP image.'
+    )
     .nullable()
     .optional(),
   colors: z

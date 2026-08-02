@@ -73,8 +73,10 @@ export function SettingsForm({
 
   async function pickLogo(file: File) {
     setError(null);
-    if (!file.type.startsWith('image/')) {
-      setError('That is not an image. Use a PNG, JPG, or SVG.');
+    // SVG is excluded on purpose — it is a document format that can carry
+    // script, and this ends up in an <img> on every page and every PDF.
+    if (!/^image\/(png|jpe?g|gif|webp)$/.test(file.type)) {
+      setError('That is not an image. Use a PNG, JPG, GIF or WebP.');
       return;
     }
     if (file.size > 250_000) {
@@ -232,7 +234,7 @@ export function SettingsForm({
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/svg+xml,image/webp"
+              accept="image/png,image/jpeg,image/gif,image/webp"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
