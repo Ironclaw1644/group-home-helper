@@ -2,6 +2,7 @@ import 'server-only';
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '@/lib/outcomes/virginia-library';
 
 /**
  * Account provisioning: invites, new agencies, and demo sandboxes.
@@ -342,6 +343,79 @@ const DEMO_RESIDENTS = [
   }
 ];
 
+/**
+ * Install service plans on the demo residents.
+ *
+ * Two or three outcomes each, taken from different parts of the library so the
+ * demo shows the range rather than the same plan three times.
+ */
+async function seedDemoPlans(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  orgId: string,
+  residents: Array<{
+    id: string;
+    first_name: string;
+    preferred_name: string | null;
+    pronoun_subject: string;
+    pronoun_object: string;
+    pronoun_possessive: string;
+  }>
+): Promise<void> {
+  // Different slices per resident so the three plans do not read identically.
+  const slices = [
+    ['meal_preparation', 'community_outing', 'money'],
+    ['friendships', 'personal_care'],
+    ['health_routine', 'community_outing']
+  ];
+
+  for (const [index, resident] of residents.entries()) {
+    const keys = slices[index % slices.length];
+    const name = resident.preferred_name?.trim() || resident.first_name;
+    const pronouns = {
+      subject: resident.pronoun_subject,
+      object: resident.pronoun_object,
+      possessive: resident.pronoun_possessive
+    };
+    const fill = (t: string) => personalize(t, name, pronouns);
+
+    for (const [order, key] of keys.entries()) {
+      const template = VIRGINIA_OUTCOME_LIBRARY.find((o) => o.key === key);
+      if (!template) continue;
+
+      const { data: outcome } = await admin
+        .from('resident_outcomes')
+        .insert({
+          org_id: orgId,
+          resident_id: resident.id,
+          title: template.title,
+          statement: fill(template.statement),
+          important_to: template.importantTo,
+          important_for: template.importantFor ?? null,
+          frequency: template.frequency,
+          lens: template.lens,
+          sort_order: order
+        })
+        .select('id')
+        .single();
+
+      if (!outcome) continue;
+
+      await admin.from('outcome_activities').insert(
+        template.activities.map((a, i) => ({
+          org_id: orgId,
+          outcome_id: outcome.id,
+          description: fill(a.description),
+          measure_type: a.measureType,
+          measure: fill(a.measure),
+          support_instructions: fill(a.supportInstructions),
+          daily_question: fill(a.dailyQuestion),
+          sort_order: i
+        }))
+      );
+    }
+  }
+}
+
 /** True when demo creation should be refused for now. */
 async function demoQuotaExceeded(): Promise<boolean> {
   const admin = createSupabaseAdminClient();
@@ -429,17 +503,28 @@ export async function createDemoSandbox(): Promise<
     .from('shifts')
     .insert(DEFAULT_SHIFTS.map((s) => ({ ...s, org_id: org.id, home_id: home.id })));
 
-  await admin.from('residents').insert(
-    DEMO_RESIDENTS.map((r) => ({
-      ...r,
-      org_id: org.id,
-      home_id: home.id,
-      // Every resident in a demo is fictional, which is what keeps demo notes
-      // out of any billing export.
-      is_demo: true,
-      active: true
-    }))
-  );
+  const { data: createdResidents } = await admin
+    .from('residents')
+    .insert(
+      DEMO_RESIDENTS.map((r) => ({
+        ...r,
+        org_id: org.id,
+        home_id: home.id,
+        // Every resident in a demo is fictional, which is what keeps demo notes
+        // out of any billing export.
+        is_demo: true,
+        active: true
+      }))
+    )
+    .select('id, first_name, preferred_name, pronoun_subject, pronoun_object, pronoun_possessive');
+
+  // Give each demo resident a real service plan.
+  //
+  // Without this a visitor opens a note, sees the generic chips, and never
+  // discovers the part that makes this different from a form — the outcomes
+  // the note documents against. An empty demo undersells the product to
+  // exactly the person deciding whether to pay for it.
+  await seedDemoPlans(admin, org.id, createdResidents ?? []);
 
   const { error: profileError } = await admin.from('profiles').insert({
     id: created.user.id,

@@ -25,7 +25,9 @@ export default function LoginPage() {
 
         <div className="my-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-brand-navy/10" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-brand-slate">or</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-brand-slate">
+            New here?
+          </span>
           <span className="h-px flex-1 bg-brand-navy/10" />
         </div>
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, PlayCircle } from 'lucide-react';
+import { Loader2, PlayCircle, Sparkles } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Alert } from '@/components/ui';
 
@@ -52,19 +52,29 @@ export function DemoButton() {
   }
 
   return (
-    <div>
+    <div className="rounded-2xl border border-brand-teal/40 bg-brand-aqua/15 p-4">
+      <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-brand-navy">
+        <Sparkles className="h-4 w-4 text-brand-teal" />
+        See the note write itself
+      </p>
+      <p className="mb-3 text-xs text-brand-slate">
+        Tap what happened on a shift — meals, mood, outings, the goals in someone&apos;s service
+        plan — and the assistant writes the progress note in your agency&apos;s voice. You read it,
+        sign it, and it locks.
+      </p>
+
       <button
         type="button"
         onClick={start}
         disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand-teal/40 bg-white px-4 py-3 text-sm font-semibold text-brand-navy transition hover:bg-brand-aqua/15 disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-brand-navy/90 disabled:opacity-60"
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-        {busy ? 'Setting up your demo…' : 'Try the demo'}
+        {busy ? 'Setting up your demo…' : 'Try it now — no sign-up'}
       </button>
 
       <p className="mt-2 text-center text-xs text-brand-slate">
-        Three fictional residents, no sign-up. Nothing you write here is real.
+        Three fictional residents with real service plans. Nothing you write here is real.
       </p>
 
       {error ? (

@@ -1,9 +1,16 @@
 import Link from 'next/link';
-import { CreditCard, IdCard, LayoutGrid, LogOut, Users } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import type { Session } from '@/lib/auth/session';
-import { isSupervisor } from '@/lib/auth/session';
 import { loadBrand } from '@/lib/branding/load';
+import { MobileTabs, Sidebar } from '@/components/nav';
 
+/**
+ * App chrome: sidebar on desktop, bottom tab bar on phones.
+ *
+ * The header used to carry the whole of navigation as four small links, which
+ * hid most of the app from anyone who had not been shown it. Navigation now
+ * lives in one place and names everything a person can do.
+ */
 export async function AppShell({
   session,
   children
@@ -12,6 +19,7 @@ export async function AppShell({
   children: React.ReactNode;
 }) {
   const brand = await loadBrand();
+  const role = session.profile.role;
 
   return (
     <div className="min-h-dvh">
@@ -26,46 +34,6 @@ export async function AppShell({
           </Link>
 
           <div className="flex items-center gap-3">
-            {/* DSPs get this too — looking up who is in the house is a normal
-                part of a shift, and RLS already limits it to their homes. */}
-            <Link
-              href="/residents"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
-            >
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Residents</span>
-            </Link>
-
-            {isSupervisor(session.profile) ? (
-              <Link
-                href="/staff"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
-              >
-                <IdCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Staff</span>
-              </Link>
-            ) : null}
-
-            {isSupervisor(session.profile) ? (
-              <Link
-                href="/billing"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
-              >
-                <CreditCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Billing</span>
-              </Link>
-            ) : null}
-
-            {isSupervisor(session.profile) ? (
-              <Link
-                href="/supervisor"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
-              >
-                <LayoutGrid className="h-4 w-4" />
-                <span className="hidden sm:inline">Supervisor</span>
-              </Link>
-            ) : null}
-
             <span className="hidden text-xs text-brand-slate sm:inline">
               {session.profile.fullName} · {session.profile.title}
             </span>
@@ -83,7 +51,18 @@ export async function AppShell({
         </div>
       </header>
 
-      <main className="container-shell py-6">{children}</main>
+      <div className="container-shell lg:flex lg:gap-8">
+        <aside className="hidden shrink-0 py-6 lg:block lg:w-52">
+          <div className="sticky top-20">
+            <Sidebar role={role} />
+          </div>
+        </aside>
+
+        {/* pb-24 on phones keeps the last card clear of the tab bar. */}
+        <main className="min-w-0 flex-1 pb-24 pt-6 lg:pb-10">{children}</main>
+      </div>
+
+      <MobileTabs role={role} />
     </div>
   );
 }
