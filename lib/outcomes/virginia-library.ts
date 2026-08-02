@@ -81,7 +81,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
     lens: 'independence',
     importantTo: 'Making my own food the way I like it',
     statement:
-      '{name} prepares a simple meal three times a week so that {subject} can make {possessive} own food the way {subject} likes it.',
+      '{name} prepares a simple meal three times a week in order to make {possessive} own food.',
     frequency: '3x per week',
     activities: [
       {
@@ -94,9 +94,9 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
         dailyQuestion: 'Did {name} prepare a meal today?'
       },
       {
-        description: '{name} puts away what {subject} used.',
+        description: '{name} puts away the things used.',
         measureType: 'routine',
-        measure: 'After each meal {subject} prepares.',
+        measure: 'After each meal.',
         supportInstructions: 'Name one item at a time rather than saying "clean up".',
         dailyQuestion: 'Did {name} put things away afterwards?'
       }
@@ -108,7 +108,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
     lens: 'integration',
     importantTo: 'Having friends and people to talk to',
     statement:
-      '{name} spends time with someone {subject} chooses weekly in order to keep up {possessive} friendships.',
+      '{name} spends time with a person of {possessive} choosing weekly in order to keep up {possessive} friendships.',
     frequency: 'Weekly',
     activities: [
       {
@@ -120,7 +120,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
         dailyQuestion: 'Did {name} contact someone today?'
       },
       {
-        description: '{name} greets people {subject} meets.',
+        description: '{name} greets people along the way.',
         measureType: 'skill_building',
         measure: '{name} greets three people a week for three months.',
         supportInstructions: 'Model the greeting once, then step back and let it happen.',
@@ -134,7 +134,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
     lens: 'independence',
     importantTo: 'Looking the way I want to look',
     statement:
-      '{name} completes {possessive} morning routine daily so that {subject} looks the way {subject} wants to look.',
+      '{name} completes {possessive} morning routine daily in order to look {possessive} own way.',
     frequency: 'Daily',
     activities: [
       {
@@ -162,7 +162,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
     importantTo: 'Feeling good and doing what I want to do',
     importantFor: 'Following the health protocol in the plan',
     statement:
-      '{name} follows {possessive} health routine each day so that {subject} feels good and can do what {subject} wants.',
+      '{name} follows {possessive} health routine each day in order to feel well enough for the things {possessive} day holds.',
     frequency: 'Daily',
     activities: [
       {
@@ -191,7 +191,7 @@ export const VIRGINIA_OUTCOME_LIBRARY: LibraryOutcome[] = [
     lens: 'independence',
     importantTo: 'Buying what I want without asking',
     statement:
-      '{name} makes a purchase weekly in order to buy what {subject} wants without having to ask.',
+      '{name} makes a purchase weekly in order to buy things without having to ask.',
     frequency: 'Weekly',
     activities: [
       {
