@@ -136,11 +136,16 @@ export function SettingsForm({
       ) : null}
 
       <Card>
-        <h2 className="mb-4 text-sm font-semibold text-brand-navy">You</h2>
+        <h2 className="mb-1 text-sm font-semibold text-brand-navy">Your own details</h2>
+        <p className="mb-4 text-xs text-brand-slate">
+          {canEditAgency
+            ? 'The person signing notes — not the agency. Agency name and logo are below.'
+            : 'The person signing notes, not the agency.'}
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="s-name" className={labelClass}>
-              Your name
+              Your full name
             </label>
             <input
               id="s-name"
@@ -163,6 +168,9 @@ export function SettingsForm({
               placeholder="DSP"
               className={inputClass}
             />
+            <p className="mt-1.5 text-xs text-brand-slate">
+              Your job title, e.g. DSP or Supervisor.
+            </p>
           </div>
         </div>
         <p className="mt-3 text-xs text-brand-slate">
@@ -370,8 +378,12 @@ export function SettingsForm({
           </Card>
         </>
       ) : (
-        <Alert tone="info">
-          Agency name, logo, and colours are set by a supervisor or administrator.
+        <Alert tone="info" title="Agency settings are not on this account">
+          <p>
+            The agency name, logo and colours are changed by a supervisor or administrator. The
+            fields above are your own name and title only — putting the agency name there would
+            print it on your signature line.
+          </p>
         </Alert>
       )}
 

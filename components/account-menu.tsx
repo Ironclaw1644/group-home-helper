@@ -79,7 +79,24 @@ export function AccountMenu({
         >
           <div className="border-b border-brand-navy/5 px-3 py-2.5">
             <p className="text-sm font-semibold text-brand-navy">{name}</p>
-            <p className="text-xs text-brand-slate">{title}</p>
+            <p className="text-xs text-brand-slate">
+              {title} ·{' '}
+              <span className="font-semibold">
+                {role === 'admin'
+                  ? 'Administrator'
+                  : role === 'supervisor'
+                    ? 'Supervisor'
+                    : 'Direct support'}
+              </span>
+            </p>
+            {/* Named explicitly. Someone signed in as a DSP would otherwise
+                assume the missing screens were a bug rather than their role. */}
+            {role === 'dsp' ? (
+              <p className="mt-1.5 text-xs text-brand-slate">
+                Service plans, oversight, staff and billing are supervisor screens and are hidden
+                on this account.
+              </p>
+            ) : null}
           </div>
 
           <Link href="/settings" className={item} onClick={() => setOpen(false)} role="menuitem">
