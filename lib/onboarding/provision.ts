@@ -3,6 +3,7 @@ import 'server-only';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '@/lib/outcomes/virginia-library';
+import { seedDemoHistory } from './demo-history';
 
 /**
  * Account provisioning: invites, new agencies, and demo sandboxes.
@@ -544,6 +545,44 @@ export async function createDemoSandbox(): Promise<
   }
 
   await admin.from('staff_homes').insert({ profile_id: created.user.id, home_id: home.id });
+
+  // Two weeks of signed notes, so the quarterly review and the compliance watch
+  // have something to show. Without history the features that best justify the
+  // price render empty to the person evaluating them.
+  //
+  // Failures here are swallowed: a demo with plans but no history is still
+  // worth having, and a visitor should never see setup fail.
+  try {
+    const { data: template } = await admin
+      .from('form_templates')
+      .select('id, version')
+      .eq('active', true)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: dayShift } = await admin
+      .from('shifts')
+      .select('id')
+      .eq('home_id', home.id)
+      .order('sort_order')
+      .limit(1)
+      .maybeSingle();
+
+    if (template && dayShift && createdResidents?.length) {
+      await seedDemoHistory(admin, {
+        orgId: org.id,
+        homeId: home.id,
+        shiftId: dayShift.id,
+        templateId: template.id,
+        templateVersion: template.version,
+        authorId: created.user.id,
+        residents: createdResidents
+      });
+    }
+  } catch (err) {
+    console.error('[demo] could not seed history', err);
+  }
 
   return { ok: true, userId: created.user.id, orgId: org.id, email, password };
 }
