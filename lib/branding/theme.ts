@@ -18,13 +18,25 @@ export type BrandTokens = {
 };
 
 /** At Home Family Services — the palette the app ships with. */
+/**
+ * The palette an agency sees before setting their own.
+ *
+ * Deliberately carries NO logo. This started as one agency's app and the
+ * fallback was their mark, which meant every other agency signing up saw
+ * someone else's branding on their own residents' forms. A neutral default is
+ * the only honest starting point for a product several agencies use; each one
+ * uploads their own in Settings.
+ *
+ * The colours stay — they are a reasonable, accessible starting palette, and an
+ * agency that never opens Settings still gets a coherent-looking form.
+ */
 export const DEFAULT_BRAND: BrandTokens = {
   navy: '#0f2d45',
   teal: '#0c9ea6',
   aqua: '#6fe2df',
   sand: '#f5f1ea',
   slate: '#536779',
-  logoUrl: '/brand/AHFS_logo.png',
+  logoUrl: null,
   fontFamily: null
 };
 

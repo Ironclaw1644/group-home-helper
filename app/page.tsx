@@ -6,6 +6,8 @@ import { complianceAlerts } from '@/lib/compliance/checks';
 import { AppShell } from '@/components/app-shell';
 import { RosterList } from '@/components/note/roster-list';
 import { QuickActions } from '@/components/home/quick-actions';
+import { SetupChecklist, type SetupState } from '@/components/home/setup-checklist';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ComplianceAlertsCard } from '@/components/compliance/alerts-card';
 import { Card, EmptyState, PageHeader } from '@/components/ui';
 import { addDays, formatServiceDate, todayInTimeZone } from '@/lib/utils';
@@ -61,6 +63,45 @@ export default async function HomePage({
   // Supervisors see what would get the agency cited; a DSP does not need it and
   // it would only bury the shift they are here to document.
   const alerts = supervisor ? await complianceAlerts(home.id) : [];
+
+  // Setup progress, so a new agency is never left staring at an empty roster
+  // wondering what to do first. Supervisors only — a DSP cannot action any of
+  // it, and it would only be noise on their shift.
+  let setup: SetupState | null = null;
+  if (supervisor) {
+    const supabase = await createSupabaseServerClient();
+    const countOf = async (table: string) => {
+      const { count } = await supabase.from(table).select('id', { count: 'exact', head: true });
+      return count ?? 0;
+    };
+
+    const [residentCount, outcomeCount, staffCount, signedCount, org] = await Promise.all([
+      countOf('residents'),
+      countOf('resident_outcomes'),
+      countOf('profiles'),
+      supabase
+        .from('notes')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'signed')
+        .then((r) => r.count ?? 0),
+      supabase
+        .from('organizations')
+        .select('branding')
+        .eq('id', session.profile.orgId)
+        .maybeSingle()
+    ]);
+
+    const branding = (org.data?.branding ?? {}) as Record<string, unknown>;
+
+    setup = {
+      hasResidents: residentCount > 0,
+      hasOutcomes: outcomeCount > 0,
+      // More than just the founder means someone has actually been invited.
+      hasStaff: staffCount > 1,
+      hasSignedNote: signedCount > 0,
+      hasBranding: Boolean(branding.logo_url)
+    };
+  }
 
   // Deep-link the primary button straight into the next note that needs
   // writing, so the most common action is one tap from opening the app.
@@ -120,6 +161,8 @@ export default async function HomePage({
           </p>
         </Card>
       ) : null}
+
+      {setup ? <SetupChecklist state={setup} /> : null}
 
       {supervisor ? <ComplianceAlertsCard alerts={alerts} /> : null}
 

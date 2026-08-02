@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogOut } from 'lucide-react';
+import { AccountMenu } from '@/components/account-menu';
 import type { Session } from '@/lib/auth/session';
 import { loadBrand } from '@/lib/branding/load';
 import { MobileTabs, Sidebar } from '@/components/nav';
@@ -33,21 +33,11 @@ export async function AppShell({
             <span className="text-sm font-semibold text-brand-navy">Daily Notes</span>
           </Link>
 
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-brand-slate sm:inline">
-              {session.profile.fullName} · {session.profile.title}
-            </span>
-
-            <form action="/api/auth/sign-out" method="post">
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-brand-navy"
-              >
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Sign out</span>
-              </button>
-            </form>
-          </div>
+          <AccountMenu
+            name={session.profile.fullName}
+            title={session.profile.title}
+            role={role}
+          />
         </div>
       </header>
 

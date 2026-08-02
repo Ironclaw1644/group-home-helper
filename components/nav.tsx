@@ -2,14 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  CalendarDays,
-  CreditCard,
-  FileBarChart,
-  IdCard,
-  LayoutGrid,
-  Users
-} from 'lucide-react';
+import { CalendarDays, FileBarChart, LayoutGrid, Settings, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -42,9 +35,11 @@ const ITEMS: Item[] = [
   { href: '/residents', label: 'Residents', icon: Users, onMobile: true },
   { href: '/reports', label: 'Reports', icon: FileBarChart, onMobile: true },
   { href: '/supervisor', label: 'Oversight', icon: LayoutGrid, supervisorOnly: true, onMobile: true },
-  { href: '/staff', label: 'Staff', icon: IdCard, supervisorOnly: true },
-  { href: '/billing', label: 'Billing', icon: CreditCard, supervisorOnly: true }
+  { href: '/settings', label: 'Settings', icon: Settings, supervisorOnly: true }
 ];
+
+// Staff and Billing live in the account menu rather than here. The main nav is
+// for daily work; those are things someone goes looking for by name.
 
 function useIsActive() {
   const pathname = usePathname();
