@@ -97,6 +97,12 @@ export type Outcome = {
   id: string;
   residentId: string;
   title: string;
+  /** Virginia formula: the "so that / in order to" half. */
+  importantTo?: string | null;
+  /** A health or behavioural need the outcome also addresses. */
+  importantFor?: string | null;
+  targetDate?: string | null;
+  lens?: 'independence' | 'integration' | 'quality_of_life' | null;
   /** Verbatim from the ISP, so a reviewer finds the same words in both. */
   statement: string | null;
   supportStrategies: string | null;
@@ -126,6 +132,51 @@ export const PROGRESS_LEVELS = [
 
 export type SupportLevel = (typeof SUPPORT_LEVELS)[number]['value'];
 export type ProgressLevel = (typeof PROGRESS_LEVELS)[number]['value'];
+
+/**
+ * How an activity's progress is measured, per Virginia DBHDS guidance.
+ *
+ * `health_safety` is the odd one: its measure states the condition under which
+ * the support would be *removed* ("when the clinician discontinues the
+ * protocol"), not a target to reach.
+ */
+export const MEASURE_TYPES = [
+  { value: 'routine', label: 'Routine', hint: 'Activity plus how often' },
+  { value: 'skill_building', label: 'Skill building', hint: 'Countable achievement, how often and how long' },
+  { value: 'health_safety', label: 'Health & safety', hint: 'The condition for removing the support' }
+] as const;
+
+export type MeasureType = (typeof MEASURE_TYPES)[number]['value'];
+
+/**
+ * One support activity under an outcome — the WHAT in Virginia's
+ * outcome / activity / instruction hierarchy.
+ */
+export type OutcomeActivity = {
+  id: string;
+  outcomeId: string;
+  description: string;
+  measureType: MeasureType;
+  measure: string | null;
+  supportInstructions: string | null;
+  /** The yes/no a DSP answers each shift, in the plan's own words. */
+  dailyQuestion: string | null;
+  sortOrder: number;
+  active: boolean;
+};
+
+/**
+ * What a DSP answered for one activity on one shift.
+ *
+ * `completed: null` means unanswered, which is not the same as "no" — a blank
+ * is a gap in the record, a no is a documented fact.
+ */
+export type NoteActivity = {
+  activityId: string;
+  completed: boolean | null;
+  concern: boolean;
+  comment: string | null;
+};
 
 /** What a DSP recorded against one outcome on one shift. */
 export type NoteOutcome = {

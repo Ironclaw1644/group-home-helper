@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth/session';
 import { getBillingState, recordGeneration } from '@/lib/billing/stripe';
-import { getNoteOutcomes, listOutcomes } from '@/lib/outcomes/repo';
+import {
+  getNoteActivities,
+  getNoteOutcomes,
+  listActivities,
+  listOutcomes
+} from '@/lib/outcomes/repo';
 import { PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -134,6 +139,11 @@ export async function POST(req: Request) {
       getNoteOutcomes(note.id)
     ]);
 
+    const [planActivities, answeredActivities] = await Promise.all([
+      listActivities(planOutcomes.map((o) => o.id)),
+      getNoteActivities(note.id)
+    ]);
+
     const outcomeInput = planOutcomes.map((o) => {
       const entry = documented.find((d) => d.outcomeId === o.id);
       return {
@@ -143,11 +153,29 @@ export async function POST(req: Request) {
         progress: PROGRESS_LEVELS.find((pl) => pl.value === entry?.progress)?.label ?? null,
         // Free text the DSP wrote. Scrubbed on the same terms as everything
         // else when the provider sends data off the machine.
-        comment: entry?.comment ? scrubFreeText(entry.comment, offMachine) : null
+        comment: entry?.comment ? scrubFreeText(entry.comment, offMachine) : null,
+        // Only answered activities are sent. An unanswered one is a gap in the
+        // record, and describing it either way would be inventing.
+        activities: planActivities
+          .filter((a) => a.outcomeId === o.id)
+          .map((a) => {
+            const answer = answeredActivities.find((x) => x.activityId === a.id);
+            if (!answer || answer.completed === null) return null;
+            return {
+              question: a.dailyQuestion || a.description,
+              answered: answer.completed,
+              concern: answer.concern,
+              comment: answer.comment ? scrubFreeText(answer.comment, offMachine) : null
+            };
+          })
+          .filter((a): a is NonNullable<typeof a> => a !== null)
       };
     });
 
-    outcomeComments = documented.map((d) => d.comment ?? '').filter(Boolean);
+    outcomeComments = [
+      ...documented.map((d) => d.comment ?? ''),
+      ...answeredActivities.map((a) => a.comment ?? '')
+    ].filter(Boolean);
 
     userMessage = buildDraftUserMessage({
       residentName: outboundName,

@@ -3,7 +3,15 @@
 import { useState } from 'react';
 import { ChevronDown, Target } from 'lucide-react';
 import { PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
-import type { NoteOutcome, Outcome, ProgressLevel, SupportLevel } from '@/lib/types';
+import { ActivityEntry } from '@/components/note/activity-entry';
+import type {
+  NoteActivity,
+  NoteOutcome,
+  Outcome,
+  OutcomeActivity,
+  ProgressLevel,
+  SupportLevel
+} from '@/lib/types';
 
 /**
  * Document one ISP outcome for this shift.
@@ -21,11 +29,18 @@ export function OutcomeEntry({
   outcome,
   value,
   onChange,
+  activities,
+  activityValues,
+  onActivityChange,
   disabled
 }: {
   outcome: Outcome;
   value: NoteOutcome;
   onChange: (next: NoteOutcome) => void;
+  /** This outcome's support activities — the WHAT under the WHERE. */
+  activities: OutcomeActivity[];
+  activityValues: NoteActivity[];
+  onActivityChange: (next: NoteActivity) => void;
   disabled?: boolean;
 }) {
   const [showPlan, setShowPlan] = useState(false);
@@ -122,6 +137,31 @@ export function OutcomeEntry({
           'warn'
         )}
       </div>
+
+      {value.addressed && activities.length > 0 ? (
+        <div className="ml-6 mt-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-slate">
+            Support activities
+          </p>
+          {activities.map((activity) => {
+            const entry = activityValues.find((a) => a.activityId === activity.id) ?? {
+              activityId: activity.id,
+              completed: null,
+              concern: false,
+              comment: null
+            };
+            return (
+              <ActivityEntry
+                key={activity.id}
+                activity={activity}
+                value={entry}
+                onChange={onActivityChange}
+                disabled={disabled}
+              />
+            );
+          })}
+        </div>
+      ) : null}
 
       {value.addressed ? (
         <div className="ml-6 mt-4 space-y-4">

@@ -20,8 +20,10 @@ import {
   displayName,
   type FormTemplate,
   type Note,
+  type NoteActivity,
   type NoteOutcome,
   type Outcome,
+  type OutcomeActivity,
   type Resident,
   type StructuredData
 } from '@/lib/types';
@@ -38,7 +40,9 @@ export default function NoteEditor({
   signerName,
   signerTitle,
   outcomes,
-  savedOutcomes
+  savedOutcomes,
+  activities,
+  savedActivities
 }: {
   note: Note;
   resident: Resident;
@@ -49,6 +53,9 @@ export default function NoteEditor({
   /** This resident's ISP outcomes. Different for every person — that is the point. */
   outcomes: Outcome[];
   savedOutcomes: NoteOutcome[];
+  /** Support activities across all of this resident's outcomes. */
+  activities: OutcomeActivity[];
+  savedActivities: NoteActivity[];
 }) {
   const router = useRouter();
 
@@ -57,6 +64,18 @@ export default function NoteEditor({
   // Every outcome starts present-but-unaddressed, so a shift where nothing was
   // worked on is recorded as exactly that rather than as missing data. A run of
   // "not addressed" is a signal a supervisor needs to see.
+  const [activityEntries, setActivityEntries] = useState<NoteActivity[]>(() =>
+    activities.map(
+      (a) =>
+        savedActivities.find((s) => s.activityId === a.id) ?? {
+          activityId: a.id,
+          completed: null,
+          concern: false,
+          comment: null
+        }
+    )
+  );
+
   const [outcomeEntries, setOutcomeEntries] = useState<NoteOutcome[]>(() =>
     outcomes.map(
       (o) =>
@@ -117,6 +136,9 @@ export default function NoteEditor({
   const outcomesRef = useRef<NoteOutcome[]>(outcomeEntries);
   outcomesRef.current = outcomeEntries;
 
+  const activitiesRef = useRef<NoteActivity[]>(activityEntries);
+  activitiesRef.current = activityEntries;
+
   const persist = useCallback(
     async (nextData: StructuredData, nextNarrative: string) => {
       setSaveState('saving');
@@ -127,7 +149,8 @@ export default function NoteEditor({
           body: JSON.stringify({
             structuredData: nextData,
             narrative: nextNarrative,
-            outcomes: outcomesRef.current
+            outcomes: outcomesRef.current,
+            activities: activitiesRef.current
           })
         });
         if (!res.ok) throw new Error(await res.text());
@@ -178,6 +201,15 @@ export default function NoteEditor({
   function updateNarrative(value: string) {
     setNarrative(value);
     scheduleSave(data, value);
+  }
+
+  function updateActivity(next: NoteActivity) {
+    setActivityEntries((prev) => {
+      const updated = prev.map((a) => (a.activityId === next.activityId ? next : a));
+      activitiesRef.current = updated;
+      scheduleSave(data, narrative);
+      return updated;
+    });
   }
 
   function updateOutcome(next: NoteOutcome) {
@@ -310,6 +342,9 @@ export default function NoteEditor({
                   outcome={outcome}
                   value={entry}
                   onChange={updateOutcome}
+                  activities={activities.filter((a) => a.outcomeId === outcome.id)}
+                  activityValues={activityEntries}
+                  onActivityChange={updateActivity}
                 />
               );
             })}

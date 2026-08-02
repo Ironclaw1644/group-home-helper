@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Archive, Loader2, Plus, Target, X } from 'lucide-react';
 import { Alert, Badge, Button, Card } from '@/components/ui';
-import type { Outcome } from '@/lib/types';
+import { ActivityManager } from '@/components/outcomes/activity-manager';
+import type { Outcome, OutcomeActivity } from '@/lib/types';
 
 /**
  * Edit a resident's ISP outcomes.
@@ -17,11 +18,13 @@ import type { Outcome } from '@/lib/types';
 export function OutcomeManager({
   residentId,
   residentName,
-  outcomes
+  outcomes,
+  activities
 }: {
   residentId: string;
   residentName: string;
   outcomes: Outcome[];
+  activities: OutcomeActivity[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -268,6 +271,13 @@ export function OutcomeManager({
                   <span className="font-semibold">Progress: </span>
                   {o.measure}
                 </p>
+              ) : null}
+
+              {o.active ? (
+                <ActivityManager
+                  outcomeId={o.id}
+                  activities={activities.filter((a) => a.outcomeId === o.id)}
+                />
               ) : null}
 
               {o.active ? (

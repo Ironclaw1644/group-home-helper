@@ -104,6 +104,12 @@ export type DraftInput = {
     supportLevel?: string | null;
     progress?: string | null;
     comment?: string | null;
+    /**
+     * Per-activity yes/no answers, which is the record Virginia actually asks
+     * for. A "no" is a documented fact and must be reflected honestly, not
+     * softened into silence.
+     */
+    activities?: Array<{ question: string; answered: boolean; concern: boolean; comment?: string | null }>;
   }>;
 };
 
@@ -157,6 +163,14 @@ export function buildDraftUserMessage(input: DraftInput): string {
         `- ${o.title}: worked on${parts.length ? ` (${parts.join('; ')})` : ''}` +
           (o.comment ? ` — ${o.comment}` : '')
       );
+
+      for (const a of o.activities ?? []) {
+        lines.push(
+          `    * ${a.question} ${a.answered ? 'YES' : 'NO'}` +
+            (a.concern ? ' [concern flagged]' : '') +
+            (a.comment ? ` — ${a.comment}` : '')
+        );
+      }
     }
     lines.push('</service_plan_outcomes>');
   }

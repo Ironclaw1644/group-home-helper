@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { requireSupervisor } from '@/lib/auth/session';
 import { getResident } from '@/lib/residents/repo';
-import { listOutcomes } from '@/lib/outcomes/repo';
+import { listActivities, listOutcomes } from '@/lib/outcomes/repo';
 import { AppShell } from '@/components/app-shell';
 import { OutcomeManager } from '@/components/outcomes/outcome-manager';
 import { LibraryPicker } from '@/components/outcomes/library-picker';
@@ -22,6 +22,7 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
   // Retired outcomes are shown too: a supervisor reviewing a plan needs to see
   // what was dropped and when, not just what is current.
   const outcomes = await listOutcomes(id, true);
+  const activities = await listActivities(outcomes.map((o) => o.id));
   const known = displayName(resident);
 
   return (
@@ -45,7 +46,12 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
         </div>
       ) : null}
 
-      <OutcomeManager residentId={id} residentName={known} outcomes={outcomes} />
+      <OutcomeManager
+        residentId={id}
+        residentName={known}
+        outcomes={outcomes}
+        activities={activities}
+      />
     </AppShell>
   );
 }

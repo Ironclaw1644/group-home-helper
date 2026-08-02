@@ -7,7 +7,7 @@ import { Alert, Badge, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
 import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
-import type { NoteOutcome, Outcome } from '@/lib/types';
+import type { NoteActivity, NoteOutcome, Outcome, OutcomeActivity } from '@/lib/types';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
 
 /**
@@ -27,7 +27,9 @@ export default function SignedNote({
   signerName,
   signerTitle,
   outcomes,
-  savedOutcomes
+  savedOutcomes,
+  activities,
+  savedActivities
 }: {
   note: Note;
   resident: Resident;
@@ -39,6 +41,8 @@ export default function SignedNote({
   signerTitle: string;
   outcomes: Outcome[];
   savedOutcomes: NoteOutcome[];
+  activities: OutcomeActivity[];
+  savedActivities: NoteActivity[];
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -133,6 +137,28 @@ export default function SignedNote({
                   {entry?.comment ? (
                     <p className="mt-1.5 text-sm text-brand-navy">{entry.comment}</p>
                   ) : null}
+
+                  {activities
+                    .filter((a) => a.outcomeId === outcome.id)
+                    .map((activity) => {
+                      const answer = savedActivities.find((s) => s.activityId === activity.id);
+                      if (!answer || answer.completed === null) return null;
+
+                      return (
+                        <p key={activity.id} className="mt-1.5 text-xs text-brand-slate">
+                          <span className="font-semibold text-brand-navy">
+                            {answer.completed ? 'Yes' : 'No'}
+                          </span>{' '}
+                          — {activity.dailyQuestion || activity.description}
+                          {answer.concern ? (
+                            <span className="ml-1 font-semibold text-status-draft">· flagged</span>
+                          ) : null}
+                          {answer.comment ? (
+                            <span className="mt-0.5 block text-brand-navy">{answer.comment}</span>
+                          ) : null}
+                        </p>
+                      );
+                    })}
                 </li>
               );
             })}

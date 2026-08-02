@@ -6,7 +6,12 @@ import { getActiveTemplate, getAddenda, getNote, getResident, getRoster, getShif
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui';
 import { ResidentSwitcher } from '@/components/note/resident-switcher';
-import { getNoteOutcomes, listOutcomes } from '@/lib/outcomes/repo';
+import {
+  getNoteActivities,
+  getNoteOutcomes,
+  listActivities,
+  listOutcomes
+} from '@/lib/outcomes/repo';
 import { displayName } from '@/lib/types';
 import { formatServiceDate } from '@/lib/utils';
 import NoteEditor from './note-editor';
@@ -36,6 +41,13 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       listOutcomes(note.residentId),
       getNoteOutcomes(note.id)
     ]);
+
+  // Activities depend on which outcomes exist, so they follow rather than
+  // joining the parallel batch above.
+  const [activities, savedActivities] = await Promise.all([
+    listActivities(outcomes.map((o) => o.id)),
+    getNoteActivities(note.id)
+  ]);
 
   if (!resident) notFound();
 
@@ -111,6 +123,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           signerTitle={session.profile.title}
           outcomes={outcomes}
           savedOutcomes={savedOutcomes}
+          activities={activities}
+          savedActivities={savedActivities}
         />
       ) : (
         <NoteEditor
@@ -122,6 +136,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           signerTitle={session.profile.title}
           outcomes={outcomes}
           savedOutcomes={savedOutcomes}
+          activities={activities}
+          savedActivities={savedActivities}
         />
       )}
     </AppShell>

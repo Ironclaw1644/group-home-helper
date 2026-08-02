@@ -1,7 +1,15 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { NoteOutcome, Outcome, ProgressLevel, SupportLevel } from '@/lib/types';
+import type {
+  MeasureType,
+  NoteActivity,
+  NoteOutcome,
+  Outcome,
+  OutcomeActivity,
+  ProgressLevel,
+  SupportLevel
+} from '@/lib/types';
 
 /**
  * ISP outcomes and the documentation recorded against them.
@@ -15,7 +23,8 @@ import type { NoteOutcome, Outcome, ProgressLevel, SupportLevel } from '@/lib/ty
 
 const OUTCOME_COLUMNS =
   'id, resident_id, title, statement, support_strategies, measure, frequency, ' +
-  'category, sort_order, active, started_on, ended_on';
+  'category, sort_order, active, started_on, ended_on, important_to, important_for, ' +
+  'target_date, lens';
 
 function toOutcome(r: Record<string, unknown>): Outcome {
   return {
@@ -30,8 +39,107 @@ function toOutcome(r: Record<string, unknown>): Outcome {
     sortOrder: Number(r.sort_order ?? 0),
     active: Boolean(r.active),
     startedOn: (r.started_on as string | null) ?? null,
-    endedOn: (r.ended_on as string | null) ?? null
+    endedOn: (r.ended_on as string | null) ?? null,
+    importantTo: (r.important_to as string | null) ?? null,
+    importantFor: (r.important_for as string | null) ?? null,
+    targetDate: (r.target_date as string | null) ?? null,
+    lens: (r.lens as Outcome['lens']) ?? null
   };
+}
+
+const ACTIVITY_COLUMNS =
+  'id, outcome_id, description, measure_type, measure, support_instructions, ' +
+  'daily_question, sort_order, active';
+
+function toActivity(r: Record<string, unknown>): OutcomeActivity {
+  return {
+    id: r.id as string,
+    outcomeId: r.outcome_id as string,
+    description: r.description as string,
+    measureType: (r.measure_type as MeasureType) ?? 'routine',
+    measure: (r.measure as string | null) ?? null,
+    supportInstructions: (r.support_instructions as string | null) ?? null,
+    dailyQuestion: (r.daily_question as string | null) ?? null,
+    sortOrder: Number(r.sort_order ?? 0),
+    active: Boolean(r.active)
+  };
+}
+
+/**
+ * Support activities for a resident's outcomes.
+ *
+ * Fetched in one query across all their outcomes rather than per outcome: a
+ * note page needs every one of them, and a request per outcome would be six
+ * round trips before a DSP can start documenting.
+ */
+export async function listActivities(outcomeIds: string[]): Promise<OutcomeActivity[]> {
+  if (outcomeIds.length === 0) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('outcome_activities')
+    .select(ACTIVITY_COLUMNS)
+    .in('outcome_id', outcomeIds)
+    .eq('active', true)
+    .order('sort_order');
+
+  if (error) throw error;
+  return ((data ?? []) as unknown as Array<Record<string, unknown>>).map(toActivity);
+}
+
+export async function getNoteActivities(noteId: string): Promise<NoteActivity[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('note_activities')
+    .select('activity_id, completed, concern, comment')
+    .eq('note_id', noteId);
+
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    activityId: r.activity_id as string,
+    completed: (r.completed as boolean | null) ?? null,
+    concern: Boolean(r.concern),
+    comment: (r.comment as string | null) ?? null
+  }));
+}
+
+/**
+ * Save the per-activity yes/no record.
+ *
+ * Unanswered activities are skipped rather than written as `false`. A blank is
+ * a gap in the record and a no is a documented fact; storing one as the other
+ * would put a claim in the chart that nobody made.
+ */
+export async function saveNoteActivities(
+  noteId: string,
+  orgId: string,
+  entries: NoteActivity[]
+): Promise<{ ok: true } | { error: string }> {
+  const answered = entries.filter((e) => e.completed !== null || e.concern || e.comment?.trim());
+  if (answered.length === 0) return { ok: true };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from('note_activities').upsert(
+    answered.map((e) => ({
+      note_id: noteId,
+      activity_id: e.activityId,
+      org_id: orgId,
+      completed: e.completed,
+      concern: e.concern,
+      comment: e.comment?.trim() || null,
+      updated_at: new Date().toISOString()
+    })),
+    { onConflict: 'note_id,activity_id' }
+  );
+
+  if (error) {
+    if (error.code === '2F003' || /signed/i.test(error.message)) {
+      return { error: 'This note is signed and cannot be changed. Add an addendum instead.' };
+    }
+    if (error.code === '42501') return { error: 'You do not have access to this note.' };
+    return { error: error.message };
+  }
+  return { ok: true };
 }
 
 /** A resident's outcomes, in the order they appear on the note form. */
