@@ -6,6 +6,7 @@ import { getResident } from '@/lib/residents/repo';
 import { listOutcomes } from '@/lib/outcomes/repo';
 import { AppShell } from '@/components/app-shell';
 import { OutcomeManager } from '@/components/outcomes/outcome-manager';
+import { LibraryPicker } from '@/components/outcomes/library-picker';
 import { PageHeader } from '@/components/ui';
 import { displayName } from '@/lib/types';
 
@@ -37,6 +38,12 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
         title="Service plan"
         subtitle={`${known} ${resident.lastName} · what staff document against every shift`}
       />
+
+      {outcomes.length === 0 ? (
+        <div className="mb-4">
+          <LibraryPicker residentId={id} residentName={known} />
+        </div>
+      ) : null}
 
       <OutcomeManager residentId={id} residentName={known} outcomes={outcomes} />
     </AppShell>
