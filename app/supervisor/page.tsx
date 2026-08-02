@@ -5,6 +5,8 @@ import { getRoster } from '@/lib/notes/repo';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/app-shell';
 import { Badge, Card, EmptyState, PageHeader } from '@/components/ui';
+import { complianceAlerts } from '@/lib/compliance/checks';
+import { ComplianceAlertsCard } from '@/components/compliance/alerts-card';
 import { addDays, formatServiceDate, todayInTimeZone } from '@/lib/utils';
 import { DUPLICATE_WARN_THRESHOLD } from '@/lib/notes/similarity';
 import ExportPanel from './export-panel';
@@ -25,6 +27,9 @@ export default async function SupervisorPage({
   const serviceDate = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : today;
 
   // Supervisors see every home in the org, so this covers the whole agency.
+  // What would get the agency cited, ahead of today's grid.
+  const alerts = await complianceAlerts();
+
   const rosters = await Promise.all(
     session.homes.map(async (home) => ({
       home,
@@ -57,6 +62,8 @@ export default async function SupervisorPage({
           session.homes.length === 1 ? 'house' : 'houses'
         }`}
       />
+
+      <ComplianceAlertsCard alerts={alerts} />
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <Link

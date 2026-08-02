@@ -2,7 +2,13 @@ import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/render
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
-import { displayName } from '@/lib/types';
+import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
+import type {
+  NoteActivity,
+  NoteOutcome,
+  Outcome,
+  OutcomeActivity
+} from '@/lib/types';
 
 /**
  * Form #680 — Daily Progress Note.
@@ -70,6 +76,23 @@ const styles = StyleSheet.create({
   },
   narrativeText: { fontSize: 10, lineHeight: 1.65, textAlign: 'justify' },
 
+  outcomeBlock: {
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#c9d2da'
+  },
+  outcomeTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
+  outcomeStatement: { fontSize: 9, lineHeight: 1.5, marginBottom: 3 },
+  outcomeMeta: { fontSize: 8.5, color: '#536779', marginBottom: 4 },
+  outcomeComment: { fontSize: 9, lineHeight: 1.5, marginTop: 4 },
+  activityRow: { flexDirection: 'row', marginBottom: 3 },
+  activityAnswer: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    width: 62
+  },
+  activityText: { fontSize: 9, lineHeight: 1.45, flex: 1 },
   signatureRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 6 },
   signatureImage: { width: 150, height: 42, objectFit: 'contain' },
   signatureLine: {
@@ -114,6 +137,11 @@ export type Form680Props = {
   /** Data URL or absolute path react-pdf can resolve. */
   logoSrc?: string | null;
   signatureSrc?: string | null;
+  /** This resident's ISP outcomes and what was documented against them. */
+  outcomes?: Outcome[];
+  noteOutcomes?: NoteOutcome[];
+  activities?: OutcomeActivity[];
+  noteActivities?: NoteActivity[];
 };
 
 export function Form680({
@@ -124,7 +152,11 @@ export function Form680({
   addenda,
   orgLine,
   logoSrc,
-  signatureSrc
+  signatureSrc,
+  outcomes = [],
+  noteOutcomes = [],
+  activities = [],
+  noteActivities = []
 }: Form680Props) {
   // The five printed questions read naturally with the preferred name...
   const ctx = { name: displayName(resident), pronouns: resident.pronouns };
@@ -214,6 +246,83 @@ export function Form680({
           </View>
         </View>
       </Page>
+
+      {/* Service-plan documentation on its own page.
+          This is the page a Virginia reviewer actually checks: it puts the
+          outcome statement from the ISP next to what was documented against it,
+          so the comparison they would otherwise do across two documents is
+          already made on one sheet. */}
+      {outcomes.length > 0 ? (
+        <Page size="LETTER" style={styles.page}>
+          <View style={styles.headerRow}>
+            {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
+            <Text style={styles.orgName}>{config.header?.org_line ?? orgLine}</Text>
+          </View>
+
+          <Text style={styles.addendaHeading}>
+            Service Plan Documentation — {residentName}, {serviceDate}, {shiftLabel}
+          </Text>
+
+          {outcomes.map((outcome) => {
+            const entry = noteOutcomes.find((n) => n.outcomeId === outcome.id);
+            const mine = activities.filter((a) => a.outcomeId === outcome.id);
+            const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
+            const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
+
+            return (
+              <View key={outcome.id} style={styles.outcomeBlock} wrap={false}>
+                <Text style={styles.outcomeTitle}>
+                  {outcome.title} — {entry?.addressed ? 'Addressed this shift' : 'Not addressed this shift'}
+                </Text>
+
+                {outcome.statement ? (
+                  <Text style={styles.outcomeStatement}>{outcome.statement}</Text>
+                ) : null}
+
+                {entry?.addressed && (support || progress) ? (
+                  <Text style={styles.outcomeMeta}>
+                    {[support, progress].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
+
+                {mine.map((activity) => {
+                  const answer = noteActivities.find((n) => n.activityId === activity.id);
+                  // An unanswered activity prints as "Not recorded" rather than
+                  // being omitted. A reviewer needs to see the gap, not have it
+                  // hidden by the layout.
+                  const label =
+                    answer?.completed === true
+                      ? 'Yes'
+                      : answer?.completed === false
+                        ? 'No'
+                        : 'Not recorded';
+
+                  return (
+                    <View key={activity.id} style={styles.activityRow}>
+                      <Text style={styles.activityAnswer}>{label}</Text>
+                      <Text style={styles.activityText}>
+                        {activity.dailyQuestion || activity.description}
+                        {answer?.concern ? '  [concern noted]' : ''}
+                        {answer?.comment ? `\n${answer.comment}` : ''}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {entry?.comment ? (
+                  <Text style={styles.outcomeComment}>{entry.comment}</Text>
+                ) : null}
+              </View>
+            );
+          })}
+
+          <View style={styles.footer} fixed>
+            <Text style={styles.footerFormLine}>
+              {config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`}
+            </Text>
+          </View>
+        </Page>
+      ) : null}
 
       {/* Addenda live on their own page so the signed note above stays exactly
           as it was signed — nothing is reflowed by a later correction. */}

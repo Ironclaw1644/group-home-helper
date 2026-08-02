@@ -4,6 +4,12 @@ import { getSession } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getActiveTemplate, getAddenda, getNote, getResident, getShifts } from '@/lib/notes/repo';
 import { Form680 } from '@/lib/pdf/Form680';
+import {
+  getNoteActivities,
+  getNoteOutcomes,
+  listActivities,
+  listOutcomes
+} from '@/lib/outcomes/repo';
 import { loadLogoDataUrl, loadSignatureDataUrl } from '@/lib/pdf/assets';
 import { logAccess } from '@/lib/audit';
 
@@ -21,12 +27,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const note = await getNote(id);
   if (!note) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
 
-  const [resident, template, shifts, addenda] = await Promise.all([
-    getResident(note.residentId, true),
-    getActiveTemplate(),
-    getShifts(note.homeId),
-    getAddenda(note.id)
-  ]);
+  const [resident, template, shifts, addenda, outcomes, noteOutcomes, noteActivities] =
+    await Promise.all([
+      getResident(note.residentId, true),
+      getActiveTemplate(),
+      getShifts(note.homeId),
+      getAddenda(note.id),
+      // Retired outcomes are included: a note signed while an outcome was live
+      // must still print the plan it was documented against.
+      listOutcomes(note.residentId, true),
+      getNoteOutcomes(note.id),
+      getNoteActivities(note.id)
+    ]);
+
+  const activities = await listActivities(outcomes.map((o) => o.id), true);
 
   if (!resident) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
 
@@ -42,6 +56,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       note={note}
       resident={resident}
       template={template}
+      outcomes={outcomes}
+      noteOutcomes={noteOutcomes}
+      activities={activities}
+      noteActivities={noteActivities}
       shiftLabel={shift?.label ?? ''}
       addenda={addenda}
       orgLine="At Home Family Service, LLC"

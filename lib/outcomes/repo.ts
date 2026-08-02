@@ -72,16 +72,19 @@ function toActivity(r: Record<string, unknown>): OutcomeActivity {
  * note page needs every one of them, and a request per outcome would be six
  * round trips before a DSP can start documenting.
  */
-export async function listActivities(outcomeIds: string[]): Promise<OutcomeActivity[]> {
+export async function listActivities(
+  outcomeIds: string[],
+  includeInactive = false
+): Promise<OutcomeActivity[]> {
   if (outcomeIds.length === 0) return [];
 
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from('outcome_activities')
-    .select(ACTIVITY_COLUMNS)
-    .in('outcome_id', outcomeIds)
-    .eq('active', true)
-    .order('sort_order');
+  let q = supabase.from('outcome_activities').select(ACTIVITY_COLUMNS).in('outcome_id', outcomeIds);
+  // A note signed while an activity was live must still print the question it
+  // was answering, even after that activity is retired.
+  if (!includeInactive) q = q.eq('active', true);
+
+  const { data, error } = await q.order('sort_order');
 
   if (error) throw error;
   return ((data ?? []) as unknown as Array<Record<string, unknown>>).map(toActivity);
@@ -316,6 +319,7 @@ export type OutcomeProgressRow = {
   title: string;
   statement: string | null;
   frequency: string | null;
+  /** Signed notes in the period that touched this resident at all. */
   timesAddressed: number;
   timesNotAddressed: number;
   progressed: number;

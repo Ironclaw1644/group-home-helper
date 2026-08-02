@@ -3,7 +3,7 @@ import { requireSupervisor } from '@/lib/auth/session';
 import { getResident } from '@/lib/residents/repo';
 import { AppShell } from '@/components/app-shell';
 import { ResidentForm } from '@/components/residents/resident-form';
-import { FolderOpen, Target } from 'lucide-react';
+import { FolderOpen, Target, TrendingUp } from 'lucide-react';
 import { Alert, Button, PageHeader } from '@/components/ui';
 import { displayName } from '@/lib/types';
 
@@ -32,6 +32,10 @@ export default async function EditResidentPage({
             <Button href={`/residents/${resident.id}/documents`} variant="ghost" size="sm">
               <FolderOpen className="h-4 w-4" />
               Documents
+            </Button>
+            <Button href={`/residents/${resident.id}/progress`} variant="ghost" size="sm">
+              <TrendingUp className="h-4 w-4" />
+              Progress
             </Button>
             <Button href={`/residents/${resident.id}/outcomes`} variant="ghost" size="sm">
               <Target className="h-4 w-4" />
