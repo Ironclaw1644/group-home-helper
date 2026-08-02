@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Loader2, Plus } from 'lucide-react';
-import { Alert, Button, Card } from '@/components/ui';
+import { Alert, Badge, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
-import { displayName } from '@/lib/types';
+import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
+import type { NoteOutcome, Outcome } from '@/lib/types';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
 
 /**
@@ -24,7 +25,9 @@ export default function SignedNote({
   addenda,
   canAddAddendum,
   signerName,
-  signerTitle
+  signerTitle,
+  outcomes,
+  savedOutcomes
 }: {
   note: Note;
   resident: Resident;
@@ -34,6 +37,8 @@ export default function SignedNote({
   canAddAddendum: boolean;
   signerName: string;
   signerTitle: string;
+  outcomes: Outcome[];
+  savedOutcomes: NoteOutcome[];
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -97,6 +102,43 @@ export default function SignedNote({
           ) : null}
         </div>
       </Card>
+
+      {outcomes.length > 0 ? (
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
+            Service plan outcomes
+          </h2>
+          <ul className="space-y-3">
+            {outcomes.map((outcome) => {
+              const entry = savedOutcomes.find((e) => e.outcomeId === outcome.id);
+              const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
+              const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
+
+              return (
+                <li
+                  key={outcome.id}
+                  className="border-b border-brand-navy/5 pb-3 last:border-0 last:pb-0"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-brand-navy">{outcome.title}</span>
+                    <Badge tone={entry?.addressed ? 'signed' : 'missing'}>
+                      {entry?.addressed ? 'Worked on' : 'Not this shift'}
+                    </Badge>
+                  </div>
+                  {entry?.addressed ? (
+                    <p className="mt-1 text-xs text-brand-slate">
+                      {[support, progress].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : null}
+                  {entry?.comment ? (
+                    <p className="mt-1.5 text-sm text-brand-navy">{entry.comment}</p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      ) : null}
 
       {addenda.length > 0 ? (
         <Card>

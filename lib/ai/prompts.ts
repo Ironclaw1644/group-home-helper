@@ -91,6 +91,20 @@ export type DraftInput = {
   hasConcern: boolean;
   selections: Array<{ section: string; field: string; promptRef?: number; values: string[] }>;
   prompts: string[];
+  /**
+   * ISP outcome documentation for this shift, already resolved to labels.
+   *
+   * Passed separately from `selections` because outcomes carry an explicit
+   * negative — "not worked on" is a recorded fact that must suppress the topic,
+   * not an absence the model can fill in.
+   */
+  outcomes?: Array<{
+    title: string;
+    addressed: boolean;
+    supportLevel?: string | null;
+    progress?: string | null;
+    comment?: string | null;
+  }>;
 };
 
 /** The per-note user message. Everything variable lives here, after the cached prefix. */
@@ -125,6 +139,27 @@ export function buildDraftUserMessage(input: DraftInput): string {
   }
 
   lines.push('</recorded_this_shift>');
+
+  // ISP outcomes. These are the part a Medicaid reviewer reads for, so the
+  // narrative should say what was worked on and how it went — but strictly from
+  // what the DSP recorded. An outcome marked "not this shift" must not turn
+  // into a sentence claiming it happened.
+  if (input.outcomes?.length) {
+    lines.push('');
+    lines.push('<service_plan_outcomes>');
+    for (const o of input.outcomes) {
+      if (!o.addressed) {
+        lines.push(`- ${o.title}: NOT worked on this shift. Do not describe it.`);
+        continue;
+      }
+      const parts = [o.supportLevel, o.progress].filter(Boolean);
+      lines.push(
+        `- ${o.title}: worked on${parts.length ? ` (${parts.join('; ')})` : ''}` +
+          (o.comment ? ` — ${o.comment}` : '')
+      );
+    }
+    lines.push('</service_plan_outcomes>');
+  }
   lines.push('');
   lines.push(
     input.hasConcern

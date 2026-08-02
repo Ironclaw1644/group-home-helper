@@ -29,7 +29,9 @@ export default async function BillingPage({
     getPlanPrice(session.profile.orgId)
   ]);
 
-  const status = STATUS_LABEL[billing.status] ?? STATUS_LABEL.none;
+  const status = billing.isPlatformOwner
+    ? { text: 'Included', tone: 'signed' as const }
+    : (STATUS_LABEL[billing.status] ?? STATUS_LABEL.none);
   const onPlan = billing.status === 'active' || billing.status === 'trialing';
 
   return (
@@ -72,7 +74,11 @@ export default async function BillingPage({
           ) : null}
         </div>
 
-        {onPlan ? (
+        {billing.isPlatformOwner ? (
+          <p className="mb-4 text-sm text-brand-slate">
+            Unlimited drafts, no subscription, no expiry.
+          </p>
+        ) : onPlan ? (
           <p className="mb-4 text-sm text-brand-slate">
             {billing.periodEnd
               ? `Renews ${formatServiceDate(billing.periodEnd.slice(0, 10))}.`

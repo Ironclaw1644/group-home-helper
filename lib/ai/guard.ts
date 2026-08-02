@@ -62,9 +62,11 @@ function sectionHasSelection(section: FormTemplateSchema['sections'][number], da
 function findUnrecordedTopics(
   schema: FormTemplateSchema,
   data: StructuredData,
-  narrative: string
+  narrative: string,
+  extraRecorded = ''
 ): GroundingFinding[] {
   const text = narrative.toLowerCase();
+  const recorded = extraRecorded.toLowerCase();
   const findings: GroundingFinding[] = [];
 
   for (const section of schema.sections) {
@@ -72,7 +74,13 @@ function findUnrecordedTopics(
     if (!vocabulary || vocabulary.length === 0) continue;
     if (sectionHasSelection(section, data)) continue;
 
-    const hits = vocabulary.filter((word) => containsWord(text, word.toLowerCase()));
+    const hits = vocabulary
+      .map((w) => w.toLowerCase())
+      // A word the DSP wrote against an outcome is recorded, even though the
+      // section's own chips are empty.
+      .filter((word) => !recorded.includes(word))
+      .filter((word) => containsWord(text, word));
+
     if (hits.length > 0) {
       findings.push({
         kind: 'unrecorded_topic',
@@ -113,10 +121,11 @@ function recordedFreeText(data: StructuredData): string {
 function findUnselectedOptions(
   schema: FormTemplateSchema,
   data: StructuredData,
-  narrative: string
+  narrative: string,
+  extraRecorded = ''
 ): GroundingFinding[] {
   const text = narrative.toLowerCase();
-  const typed = recordedFreeText(data);
+  const typed = (recordedFreeText(data) + ' ' + extraRecorded).toLowerCase();
   // Keywords from every option the DSP selected, across the whole form.
   const selectedWords = selectedKeywords(schema, data);
   const findings: GroundingFinding[] = [];
@@ -274,10 +283,23 @@ export function checkGrounding(params: {
    * self-report look like it named something unrecorded.
    */
   residentName?: string;
+  /**
+   * Anything else the DSP recorded that is not in `data` — currently the
+   * comments written against ISP outcomes.
+   *
+   * Without this the guard flags outcome documentation back at the DSP: someone
+   * who writes "walked to the corner store with staff" against a community
+   * outcome would have the narrative flagged for mentioning a store nobody
+   * selected. They recorded it; it is just recorded somewhere the chip data
+   * cannot see.
+   */
+  extraRecordedText?: string[];
 }): GroundingFinding[] {
+  const extra = (params.extraRecordedText ?? []).filter(Boolean).join(' ');
+
   return [
-    ...findUnselectedOptions(params.schema, params.data, params.narrative),
-    ...findUnrecordedTopics(params.schema, params.data, params.narrative),
+    ...findUnselectedOptions(params.schema, params.data, params.narrative, extra),
+    ...findUnrecordedTopics(params.schema, params.data, params.narrative, extra),
     ...findInventedTimes(params.narrative),
     ...findQuotedSpeech(params.narrative),
     ...findRealSelfReports(

@@ -6,6 +6,7 @@ import { getActiveTemplate, getAddenda, getNote, getResident, getRoster, getShif
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui';
 import { ResidentSwitcher } from '@/components/note/resident-switcher';
+import { getNoteOutcomes, listOutcomes } from '@/lib/outcomes/repo';
 import { displayName } from '@/lib/types';
 import { formatServiceDate } from '@/lib/utils';
 import NoteEditor from './note-editor';
@@ -22,14 +23,19 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
   // Decrypting the Medicaid ID is a PHI read; we do it here because the number
   // is printed on the form the DSP is filling and on its PDF.
-  const [resident, template, shifts, addenda, roster] = await Promise.all([
-    getResident(note.residentId, true),
-    getActiveTemplate(),
-    getShifts(note.homeId),
-    note.status === 'signed' ? getAddenda(note.id) : Promise.resolve([]),
-    // Powers the resident switcher: everyone on this shift, this date.
-    getRoster(note.homeId, note.serviceDate)
-  ]);
+  const [resident, template, shifts, addenda, roster, outcomes, savedOutcomes] =
+    await Promise.all([
+      getResident(note.residentId, true),
+      getActiveTemplate(),
+      getShifts(note.homeId),
+      note.status === 'signed' ? getAddenda(note.id) : Promise.resolve([]),
+      // Powers the resident switcher: everyone on this shift, this date.
+      getRoster(note.homeId, note.serviceDate),
+      // This person's ISP outcomes. Loaded here rather than in the editor so a
+      // signed note can render the same list read-only.
+      listOutcomes(note.residentId),
+      getNoteOutcomes(note.id)
+    ]);
 
   if (!resident) notFound();
 
@@ -103,6 +109,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           canAddAddendum={true}
           signerName={session.profile.fullName}
           signerTitle={session.profile.title}
+          outcomes={outcomes}
+          savedOutcomes={savedOutcomes}
         />
       ) : (
         <NoteEditor
@@ -112,6 +120,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           shiftLabel={shift.label}
           signerName={session.profile.fullName}
           signerTitle={session.profile.title}
+          outcomes={outcomes}
+          savedOutcomes={savedOutcomes}
         />
       )}
     </AppShell>

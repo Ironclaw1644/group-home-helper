@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, CloudOff, Loader2, PenLine, Sparkles } from 'lucide-react';
 import { FieldRenderer } from '@/components/form/FieldRenderer';
+import { OutcomeEntry } from '@/components/note/outcome-entry';
 import { SignaturePad, type SignatureMethod } from '@/components/form/SignaturePad';
 import { Alert, Button, Card } from '@/components/ui';
 import { hasAnySelection, interpolate } from '@/lib/forms/interpolate';
@@ -15,7 +16,15 @@ import {
   saveLocalDraft
 } from '@/lib/notes/draft-storage';
 import { formatServiceDate } from '@/lib/utils';
-import { displayName, type FormTemplate, type Note, type Resident, type StructuredData } from '@/lib/types';
+import {
+  displayName,
+  type FormTemplate,
+  type Note,
+  type NoteOutcome,
+  type Outcome,
+  type Resident,
+  type StructuredData
+} from '@/lib/types';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'offline';
 
@@ -27,7 +36,9 @@ export default function NoteEditor({
   template,
   shiftLabel,
   signerName,
-  signerTitle
+  signerTitle,
+  outcomes,
+  savedOutcomes
 }: {
   note: Note;
   resident: Resident;
@@ -35,10 +46,29 @@ export default function NoteEditor({
   shiftLabel: string;
   signerName: string;
   signerTitle: string;
+  /** This resident's ISP outcomes. Different for every person — that is the point. */
+  outcomes: Outcome[];
+  savedOutcomes: NoteOutcome[];
 }) {
   const router = useRouter();
 
   const [data, setData] = useState<StructuredData>(note.structuredData);
+
+  // Every outcome starts present-but-unaddressed, so a shift where nothing was
+  // worked on is recorded as exactly that rather than as missing data. A run of
+  // "not addressed" is a signal a supervisor needs to see.
+  const [outcomeEntries, setOutcomeEntries] = useState<NoteOutcome[]>(() =>
+    outcomes.map(
+      (o) =>
+        savedOutcomes.find((s) => s.outcomeId === o.id) ?? {
+          outcomeId: o.id,
+          addressed: false,
+          supportLevel: null,
+          progress: null,
+          comment: null
+        }
+    )
+  );
   const [narrative, setNarrative] = useState(note.narrative);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [restored, setRestored] = useState(false);
@@ -82,6 +112,11 @@ export default function NoteEditor({
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Read through a ref so the debounced save always sends the latest outcome
+  // documentation, not whatever was captured when the timer was set.
+  const outcomesRef = useRef<NoteOutcome[]>(outcomeEntries);
+  outcomesRef.current = outcomeEntries;
+
   const persist = useCallback(
     async (nextData: StructuredData, nextNarrative: string) => {
       setSaveState('saving');
@@ -89,7 +124,11 @@ export default function NoteEditor({
         const res = await fetch(`/api/notes/${note.id}`, {
           method: 'PATCH',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ structuredData: nextData, narrative: nextNarrative })
+          body: JSON.stringify({
+            structuredData: nextData,
+            narrative: nextNarrative,
+            outcomes: outcomesRef.current
+          })
         });
         if (!res.ok) throw new Error(await res.text());
         setSaveState('saved');
@@ -139,6 +178,15 @@ export default function NoteEditor({
   function updateNarrative(value: string) {
     setNarrative(value);
     scheduleSave(data, value);
+  }
+
+  function updateOutcome(next: NoteOutcome) {
+    setOutcomeEntries((prev) => {
+      const updated = prev.map((e) => (e.outcomeId === next.outcomeId ? next : e));
+      outcomesRef.current = updated;
+      scheduleSave(data, narrative);
+      return updated;
+    });
   }
 
   const canDraft = hasAnySelection(template.schema, data);
@@ -235,6 +283,39 @@ export default function NoteEditor({
           ))}
         </ol>
       </Card>
+
+      {outcomes.length > 0 ? (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
+            {displayName(resident)}&apos;s service plan
+          </h2>
+          <p className="mb-4 text-xs text-brand-slate">
+            {outcomes.length} {outcomes.length === 1 ? 'outcome' : 'outcomes'} from{' '}
+            {resident.pronouns.possessive} ISP. Recording these is what shows the day supported
+            the plan.
+          </p>
+          <div className="space-y-3">
+            {outcomes.map((outcome) => {
+              const entry =
+                outcomeEntries.find((e) => e.outcomeId === outcome.id) ?? {
+                  outcomeId: outcome.id,
+                  addressed: false,
+                  supportLevel: null,
+                  progress: null,
+                  comment: null
+                };
+              return (
+                <OutcomeEntry
+                  key={outcome.id}
+                  outcome={outcome}
+                  value={entry}
+                  onChange={updateOutcome}
+                />
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
 
       {template.schema.sections.map((section) => (
         <Card key={section.key}>

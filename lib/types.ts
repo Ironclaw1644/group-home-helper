@@ -81,6 +81,94 @@ export type ResidentRecord = {
 
 export type ResidentSort = 'last_name' | 'first_name' | 'room' | 'recent';
 
+// ---------------------------------------------------------------------------
+// ISP outcomes
+// ---------------------------------------------------------------------------
+
+/**
+ * One outcome from a resident's Individual Service Plan.
+ *
+ * This is what makes each resident's note page different: the form is the
+ * shared Form #680 sections plus this person's own outcomes. A Medicaid
+ * reviewer asks whether the day's documentation shows progress toward the plan,
+ * so the note has to be built from the plan rather than from a fixed checklist.
+ */
+export type Outcome = {
+  id: string;
+  residentId: string;
+  title: string;
+  /** Verbatim from the ISP, so a reviewer finds the same words in both. */
+  statement: string | null;
+  supportStrategies: string | null;
+  measure: string | null;
+  frequency: string | null;
+  category: string | null;
+  sortOrder: number;
+  active: boolean;
+  startedOn: string | null;
+  endedOn: string | null;
+};
+
+export const SUPPORT_LEVELS = [
+  { value: 'independent', label: 'Independently' },
+  { value: 'verbal_prompt', label: 'With verbal prompts' },
+  { value: 'gestural_prompt', label: 'With gestural prompts' },
+  { value: 'hands_on', label: 'With hands-on help' },
+  { value: 'full_support', label: 'With full support' }
+] as const;
+
+export const PROGRESS_LEVELS = [
+  { value: 'progressed', label: 'Made progress' },
+  { value: 'maintained', label: 'Maintained' },
+  { value: 'regressed', label: 'Lost ground' },
+  { value: 'declined', label: 'Declined to take part' }
+] as const;
+
+export type SupportLevel = (typeof SUPPORT_LEVELS)[number]['value'];
+export type ProgressLevel = (typeof PROGRESS_LEVELS)[number]['value'];
+
+/** What a DSP recorded against one outcome on one shift. */
+export type NoteOutcome = {
+  outcomeId: string;
+  addressed: boolean;
+  supportLevel: SupportLevel | null;
+  progress: ProgressLevel | null;
+  comment: string | null;
+};
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+export const DOCUMENT_KINDS = [
+  { value: 'isp', label: 'Service plan (ISP)' },
+  { value: 'assessment', label: 'Assessment' },
+  { value: 'behavioral', label: 'Behaviour support plan' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'consent', label: 'Consent' },
+  { value: 'legal', label: 'Legal / guardianship' },
+  { value: 'other', label: 'Other' }
+] as const;
+
+export type DocumentKind = (typeof DOCUMENT_KINDS)[number]['value'];
+
+export type ResidentDocument = {
+  id: string;
+  orgId: string;
+  /** Null for agency-level documents. */
+  residentId: string | null;
+  title: string;
+  kind: DocumentKind;
+  description: string | null;
+  storagePath: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  effectiveOn: string | null;
+  expiresOn: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+};
+
 /** The name to use in narrative and on screen. */
 export function displayName(r: {
   firstName: string;

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth/session';
 import { getBillingState, recordGeneration } from '@/lib/billing/stripe';
+import { getNoteOutcomes, listOutcomes } from '@/lib/outcomes/repo';
+import { PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getActiveTemplate, getNote, getResident, getShifts } from '@/lib/notes/repo';
@@ -85,6 +87,9 @@ export async function POST(req: Request) {
 
   // With the default local provider nothing leaves the machine, so names are
   // sent as-is. The hosted provider strips them unless BAAs are in place.
+  // Collected before generation so the guard and the prompt see the same text.
+  let outcomeComments: string[] = [];
+
   const provider = await getProvider();
   const offMachine = provider.sendsDataOffMachine;
   const deidentified = deidentifyEnabled(offMachine);
@@ -121,13 +126,37 @@ export async function POST(req: Request) {
       (sel) => ({ ...sel, values: sel.values.map((v) => scrubFreeText(v, offMachine)) })
     );
 
+    // Outcome documentation, resolved to the labels a reader would use. Only
+    // outcomes the DSP actually touched reach the model; the rest are sent as
+    // explicit negatives so the topic is suppressed rather than invented.
+    const [planOutcomes, documented] = await Promise.all([
+      listOutcomes(note.residentId),
+      getNoteOutcomes(note.id)
+    ]);
+
+    const outcomeInput = planOutcomes.map((o) => {
+      const entry = documented.find((d) => d.outcomeId === o.id);
+      return {
+        title: o.title,
+        addressed: Boolean(entry?.addressed),
+        supportLevel: SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label ?? null,
+        progress: PROGRESS_LEVELS.find((pl) => pl.value === entry?.progress)?.label ?? null,
+        // Free text the DSP wrote. Scrubbed on the same terms as everything
+        // else when the provider sends data off the machine.
+        comment: entry?.comment ? scrubFreeText(entry.comment, offMachine) : null
+      };
+    });
+
+    outcomeComments = documented.map((d) => d.comment ?? '').filter(Boolean);
+
     userMessage = buildDraftUserMessage({
       residentName: outboundName,
       pronouns: resident.pronouns,
       shiftLabel,
       hasConcern: shiftHasConcern(template.schema, note.structuredData),
       selections,
-      prompts: template.schema.prompts.map((p) => interpolate(p, outboundCtx))
+      prompts: template.schema.prompts.map((p) => interpolate(p, outboundCtx)),
+      outcomes: outcomeInput
     });
   }
 
@@ -198,7 +227,11 @@ export async function POST(req: Request) {
             data: note.structuredData,
             narrative,
             modelReported: result.draft.unsupported_claims ?? [],
-            residentName: displayName(resident)
+            residentName: displayName(resident),
+            // Outcome comments are recorded input too — the guard cannot see
+            // them in structuredData, and without this it flags the DSP's own
+            // words back at them.
+            extraRecordedText: outcomeComments
           }),
           ...checkClosingSentence(narrative, hasConcern)
         ]

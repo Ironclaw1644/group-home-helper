@@ -2,10 +2,25 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/session';
+import { saveNoteOutcomes } from '@/lib/outcomes/repo';
+
+const OutcomeEntry = z.object({
+  outcomeId: z.string().uuid(),
+  addressed: z.boolean(),
+  supportLevel: z
+    .enum(['independent', 'verbal_prompt', 'gestural_prompt', 'hands_on', 'full_support'])
+    .nullable(),
+  progress: z.enum(['progressed', 'maintained', 'regressed', 'declined']).nullable(),
+  comment: z.string().max(4000).nullable()
+});
 
 const PatchBody = z.object({
   structuredData: z.record(z.unknown()),
-  narrative: z.string().max(20000)
+  narrative: z.string().max(20000),
+  // Outcome documentation autosaves alongside the chips: it is part of the same
+  // note, not a separate record, and losing it on a dropped connection would
+  // lose the part an auditor actually reads.
+  outcomes: z.array(OutcomeEntry).max(60).optional()
 });
 
 /**
@@ -55,6 +70,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (error) {
     return NextResponse.json({ error: 'Could not save' }, { status: 400 });
+  }
+
+  if (parsed.data.outcomes?.length) {
+    const saved = await saveNoteOutcomes(id, session.profile.orgId, parsed.data.outcomes);
+    if ('error' in saved) {
+      // The note body is already saved; say what did not persist rather than
+      // reporting a clean save the DSP would trust.
+      return NextResponse.json({ error: saved.error }, { status: 409 });
+    }
   }
 
   return NextResponse.json({ ok: true, updatedAt: data.updated_at });

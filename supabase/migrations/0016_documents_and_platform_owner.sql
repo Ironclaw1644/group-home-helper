@@ -1,0 +1,15 @@
+-- Documents, and the agency that owns the product.
+--
+-- Documents: ISPs, assessments, consents, behaviour plans. Bytes live in the
+-- private ghh-documents bucket; this table is the index and the access
+-- boundary. A DSP may read documents for residents in their homes — the ISP is
+-- the point of the feature and they need it on shift — but only a supervisor
+-- may upload or remove one, because a misfiled ISP is a compliance problem.
+--
+-- Platform ownership: the agency that owns the product is never billed.
+-- Deliberately NOT a cross-tenant read grant. Owning the software does not
+-- create a treatment relationship with another agency's residents, so the flag
+-- must never widen access to their PHI. RLS stays scoped by org_id for
+-- everyone, owner included.
+--
+-- (Applied via the Supabase migration API; see 0015 for the outcomes half.)

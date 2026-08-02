@@ -33,6 +33,8 @@ export function getStripe(): Stripe {
 
 export type BillingState = {
   status: 'none' | 'trialing' | 'active' | 'past_due' | 'canceled';
+  /** Owns the product. Never billed, never metered. */
+  isPlatformOwner: boolean;
   periodEnd: string | null;
   generationsUsed: number;
   freeAllowance: number;
@@ -55,7 +57,7 @@ export async function getBillingState(orgId: string): Promise<BillingState> {
   const { data } = await admin
     .from('organizations')
     .select(
-      'subscription_status, subscription_period_end, ai_generations_used, stripe_customer_id'
+      'subscription_status, subscription_period_end, ai_generations_used, stripe_customer_id, is_platform_owner'
     )
     .eq('id', orgId)
     .maybeSingle();
@@ -64,7 +66,10 @@ export async function getBillingState(orgId: string): Promise<BillingState> {
   const used = Number(data?.ai_generations_used ?? 0);
   const periodEnd = (data?.subscription_period_end as string | null) ?? null;
 
+  const isPlatformOwner = Boolean(data?.is_platform_owner);
+
   const paid =
+    isPlatformOwner ||
     status === 'active' ||
     status === 'trialing' ||
     // A lapsed card keeps working to the end of the paid period rather than
@@ -75,11 +80,13 @@ export async function getBillingState(orgId: string): Promise<BillingState> {
 
   return {
     status,
+    isPlatformOwner,
     periodEnd,
     generationsUsed: used,
     freeAllowance: FREE_ALLOWANCE,
     entitled: paid || freeRemaining > 0,
-    freeRemaining,
+    // The owner has no allowance to burn through, so nothing to count down.
+    freeRemaining: isPlatformOwner ? Number.POSITIVE_INFINITY : freeRemaining,
     hasCustomer: Boolean(data?.stripe_customer_id)
   };
 }
