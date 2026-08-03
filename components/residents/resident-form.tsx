@@ -57,6 +57,14 @@ export function ResidentForm({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Set when a plain delete is refused because records exist and the signed-in
+  // person is an administrator, who may erase them anyway.
+  const [purge, setPurge] = useState<{
+    fullName: string;
+    counts: { notes: number; documents: number; outcomes: number };
+  } | null>(null);
+  const [typedName, setTypedName] = useState('');
+
   async function remove() {
     if (!resident) return;
     setDeleting(true);
@@ -66,6 +74,31 @@ export function ResidentForm({
     const body = await res.json().catch(() => ({}));
     setDeleting(false);
     setConfirmDelete(false);
+
+    if (!res.ok) {
+      setDeleteError(body.error ?? 'Could not delete.');
+      if (body.reason === 'has_notes' && body.canPurge) {
+        setPurge({ fullName: body.fullName, counts: body.counts });
+      }
+      return;
+    }
+
+    router.push(`/residents?home=${homeId}`);
+    router.refresh();
+  }
+
+  async function purgeEverything() {
+    if (!resident) return;
+    setDeleting(true);
+    setDeleteError(null);
+
+    const res = await fetch(`/api/residents/${resident.id}/purge`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ confirm: typedName })
+    });
+    const body = await res.json().catch(() => ({}));
+    setDeleting(false);
 
     if (!res.ok) {
       setDeleteError(body.error ?? 'Could not delete.');
@@ -321,9 +354,9 @@ export function ResidentForm({
         <Card>
           <h2 className="mb-1 text-sm font-semibold text-brand-navy">Remove this resident</h2>
           <p className="mb-3 text-xs text-brand-slate">
-            Only possible while nothing has been documented about them. Once a note exists they
-            have a record, and the answer is to untick &ldquo;currently living here&rdquo; above —
-            that takes them off the daily roster and keeps their history.
+            If nothing has been documented about them yet, they are removed outright. Once notes
+            exist the usual answer is to untick &ldquo;currently living here&rdquo; above — that
+            takes them off the daily roster and keeps their history.
           </p>
 
           {deleteError ? (
@@ -332,7 +365,74 @@ export function ResidentForm({
             </div>
           ) : null}
 
-          {confirmDelete ? (
+          {purge ? (
+            <div className="mb-3 rounded-xl border border-status-missing/40 bg-status-missing/5 p-3">
+              <p className="text-xs font-semibold text-brand-navy">
+                Delete {purge.fullName} and everything on file?
+              </p>
+              <ul className="mt-2 space-y-0.5 text-xs text-brand-slate">
+                <li>
+                  {purge.counts.notes} progress note{purge.counts.notes === 1 ? '' : 's'}, signed
+                  ones included, and any addenda
+                </li>
+                <li>
+                  {purge.counts.outcomes} service-plan outcome
+                  {purge.counts.outcomes === 1 ? '' : 's'} and their support activities
+                </li>
+                <li>
+                  {purge.counts.documents} uploaded document
+                  {purge.counts.documents === 1 ? '' : 's'}, files and all
+                </li>
+              </ul>
+              <p className="mt-2 text-xs text-brand-slate">
+                This cannot be undone, and signed notes are normally permanent records. An entry
+                naming you, the count above, and the time is written to the audit log first — that
+                entry stays. Only do this for someone entered by mistake or where you are required
+                to destroy the records.
+              </p>
+
+              <label
+                htmlFor="purgeConfirm"
+                className="mt-3 block text-xs font-semibold text-brand-navy"
+              >
+                Type <span className="font-mono">{purge.fullName}</span> to confirm
+              </label>
+              <input
+                id="purgeConfirm"
+                value={typedName}
+                onChange={(e) => setTypedName(e.target.value)}
+                className={`${inputClass} mt-1.5`}
+                autoComplete="off"
+              />
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={purgeEverything}
+                  disabled={
+                    deleting || typedName.trim().toLowerCase() !== purge.fullName.toLowerCase()
+                  }
+                >
+                  {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  Delete permanently
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPurge(null);
+                    setTypedName('');
+                    setDeleteError(null);
+                  }}
+                >
+                  Keep their records
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {purge ? null : confirmDelete ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-brand-navy">
                 Delete {firstName || 'this resident'} permanently?

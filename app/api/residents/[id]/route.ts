@@ -112,10 +112,28 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     .eq('resident_id', id);
 
   if ((noteCount ?? 0) > 0) {
+    const [{ count: docCount }, { count: outcomeCount }] = await Promise.all([
+      supabase.from('documents').select('id', { count: 'exact', head: true }).eq('resident_id', id),
+      supabase
+        .from('resident_outcomes')
+        .select('id', { count: 'exact', head: true })
+        .eq('resident_id', id)
+    ]);
+
     return NextResponse.json(
       {
-        error: `${displayName(resident)} has ${noteCount} note${noteCount === 1 ? '' : 's'} on file and cannot be deleted. Mark them discharged instead — that removes them from the daily roster and keeps their records.`,
-        reason: 'has_notes'
+        error: `${displayName(resident)} has ${noteCount} note${noteCount === 1 ? '' : 's'} on file. Marking them discharged removes them from the daily roster and keeps their records — that is the usual answer.`,
+        reason: 'has_notes',
+        // An administrator can go further and erase everything. Saying so here
+        // rather than making them hunt for it, but only after the safe option
+        // has been named first.
+        canPurge: session.profile.role === 'admin',
+        counts: {
+          notes: noteCount ?? 0,
+          documents: docCount ?? 0,
+          outcomes: outcomeCount ?? 0
+        },
+        fullName: `${resident.firstName} ${resident.lastName}`
       },
       { status: 409 }
     );

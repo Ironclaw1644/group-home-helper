@@ -22,6 +22,8 @@ import {
 
 type Action = {
   href: string;
+  /** Marks the card whose destination is computed rather than fixed. */
+  key?: 'write';
   title: string;
   detail: string;
   icon: typeof Sparkles;
@@ -31,7 +33,8 @@ type Action = {
 
 const ACTIONS: Action[] = [
   {
-    href: '/',
+    href: '',
+    key: 'write',
     title: 'Write a note with the assistant',
     detail: 'Tap what happened. It writes the note in your agency’s voice — you read and sign.',
     icon: Sparkles,
@@ -65,7 +68,20 @@ const ACTIONS: Action[] = [
   }
 ];
 
-export function QuickActions({ role }: { role: 'dsp' | 'supervisor' | 'admin' }) {
+export function QuickActions({
+  role,
+  writeNoteHref
+}: {
+  role: 'dsp' | 'supervisor' | 'admin';
+  /**
+   * Where "write a note" should go: the next shift still needing one.
+   *
+   * Null when every note for the day is written. The card then explains that
+   * rather than linking somewhere — it previously pointed at "/", which is the
+   * page it sits on, so clicking it did nothing at all.
+   */
+  writeNoteHref: string | null;
+}) {
   const actions = ACTIONS.filter((a) => !a.supervisorOnly || role !== 'dsp');
 
   return (
@@ -75,10 +91,38 @@ export function QuickActions({ role }: { role: 'dsp' | 'supervisor' | 'admin' })
       </h2>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {actions.map((action) => (
+        {actions.map((action) => {
+          const isWrite = action.key === 'write';
+          const href = isWrite ? writeNoteHref : action.href;
+
+          // Every note is written, so there is nothing to link to. Say so
+          // rather than offering a button that goes nowhere. The write card is
+          // the only one whose href is computed, so it is the only one that can
+          // land here.
+          if (!href) {
+            return (
+              <div
+                key={action.title}
+                className="rounded-2xl border border-brand-navy/10 bg-brand-sand/40 p-4 sm:col-span-2"
+              >
+                <div className="flex items-start gap-3">
+                  <action.icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-slate" />
+                  <div>
+                    <p className="text-sm font-semibold text-brand-navy">{action.title}</p>
+                    <p className="mt-0.5 text-xs text-brand-slate">
+                      Every note for this day is already written. Pick another day below, or open a
+                      resident from the list.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return (
           <Link
             key={action.title}
-            href={action.href}
+            href={href}
             className={
               action.feature
                 ? 'group rounded-2xl border border-brand-teal/40 bg-brand-aqua/15 p-4 transition hover:border-brand-teal sm:col-span-2'
@@ -102,7 +146,8 @@ export function QuickActions({ role }: { role: 'dsp' | 'supervisor' | 'admin' })
               </div>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

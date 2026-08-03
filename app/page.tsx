@@ -166,7 +166,7 @@ export default async function HomePage({
 
       {supervisor ? <ComplianceAlertsCard alerts={alerts} /> : null}
 
-      <QuickActions role={session.profile.role} />
+      <QuickActions role={session.profile.role} writeNoteHref={nextHref} />
 
       <section>
         <div className="mb-3 flex flex-wrap items-center gap-3">
