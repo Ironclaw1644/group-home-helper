@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, Trash2 } from 'lucide-react';
 import { Alert, Button, Card } from '@/components/ui';
 import type { ResidentRecord } from '@/lib/types';
 
@@ -53,6 +53,28 @@ export function ResidentForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [duplicateAck, setDuplicateAck] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function remove() {
+    if (!resident) return;
+    setDeleting(true);
+    setDeleteError(null);
+
+    const res = await fetch(`/api/residents/${resident.id}`, { method: 'DELETE' });
+    const body = await res.json().catch(() => ({}));
+    setDeleting(false);
+    setConfirmDelete(false);
+
+    if (!res.ok) {
+      setDeleteError(body.error ?? 'Could not delete.');
+      return;
+    }
+
+    router.push(`/residents?home=${homeId}`);
+    router.refresh();
+  }
 
   async function save() {
     setSaving(true);
@@ -292,6 +314,47 @@ export function ResidentForm({
               </span>
             </span>
           </label>
+        </Card>
+      ) : null}
+
+      {editing ? (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold text-brand-navy">Remove this resident</h2>
+          <p className="mb-3 text-xs text-brand-slate">
+            Only possible while nothing has been documented about them. Once a note exists they
+            have a record, and the answer is to untick &ldquo;currently living here&rdquo; above —
+            that takes them off the daily roster and keeps their history.
+          </p>
+
+          {deleteError ? (
+            <div className="mb-3">
+              <Alert tone="warning">{deleteError}</Alert>
+            </div>
+          ) : null}
+
+          {confirmDelete ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-brand-navy">
+                Delete {firstName || 'this resident'} permanently?
+              </span>
+              <Button variant="danger" size="sm" onClick={remove} disabled={deleting}>
+                {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Yes, delete
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-status-missing"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete resident
+            </button>
+          )}
         </Card>
       ) : null}
 

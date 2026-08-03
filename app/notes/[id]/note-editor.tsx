@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, CloudOff, Loader2, PenLine, Sparkles } from 'lucide-react';
+import { Check, CloudOff, Loader2, PenLine, Sparkles, Trash2 } from 'lucide-react';
 import { FieldRenderer } from '@/components/form/FieldRenderer';
 import { OutcomeEntry } from '@/components/note/outcome-entry';
 import { SignaturePad, type SignatureMethod } from '@/components/form/SignaturePad';
@@ -203,6 +203,22 @@ export default function NoteEditor({
     scheduleSave(data, value);
   }
 
+  const [discarding, setDiscarding] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+
+  async function discard() {
+    setDiscarding(true);
+    const res = await fetch(`/api/notes/${note.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setSignError(body.error ?? 'Could not discard this note.');
+      setDiscarding(false);
+      return;
+    }
+    router.replace('/');
+    router.refresh();
+  }
+
   function updateActivity(next: NoteActivity) {
     setActivityEntries((prev) => {
       const updated = prev.map((a) => (a.activityId === next.activityId ? next : a));
@@ -315,6 +331,25 @@ export default function NoteEditor({
           ))}
         </ol>
       </Card>
+
+      {outcomes.length === 0 ? (
+        <Card className="border-dashed">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
+            {displayName(resident)}&apos;s service plan
+          </h2>
+          <p className="text-xs text-brand-slate">
+            No outcomes have been added for {displayName(resident)} yet, so this note documents the
+            shift only. Adding the plan is what lets a note show progress toward it — which is what
+            a reviewer looks for.
+          </p>
+          <Link
+            href={`/residents/${resident.id}/outcomes`}
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-teal hover:underline"
+          >
+            Set up the service plan →
+          </Link>
+        </Card>
+      ) : null}
 
       {outcomes.length > 0 ? (
         <Card>
@@ -534,6 +569,34 @@ export default function NoteEditor({
         <p className="mt-3 text-xs text-brand-slate">
           Signing locks this note permanently. Corrections are added as a separate addendum.
         </p>
+
+        {/* Discarding is only ever possible before signing, so it belongs here
+            rather than in a menu — after this button it stops existing. */}
+        <div className="mt-4 border-t border-brand-navy/5 pt-4">
+          {confirmDiscard ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-brand-navy">
+                Discard this draft? Everything typed here is lost.
+              </span>
+              <Button variant="danger" size="sm" onClick={discard} disabled={discarding}>
+                {discarding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Yes, discard
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>
+                Keep it
+              </Button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDiscard(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-slate hover:text-status-missing"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Discard this draft
+            </button>
+          )}
+        </div>
       </Card>
     </div>
   );

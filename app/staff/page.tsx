@@ -2,7 +2,8 @@ import { requireSupervisor } from '@/lib/auth/session';
 import { listInvitations, listStaff } from '@/lib/onboarding/invites';
 import { AppShell } from '@/components/app-shell';
 import { InvitePanel } from '@/components/onboarding/invite-panel';
-import { Badge, Card, PageHeader } from '@/components/ui';
+import { StaffRow } from '@/components/onboarding/staff-row';
+import { Card, PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,21 +35,14 @@ export default async function StaffPage() {
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-brand-navy">Who has access</h2>
-        <ul className="space-y-2">
+        <ul>
           {staff.map((member) => (
-            <li
+            <StaffRow
               key={member.id}
-              className="flex flex-wrap items-center gap-2 border-b border-brand-navy/5 pb-2 last:border-0 last:pb-0"
-            >
-              <span className="text-sm font-medium text-brand-navy">{member.fullName}</span>
-              <span className="text-xs text-brand-slate">{member.title}</span>
-              <span className="ml-auto flex items-center gap-2">
-                {member.id === session.profile.id ? <Badge tone="info">You</Badge> : null}
-                <Badge tone={member.active ? 'signed' : 'missing'}>
-                  {member.active ? member.role : 'inactive'}
-                </Badge>
-              </span>
-            </li>
+              member={member}
+              isYou={member.id === session.profile.id}
+              canManage={session.profile.role === 'admin' || member.role !== 'admin'}
+            />
           ))}
         </ul>
       </Card>

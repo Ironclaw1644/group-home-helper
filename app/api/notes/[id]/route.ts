@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getSession } from '@/lib/auth/session';
+import { getSession, isSupervisor } from '@/lib/auth/session';
 import { saveNoteActivities, saveNoteOutcomes } from '@/lib/outcomes/repo';
 
 const OutcomeEntry = z.object({
@@ -97,4 +97,55 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   return NextResponse.json({ ok: true, updatedAt: data.updated_at });
+}
+
+/**
+ * Delete a draft.
+ *
+ * Drafts only. A signed note is a permanent record and the database refuses to
+ * delete one regardless of what this route does — the check here exists to say
+ * so in words rather than surfacing a constraint violation. The correction path
+ * for a signed note is an addendum.
+ */
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+
+  const { id } = await params;
+  const supabase = await createSupabaseServerClient();
+
+  const { data: note } = await supabase
+    .from('notes')
+    .select('id, status, locked, author_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!note) return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+
+  if (note.locked || note.status === 'signed') {
+    return NextResponse.json(
+      {
+        error:
+          'This note is signed and is a permanent record. It cannot be deleted — add an addendum to correct it.'
+      },
+      { status: 409 }
+    );
+  }
+
+  // The author or a supervisor. A DSP must not be able to discard someone
+  // else's half-written shift.
+  if (note.author_id !== session.profile.id && !isSupervisor(session.profile)) {
+    return NextResponse.json(
+      { error: 'Only the person who started this note, or a supervisor, can discard it.' },
+      { status: 403 }
+    );
+  }
+
+  await supabase.from('note_activities').delete().eq('note_id', id);
+  await supabase.from('note_outcomes').delete().eq('note_id', id);
+
+  const { error } = await supabase.from('notes').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: 'Could not discard this note.' }, { status: 400 });
+
+  return NextResponse.json({ ok: true });
 }

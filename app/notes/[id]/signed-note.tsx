@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Loader2, Plus } from 'lucide-react';
+import { Download, FileCheck2, Loader2, Lock, Plus, Printer } from 'lucide-react';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
 import { formatServiceDate } from '@/lib/utils';
@@ -79,6 +79,41 @@ export default function SignedNote({
 
   return (
     <div className="space-y-5">
+      <Card className="mb-4 border-status-signed/30 bg-status-signed/10">
+        <div className="flex flex-wrap items-start gap-3">
+          <FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-status-signed" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-brand-navy">This note is signed and locked</p>
+            <p className="mt-0.5 text-xs text-brand-slate">
+              It cannot be edited. To correct or add something, use an addendum below — that is
+              the accepted way to amend a record, and it keeps both versions.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={`/notes/${note.id}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-navy/90"
+              >
+                <Printer className="h-4 w-4" />
+                Open the PDF to print
+              </a>
+              <a
+                href={`/notes/${note.id}/pdf?download=1`}
+                className="inline-flex items-center gap-2 rounded-xl border border-brand-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-brand-navy transition hover:bg-brand-sand"
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </a>
+            </div>
+            <p className="mt-2 text-xs text-brand-slate">
+              Print at 100% scale on Letter paper — &ldquo;fit to page&rdquo; shrinks the signature
+              line.
+            </p>
+          </div>
+        </div>
+      </Card>
+
       <Card>
         <div className="mb-4 flex items-center gap-2 text-xs font-semibold text-status-signed">
           <Lock className="h-4 w-4" />
