@@ -57,6 +57,74 @@ export function openaiProvider(modelOverride?: string): ModelProvider {
       return { ok: true, detail: `Configured for ${model}.` };
     },
 
+    async generateStructured<T>(
+      system: string,
+      userMessage: string,
+      schema: Record<string, unknown>,
+      schemaName: string
+    ) {
+      if (!process.env.OPENAI_API_KEY) {
+        return { ok: false as const, message: 'The assistant is not set up.' };
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      const started = Date.now();
+
+      try {
+        const res = await fetch(`${BASE_URL}/chat/completions`, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'content-type': 'application/json',
+            authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: userMessage }
+            ],
+            max_completion_tokens: MAX_TOKENS,
+            response_format: {
+              type: 'json_schema',
+              json_schema: { name: schemaName, strict: true, schema }
+            }
+          })
+        });
+
+        const body = (await res.json().catch(() => null)) as ChatResponse | null;
+        if (!res.ok) {
+          console.error('[ai] structured request failed', res.status, body?.error?.message);
+          return { ok: false as const, message: 'The assistant could not read that.' };
+        }
+
+        const choice = body?.choices?.[0];
+        if (choice?.message?.refusal) {
+          return { ok: false as const, message: 'The assistant declined that request.' };
+        }
+
+        try {
+          return {
+            ok: true as const,
+            data: JSON.parse(choice?.message?.content ?? '') as T,
+            usage: {
+              inputTokens: body?.usage?.prompt_tokens ?? null,
+              outputTokens: body?.usage?.completion_tokens ?? null,
+              cacheReadTokens: body?.usage?.prompt_tokens_details?.cached_tokens ?? null,
+              elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
+            }
+          };
+        } catch {
+          return { ok: false as const, message: 'The assistant returned something unreadable.' };
+        }
+      } catch {
+        return { ok: false as const, message: 'Could not reach the assistant.' };
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+
     async generate(system: string, userMessage: string): Promise<DraftResult> {
       const started = Date.now();
 

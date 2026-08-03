@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Check, Download, FileUp, Loader2, Upload } from 'lucide-react';
+import { AlertTriangle, Check, Download, FileUp, Loader2, Upload, Wand2 } from 'lucide-react';
 import { Alert, Button, Card } from '@/components/ui';
-import { parseRoster, TEMPLATE_CSV, type ParseResult } from '@/lib/residents/import';
+import { TEMPLATE_CSV, type ParseResult } from '@/lib/residents/import';
 
 /**
  * Roster import: paste or upload, review, then write.
@@ -26,6 +26,9 @@ export function ImportPanel({
   const [homeId, setHomeId] = useState(defaultHomeId);
   const [raw, setRaw] = useState('');
   const [parsed, setParsed] = useState<ParseResult | null>(null);
+  const [reading, setReading] = useState(false);
+  const [needsAi, setNeedsAi] = useState<string | null>(null);
+  const [usedAi, setUsedAi] = useState(false);
   const [skip, setSkip] = useState<Set<number>>(new Set());
   const [allowDuplicates, setAllowDuplicates] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -35,12 +38,46 @@ export function ImportPanel({
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function review(text: string) {
+  async function review(text: string, allowAi = false) {
     setRaw(text);
     setResult(null);
     setError(null);
     setSkip(new Set());
-    setParsed(text.trim() ? parseRoster(text) : null);
+    setNeedsAi(null);
+    setUsedAi(false);
+
+    if (!text.trim()) {
+      setParsed(null);
+      return;
+    }
+
+    setReading(true);
+    try {
+      const res = await fetch('/api/residents/parse', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text, allowAi })
+      });
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(body.error ?? 'Could not read that.');
+        setParsed(null);
+        return;
+      }
+
+      setParsed({
+        residents: body.residents ?? [],
+        errors: body.errors ?? [],
+        unknownColumns: body.unknownColumns ?? []
+      });
+      setUsedAi(Boolean(body.usedAi));
+      if (body.needsAi) setNeedsAi(body.aiHint ?? null);
+    } catch {
+      setError('Could not reach the server.');
+    } finally {
+      setReading(false);
+    }
   }
 
   async function onFile(file: File) {
@@ -149,7 +186,7 @@ export function ImportPanel({
 
       <Card>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-brand-navy">1. Choose the file</h2>
+          <h2 className="text-sm font-semibold text-brand-navy">1. Paste or upload your roster</h2>
           <button
             type="button"
             onClick={downloadTemplate}
@@ -204,16 +241,39 @@ export function ImportPanel({
         </p>
         <textarea
           value={raw}
-          onChange={(e) => review(e.target.value)}
-          rows={5}
-          placeholder={'First Name,Last Name,Room\nAlexander,Rivera,2B'}
+          onChange={(e) => setRaw(e.target.value)}
+          onBlur={() => review(raw)}
+          rows={6}
+          placeholder={'Paste anything — a spreadsheet, a table from Word, or just a list:\n\nAlexander Rivera (Alex), room 2B, he/him, DOB 4/12/85\nMaria Ochoa — 3A — she/her\nJordan Pike, they/them, North Hall'}
           className="w-full rounded-xl border border-brand-navy/15 bg-white px-3 py-2.5 font-mono text-xs text-brand-navy placeholder:text-brand-slate/60 focus:border-brand-teal focus:outline-none focus:ring-2 focus:ring-brand-teal/30"
         />
-        <p className="mt-2 text-xs text-brand-slate">
-          Needs a first name and last name column. Room, group, date of birth, pronouns, and
-          Medicaid ID are optional.
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => review(raw)} disabled={!raw.trim() || reading}>
+            {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            {reading ? 'Reading…' : 'Read this list'}
+          </Button>
+          <span className="text-xs text-brand-slate">
+            Spreadsheet columns are read instantly. Anything messier, the assistant can sort out.
+          </span>
+        </div>
       </Card>
+
+      {needsAi ? (
+        <Alert tone="warning" title="This is not laid out like a spreadsheet">
+          <p>{needsAi}</p>
+          <p className="mt-2 text-xs">
+            The text you pasted — including names and dates of birth — is sent to the note
+            assistant&apos;s provider to be read. That needs the same signed agreement as the note
+            assistant itself.
+          </p>
+          <div className="mt-3">
+            <Button size="sm" onClick={() => review(raw, true)} disabled={reading}>
+              {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              Let the assistant read it
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
 
       {parsed ? (
         <Card>
@@ -221,6 +281,7 @@ export function ImportPanel({
           <p className="mb-4 text-xs text-brand-slate">
             {selected.length} of {parsed.residents.length} will be added
             {warningCount > 0 ? ` · ${warningCount} need a look` : ''}
+            {usedAi ? ' · read by the assistant, so check each row' : ''}
           </p>
 
           {parsed.errors.length > 0 ? (

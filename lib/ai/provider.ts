@@ -71,12 +71,30 @@ export function activeProvider(): ProviderName {
   return 'local';
 }
 
+export type StructuredResult<T> =
+  | { ok: true; data: T; usage: DraftUsage }
+  | { ok: false; message: string };
+
 export type ModelProvider = {
   name: ProviderName;
   model: string;
   /** True when PHI would leave the machine — drives the de-identification default. */
   sendsDataOffMachine: boolean;
   generate(system: string, userMessage: string): Promise<DraftResult>;
+  /**
+   * Extract arbitrary structured data against a caller-supplied schema.
+   *
+   * Separate from generate() on purpose: that path is welded to the note-draft
+   * schema and its grounding guards, which are the right thing for a progress
+   * note and the wrong thing for reading a roster. Optional, because the local
+   * provider does not support it yet.
+   */
+  generateStructured?<T>(
+    system: string,
+    userMessage: string,
+    schema: Record<string, unknown>,
+    schemaName: string
+  ): Promise<StructuredResult<T>>;
   /** Actionable status for the setup screen and the health endpoint. */
   health(): Promise<{ ok: boolean; detail: string }>;
 };
