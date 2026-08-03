@@ -353,13 +353,22 @@ export default function NoteEditor({
 
       {outcomes.length > 0 ? (
         <Card>
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
-            {displayName(resident)}&apos;s service plan
-          </h2>
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
+              {displayName(resident)}&apos;s service plan
+            </h2>
+            <Link
+              href={`/residents/${resident.id}/outcomes`}
+              className="shrink-0 text-xs font-semibold text-brand-teal hover:underline"
+            >
+              Edit the plan
+            </Link>
+          </div>
           <p className="mb-4 text-xs text-brand-slate">
             {outcomes.length} {outcomes.length === 1 ? 'outcome' : 'outcomes'} from{' '}
-            {resident.pronouns.possessive} ISP. Recording these is what shows the day supported
-            the plan.
+            {resident.pronouns.possessive} ISP, filled in here as part of this note — there is no
+            separate form to go and complete. Recording them is what shows the day supported the
+            plan.
           </p>
           <div className="space-y-3">
             {outcomes.map((outcome) => {

@@ -19,7 +19,6 @@
 --   * It writes the audit record BEFORE it deletes anything, inside the same
 --     transaction, on an append-only table. If the purge commits, the evidence
 --     that it happened commits with it. If it rolls back, so does the log.
---   * It refuses the training resident, which is what example notes hang off.
 --
 -- The caller is responsible for checking that the person asking is an
 -- administrator of the resident's own organisation.
@@ -161,13 +160,6 @@ begin
     raise exception 'resident % not found', p_resident_id using errcode = 'no_data_found';
   end if;
 
-  -- Training examples are written against this row. Removing it would orphan
-  -- them, and it is nobody's record to destroy.
-  if v_resident.is_demo then
-    raise exception 'the training resident cannot be deleted'
-      using errcode = 'restrict_violation';
-  end if;
-
   select array_agg(id), count(*) filter (where status = 'signed')
     into v_note_ids, v_signed
   from ghh.notes where resident_id = p_resident_id;
@@ -201,6 +193,7 @@ begin
     jsonb_build_object(
       'name', v_resident.first_name || ' ' || v_resident.last_name,
       'home_id', v_resident.home_id,
+      'is_training_resident', v_resident.is_demo,
       'admitted_on', v_resident.created_at,
       'notes_deleted', coalesce(array_length(v_note_ids, 1), 0),
       'signed_notes_deleted', coalesce(v_signed, 0),

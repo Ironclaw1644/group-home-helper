@@ -21,6 +21,11 @@ import { displayName } from '@/lib/types';
  *   4. Uploaded files are removed afterwards, so nothing is left in storage
  *      pointing at a person who no longer exists.
  *
+ * The fictional training resident is deletable like anyone else. Protecting a
+ * made-up person from removal only made the feature look broken to an agency
+ * whose roster was still just the practice one, and a new practice resident can
+ * be added back from the residents list at any time.
+ *
  * Worth being clear about what this is for: an agency that typed someone in
  * twice, a test resident, or an honoured request to destroy records. It is not
  * the answer to "they moved out" — that is discharge, which keeps the history
@@ -62,13 +67,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // confirmed this resident belongs to the administrator's own organisation.
   const resident = await getResident(id);
   if (!resident) return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
-
-  if (resident.isDemo) {
-    return NextResponse.json(
-      { error: 'The training resident cannot be deleted — example notes are written about them.' },
-      { status: 403 }
-    );
-  }
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

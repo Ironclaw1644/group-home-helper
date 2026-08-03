@@ -4,6 +4,8 @@ import { requireSession, isSupervisor } from '@/lib/auth/session';
 import { listGroupings, listResidents } from '@/lib/residents/repo';
 import { AppShell } from '@/components/app-shell';
 import { RosterControls } from '@/components/residents/roster-controls';
+import { AddTrainingResident } from '@/components/residents/add-training-resident';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Badge, Button, Card, EmptyState, PageHeader } from '@/components/ui';
 import { displayName, type ResidentSort } from '@/lib/types';
 
@@ -51,6 +53,15 @@ export default async function ResidentsPage({
   ]);
 
   const searching = Boolean(params.q || params.group);
+
+  // Whether a practice resident exists anywhere in the org, so the offer to add
+  // one back only appears when there genuinely isn't one. Deleting them is
+  // allowed, and this is what makes that decision reversible.
+  const supabase = await createSupabaseServerClient();
+  const { count: trainingCount } = await supabase
+    .from('residents')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_demo', true);
 
   return (
     <AppShell session={session}>
@@ -146,6 +157,12 @@ export default async function ResidentsPage({
           })}
         </ul>
       )}
+
+      {canEdit && (trainingCount ?? 0) === 0 ? (
+        <div className="mt-4">
+          <AddTrainingResident homeId={home.id} />
+        </div>
+      ) : null}
     </AppShell>
   );
 }

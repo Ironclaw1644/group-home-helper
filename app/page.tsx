@@ -115,6 +115,14 @@ export default async function HomePage({
       }).toString()}`
     : null;
 
+  // When nothing is outstanding there is still a note someone might want to
+  // write — a different day, or a second pass at a shift. Falling back to the
+  // picker keeps writing a note reachable on every single day, which is not
+  // true of a link that only ever points at what the roster calls missing.
+  const writeHref =
+    nextHref ??
+    `/notes/new?${new URLSearchParams({ date: serviceDate, home: home.id }).toString()}`;
+
   const firstName = session.profile.fullName.split(' ')[0];
   const hour = Number(
     new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: tz }).format(
@@ -159,6 +167,17 @@ export default async function HomePage({
           <p className="mt-1 text-xs text-brand-slate">
             {signed.length} signed{drafts.length > 0 ? `, ${drafts.length} still in draft` : ''}.
           </p>
+          {/* Still offer the door. Nothing outstanding is not the same as
+              nothing to do — an earlier shift may need writing up, and this
+              card used to be a dead end with no way forward at all. */}
+          <Link
+            href={writeHref}
+            className="mt-3 inline-flex items-center gap-2 rounded-xl border border-brand-navy/15 bg-white px-4 py-2.5 text-sm font-semibold text-brand-navy transition hover:bg-brand-sand"
+          >
+            <Sparkles className="h-4 w-4 text-brand-teal" />
+            Write another note
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </Card>
       ) : null}
 
@@ -166,7 +185,7 @@ export default async function HomePage({
 
       {supervisor ? <ComplianceAlertsCard alerts={alerts} /> : null}
 
-      <QuickActions role={session.profile.role} writeNoteHref={nextHref} />
+      <QuickActions role={session.profile.role} writeNoteHref={writeHref} />
 
       <section>
         <div className="mb-3 flex flex-wrap items-center gap-3">

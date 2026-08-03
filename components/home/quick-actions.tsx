@@ -74,13 +74,14 @@ export function QuickActions({
 }: {
   role: 'dsp' | 'supervisor' | 'admin';
   /**
-   * Where "write a note" should go: the next shift still needing one.
+   * Where "write a note" should go: straight into the next shift needing one,
+   * or the picker when there is no obvious next.
    *
-   * Null when every note for the day is written. The card then explains that
-   * rather than linking somewhere — it previously pointed at "/", which is the
-   * page it sits on, so clicking it did nothing at all.
+   * Never null. This card used to point at "/" — the page it sits on — so
+   * clicking it did nothing, and the fix has to keep the destination real on
+   * every day, including one where all the notes happen to be written.
    */
-  writeNoteHref: string | null;
+  writeNoteHref: string;
 }) {
   const actions = ACTIONS.filter((a) => !a.supervisorOnly || role !== 'dsp');
 
@@ -94,30 +95,6 @@ export function QuickActions({
         {actions.map((action) => {
           const isWrite = action.key === 'write';
           const href = isWrite ? writeNoteHref : action.href;
-
-          // Every note is written, so there is nothing to link to. Say so
-          // rather than offering a button that goes nowhere. The write card is
-          // the only one whose href is computed, so it is the only one that can
-          // land here.
-          if (!href) {
-            return (
-              <div
-                key={action.title}
-                className="rounded-2xl border border-brand-navy/10 bg-brand-sand/40 p-4 sm:col-span-2"
-              >
-                <div className="flex items-start gap-3">
-                  <action.icon className="mt-0.5 h-5 w-5 shrink-0 text-brand-slate" />
-                  <div>
-                    <p className="text-sm font-semibold text-brand-navy">{action.title}</p>
-                    <p className="mt-0.5 text-xs text-brand-slate">
-                      Every note for this day is already written. Pick another day below, or open a
-                      resident from the list.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          }
 
           return (
           <Link

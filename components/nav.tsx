@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, FileBarChart, LayoutGrid, Settings, Users } from 'lucide-react';
+import { CalendarDays, FileBarChart, LayoutGrid, PenLine, Settings, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -32,6 +32,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   { href: '/', label: 'Today', icon: CalendarDays, onMobile: true },
+  { href: '/notes/new', label: 'Write', icon: PenLine, onMobile: true },
   { href: '/residents', label: 'Residents', icon: Users, onMobile: true },
   { href: '/reports', label: 'Reports', icon: FileBarChart, onMobile: true },
   { href: '/supervisor', label: 'Oversight', icon: LayoutGrid, supervisorOnly: true, onMobile: true },
