@@ -135,7 +135,12 @@ $$;
 -- The door
 -- ---------------------------------------------------------------------------
 
-create or replace function ghh.purge_resident(p_resident_id uuid, p_actor uuid)
+create or replace function ghh.purge_resident(
+  p_resident_id uuid,
+  p_actor uuid,
+  p_ip text default null,
+  p_user_agent text default null
+)
 returns jsonb
 language plpgsql
 security definer
@@ -186,7 +191,7 @@ begin
   -- Written first, and deliberately detailed: once the rows are gone this entry
   -- is the only remaining evidence of what was destroyed. audit_log is
   -- append-only, so this survives even the actor who wrote it.
-  insert into ghh.audit_log (org_id, actor_id, action, entity, entity_id, detail)
+  insert into ghh.audit_log (org_id, actor_id, action, entity, entity_id, detail, ip, user_agent)
   values (
     v_resident.org_id,
     p_actor,
@@ -202,7 +207,9 @@ begin
       'addenda_deleted', v_addenda,
       'outcomes_deleted', v_outcomes,
       'documents_deleted', v_documents
-    )
+    ),
+    nullif(p_ip, '')::inet,
+    p_user_agent
   );
 
   perform set_config('ghh.purge_resident_id', p_resident_id::text, true);
@@ -242,7 +249,12 @@ begin
 end;
 $$;
 
-comment on function ghh.purge_resident(uuid, uuid) is
+comment on function ghh.purge_resident(uuid, uuid, text, text) is
   'Permanently removes a resident and every record about them, including signed notes. Audited before deletion. Callers must verify the actor administers the resident''s organisation.';
 
-revoke all on function ghh.purge_resident(uuid, uuid) from public, anon, authenticated;
+-- Revoking from PUBLIC is what keeps signed-in users out. It also takes away
+-- the grant service_role was relying on, so that one goes back explicitly: the
+-- server route calls this with the service key, after checking the caller is an
+-- administrator of the resident's own organisation.
+revoke all on function ghh.purge_resident(uuid, uuid, text, text) from public, anon, authenticated;
+grant execute on function ghh.purge_resident(uuid, uuid, text, text) to service_role;
