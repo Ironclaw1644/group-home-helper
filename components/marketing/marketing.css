@@ -1,0 +1,243 @@
+/*
+ * FlipBrief landing page.
+ *
+ * Everything here is namespaced under `.fb` or `fb-`. None of it is loaded by
+ * the signed-in app, and none of it touches the per-organization brand
+ * variables in app/globals.css.
+ *
+ * The animation rule for this file, without exception: every element's plain
+ * CSS is its FINAL state, and each keyframe only declares `from`/early stops.
+ * That means switching animations off — which the reduced-motion block at the
+ * bottom does wholesale — leaves the page fully composed rather than blank.
+ * A visitor who has asked their phone to stop moving things gets the finished
+ * note, not an empty card.
+ */
+
+.fb {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headings: Fraunces set slightly soft and a touch wonky, so the display type
+   reads as printed matter rather than as a UI font scaled up. */
+.fb-display {
+  font-family: var(--font-fb-display), 'Iowan Old Style', Georgia, serif;
+  font-variation-settings: 'SOFT' 34, 'WONK' 1, 'opsz' 40;
+  letter-spacing: -0.014em;
+}
+
+/* The margin label used down the page — a form's field caption. */
+.fb-label {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Hairline rules. The page is ruled like the document it produces, so these
+   appear at every section boundary and inside the cards. */
+.fb-rule {
+  height: 1px;
+  background: rgba(20, 69, 47, 0.16);
+}
+
+/* The page-lift: a sand corner folded off the top-right of a sheet. Same idea
+   as the mark, so the motif appears at three scales — logo, card, PDF. */
+.fb-fold {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(225deg, #d9b382 0 50%, transparent 50%);
+  border-top-right-radius: inherit;
+}
+
+/* ------------------------------------------------------------------------ */
+/* Scroll reveals                                                            */
+/*                                                                           */
+/* Base state is visible. The client component adds data-fb-armed on mount,   */
+/* which is what hides it — so with JavaScript off or still loading, the      */
+/* content is simply there.                                                   */
+/* ------------------------------------------------------------------------ */
+
+[data-fb-reveal][data-fb-armed='true'] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+[data-fb-reveal] {
+  transition:
+    opacity 620ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+[data-fb-reveal][data-fb-shown='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+/* A section rule draws itself across the page as the section arrives, the way
+   a ruled line is drawn onto a form. */
+[data-fb-draw][data-fb-armed='true'] {
+  transform: scaleX(0);
+}
+
+[data-fb-draw] {
+  transform-origin: left center;
+  transition: transform 900ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+[data-fb-draw][data-fb-shown='true'] {
+  transform: scaleX(1);
+}
+
+/* ------------------------------------------------------------------------ */
+/* The hero note, assembling itself                                          */
+/*                                                                           */
+/* One timeline, expressed entirely as animation-delay. It runs once on load  */
+/* and holds. It is not decoration: it is the product claim — tap, draft,     */
+/* sign, print — performed at the speed the copy says it happens.             */
+/* ------------------------------------------------------------------------ */
+
+/* A chip goes from unselected to selected, with a small press on the way. */
+@keyframes fb-chip-select {
+  0%,
+  58% {
+    background-color: #fffdfa;
+    border-color: rgba(20, 69, 47, 0.16);
+    color: #12241c;
+    transform: none;
+  }
+  74% {
+    transform: scale(0.955);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.fb-chip-anim {
+  animation: fb-chip-select 750ms both;
+}
+
+/* Draft text arrives a word at a time. Not a typewriter — a typewriter implies
+   a machine typing, and what is actually happening is a sentence resolving out
+   of the taps above it. */
+@keyframes fb-word-in {
+  from {
+    opacity: 0;
+    filter: blur(2.5px);
+  }
+}
+
+.fb-word {
+  animation: fb-word-in 380ms both;
+}
+
+/* The signature is drawn, in the direction a right-handed person draws it.
+   The path carries pathLength="1", so the dash maths is exact regardless of
+   how the curve is edited later. */
+@keyframes fb-sign-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+.fb-sig-path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: fb-sign-draw 900ms cubic-bezier(0.5, 0.05, 0.35, 1) both;
+}
+
+@keyframes fb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.fb-rise {
+  animation: fb-rise 520ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes fb-line-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.fb-line {
+  transform-origin: left center;
+  animation: fb-line-draw 700ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* The finished form lifts out from behind the note — the page turn the mark is
+   drawn from, and the last beat of the sequence. */
+@keyframes fb-sheet-lift {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotate(0deg);
+  }
+}
+
+.fb-sheet {
+  animation: fb-sheet-lift 900ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ------------------------------------------------------------------------ */
+/* The mark's own page-turn, on hover and on focus                           */
+/* ------------------------------------------------------------------------ */
+
+.fb-mark-tip {
+  transform-origin: 38px 35px;
+  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.fb-mark:hover .fb-mark-tip,
+.fb-mark:focus-visible .fb-mark-tip {
+  transform: rotate(-13deg) translateX(1.5px);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Details/summary FAQ                                                        */
+/* ------------------------------------------------------------------------ */
+
+.fb-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.fb-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.fb-faq .fb-faq-sign {
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.fb-faq[open] .fb-faq-sign {
+  transform: rotate(45deg);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Nobody's phone has to move if they have asked it not to.                  */
+/* Base styles are the finished state, so this leaves the page complete.     */
+/* ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .fb *,
+  .fb *::before,
+  .fb *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .fb [data-fb-reveal][data-fb-armed='true'],
+  .fb [data-fb-draw][data-fb-armed='true'] {
+    opacity: 1;
+    transform: none;
+  }
+}
