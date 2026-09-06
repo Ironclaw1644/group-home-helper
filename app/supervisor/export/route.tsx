@@ -5,7 +5,8 @@ import { getSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getActiveTemplate, getAddenda, getNote, getResident, getShifts } from '@/lib/notes/repo';
 import { Form680 } from '@/lib/pdf/Form680';
-import { loadLogoDataUrl, loadSignatureDataUrl } from '@/lib/pdf/assets';
+import { loadSignatureDataUrl } from '@/lib/pdf/assets';
+import { loadPrintIdentity } from '@/lib/branding/print';
 import { logAccess } from '@/lib/audit';
 
 export const runtime = 'nodejs';
@@ -64,10 +65,12 @@ export async function GET(req: Request) {
   const truncated = rows.length > MAX_NOTES;
   const selected = truncated ? rows.slice(0, MAX_NOTES) : rows;
 
-  const [template, shifts, logoSrc] = await Promise.all([
+  // Looked up once for the whole packet — every note in it belongs to the
+  // supervisor's own agency, and prints that agency's letterhead.
+  const [template, shifts, identity] = await Promise.all([
     getActiveTemplate(),
     getShifts(homeId),
-    loadLogoDataUrl()
+    loadPrintIdentity(session.profile.orgId)
   ]);
 
   const merged = await PDFDocument.create();
@@ -91,8 +94,11 @@ export async function GET(req: Request) {
         template={template}
         shiftLabel={shifts.find((s) => s.id === note.shiftId)?.label ?? ''}
         addenda={addenda}
-        orgLine="At Home Family Service, LLC"
-        logoSrc={logoSrc}
+        orgLine={identity.orgLine}
+        letterhead={identity.letterhead}
+        address={identity.address}
+        footerLine={identity.footer}
+        logoSrc={identity.logoSrc}
         signatureSrc={signatureSrc}
       />
     );

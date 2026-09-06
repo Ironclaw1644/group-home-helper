@@ -40,6 +40,8 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   logo: { width: 54, height: 54, objectFit: 'contain', marginRight: 12 },
   orgName: { fontSize: 13, fontFamily: 'Helvetica-Bold' },
+  orgLetterhead: { fontSize: 9.5, marginTop: 2 },
+  orgAddress: { fontSize: 8.5, color: '#444444', marginTop: 2 },
 
   identityRow: { flexDirection: 'row', marginBottom: 14 },
   identityCell: { flexDirection: 'row', alignItems: 'flex-end' },
@@ -109,6 +111,7 @@ const styles = StyleSheet.create({
     right: 42
   },
   footerFormLine: { fontSize: 9, marginBottom: 4 },
+  footerAgencyLine: { fontSize: 8, color: '#444444', marginBottom: 4 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
 
   addendaHeading: {
@@ -127,13 +130,79 @@ function Blank({ value, width }: { value: string; width: number }) {
   );
 }
 
+/**
+ * The agency identity block at the top of every page.
+ *
+ * `template.renderConfig.header.org_line` is deliberately NOT consulted here.
+ * The shipped Form #680 template is global (`org_id` null) and carries one
+ * agency's legal name and logo path, so honouring it printed that agency's
+ * letterhead on every other agency's forms — which is the whole bug the
+ * org-scoped props exist to fix. The template describes the *form*; the org
+ * describes *who filed it*, and only the org may say that.
+ */
+function Letterhead({
+  orgLine,
+  letterhead,
+  address,
+  logoSrc
+}: {
+  orgLine: string;
+  letterhead?: string | null;
+  address?: string | null;
+  logoSrc?: string | null;
+}) {
+  return (
+    <View style={styles.headerRow}>
+      {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
+      <View>
+        <Text style={styles.orgName}>{orgLine}</Text>
+        {letterhead ? <Text style={styles.orgLetterhead}>{letterhead}</Text> : null}
+        {address ? <Text style={styles.orgAddress}>{address}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The form line, plus the agency's own footer when it has set one.
+ *
+ * The form number stays whatever the template says. It identifies the Virginia
+ * document a reviewer is holding, so it is not the agency's to overwrite — an
+ * agency footer is added as a second line rather than replacing it.
+ */
+function FormFooter({
+  formLine,
+  footerLine
+}: {
+  formLine: string;
+  footerLine?: string | null;
+}) {
+  return (
+    <>
+      <Text style={styles.footerFormLine}>{formLine}</Text>
+      {footerLine ? <Text style={styles.footerAgencyLine}>{footerLine}</Text> : null}
+    </>
+  );
+}
+
 export type Form680Props = {
   note: Note;
   resident: Resident;
   template: FormTemplate;
   shiftLabel: string;
   addenda: NoteAddendum[];
+  /**
+   * The agency this document belongs to. Always supplied by the caller from
+   * the requesting user's own organization — there is no default, because a
+   * default here is another agency's letterhead on someone's Medicaid record.
+   */
   orgLine: string;
+  /** Optional second identity line: a division, program, or DBA. */
+  letterhead?: string | null;
+  /** Optional address block under the agency name. */
+  address?: string | null;
+  /** Optional agency footer, printed under the form line rather than over it. */
+  footerLine?: string | null;
   /** Data URL or absolute path react-pdf can resolve. */
   logoSrc?: string | null;
   signatureSrc?: string | null;
@@ -151,6 +220,9 @@ export function Form680({
   shiftLabel,
   addenda,
   orgLine,
+  letterhead,
+  address,
+  footerLine,
   logoSrc,
   signatureSrc,
   outcomes = [],
@@ -165,6 +237,10 @@ export function Form680({
   const residentName = `${resident.firstName} ${resident.lastName}`;
   const serviceDate = formatServiceDate(note.serviceDate);
   const config = template.renderConfig;
+  // The form number identifies the Virginia document and comes from the
+  // template. The agency identity does not — see Letterhead above.
+  const formLine =
+    config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`;
 
   return (
     <Document
@@ -173,10 +249,12 @@ export function Form680({
       creator={orgLine}
     >
       <Page size="LETTER" style={styles.page}>
-        <View style={styles.headerRow}>
-          {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
-          <Text style={styles.orgName}>{config.header?.org_line ?? orgLine}</Text>
-        </View>
+        <Letterhead
+          orgLine={orgLine}
+          letterhead={letterhead}
+          address={address}
+          logoSrc={logoSrc}
+        />
 
         <View style={styles.identityRow}>
           <View style={[styles.identityCell, { flex: 1 }]}>
@@ -231,9 +309,7 @@ export function Form680({
         ) : null}
 
         <View style={styles.footer} fixed>
-          <Text style={styles.footerFormLine}>
-            {config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`}
-          </Text>
+          <FormFooter formLine={formLine} footerLine={footerLine} />
           <View style={styles.footerRow}>
             <View style={styles.identityCell}>
               <Text style={styles.fieldLabel}>Title: </Text>
@@ -254,10 +330,12 @@ export function Form680({
           already made on one sheet. */}
       {outcomes.length > 0 ? (
         <Page size="LETTER" style={styles.page}>
-          <View style={styles.headerRow}>
-            {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
-            <Text style={styles.orgName}>{config.header?.org_line ?? orgLine}</Text>
-          </View>
+          <Letterhead
+            orgLine={orgLine}
+            letterhead={letterhead}
+            address={address}
+            logoSrc={logoSrc}
+          />
 
           <Text style={styles.addendaHeading}>
             Service Plan Documentation — {residentName}, {serviceDate}, {shiftLabel}
@@ -317,9 +395,7 @@ export function Form680({
           })}
 
           <View style={styles.footer} fixed>
-            <Text style={styles.footerFormLine}>
-              {config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`}
-            </Text>
+            <FormFooter formLine={formLine} footerLine={footerLine} />
           </View>
         </Page>
       ) : null}
@@ -328,10 +404,12 @@ export function Form680({
           as it was signed — nothing is reflowed by a later correction. */}
       {addenda.length > 0 ? (
         <Page size="LETTER" style={styles.page}>
-          <View style={styles.headerRow}>
-            {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
-            <Text style={styles.orgName}>{config.header?.org_line ?? orgLine}</Text>
-          </View>
+          <Letterhead
+            orgLine={orgLine}
+            letterhead={letterhead}
+            address={address}
+            logoSrc={logoSrc}
+          />
 
           <Text style={styles.addendaHeading}>
             Addenda — {residentName}, {serviceDate}, {shiftLabel}
@@ -347,9 +425,7 @@ export function Form680({
           ))}
 
           <View style={styles.footer} fixed>
-            <Text style={styles.footerFormLine}>
-              {config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`}
-            </Text>
+            <FormFooter formLine={formLine} footerLine={footerLine} />
           </View>
         </Page>
       ) : null}

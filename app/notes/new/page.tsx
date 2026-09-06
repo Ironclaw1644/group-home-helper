@@ -33,7 +33,7 @@ export default async function NewNotePage({
   const session = await requireSession();
   const { resident: residentId, shift: shiftId, date, home: homeParam } = await searchParams;
 
-  const tz = orgTimeZone();
+  const tz = await orgTimeZone();
   const today = todayInTimeZone(tz);
   const serviceDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : today;
 

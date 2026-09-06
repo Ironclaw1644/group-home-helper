@@ -22,7 +22,7 @@ export default async function SupervisorPage({
   const session = await requireSupervisor();
   const params = await searchParams;
 
-  const tz = orgTimeZone();
+  const tz = await orgTimeZone();
   const today = todayInTimeZone(tz);
   const serviceDate = params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date) ? params.date : today;
 

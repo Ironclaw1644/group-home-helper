@@ -6,6 +6,12 @@
 --
 -- Chip vocabulary is drawn from the exemplar note in EE/detail.jpg so that
 -- generated narrative lands in the agency's existing documentation voice.
+--
+-- The render_config carries no agency name or logo. This template row is
+-- global (org_id null) and is shared by every agency on the install, so an
+-- identity here is printed on everybody's forms — which is exactly what used
+-- to happen. Who filed the document comes from ghh.organizations at render
+-- time; this JSON only describes the form itself.
 
 -- ---------------------------------------------------------------------------
 -- Organization, home, shifts
@@ -324,8 +330,6 @@ values (
   $render${
     "page": { "size": "LETTER", "margin": 42 },
     "header": {
-      "logo": "/brand/AHFS_logo.png",
-      "org_line": "At Home Family Service, LLC",
       "title": "Daily Progress Note"
     },
     "footer": {

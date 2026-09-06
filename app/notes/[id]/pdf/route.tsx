@@ -10,7 +10,8 @@ import {
   listActivities,
   listOutcomes
 } from '@/lib/outcomes/repo';
-import { loadLogoDataUrl, loadSignatureDataUrl } from '@/lib/pdf/assets';
+import { loadSignatureDataUrl } from '@/lib/pdf/assets';
+import { loadPrintIdentity } from '@/lib/branding/print';
 import { logAccess } from '@/lib/audit';
 
 // react-pdf needs the Node runtime; it does not run on edge.
@@ -46,8 +47,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const shift = shifts.find((s) => s.id === note.shiftId);
 
-  const [logoSrc, signatureSrc] = await Promise.all([
-    loadLogoDataUrl(),
+  // The letterhead comes from the requesting user's own organization. It is
+  // never a constant: this route used to print one agency's name and mark on
+  // every customer's Medicaid form.
+  const [identity, signatureSrc] = await Promise.all([
+    loadPrintIdentity(session.profile.orgId),
     loadSignatureDataUrl(note.signatureImagePath)
   ]);
 
@@ -62,8 +66,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       noteActivities={noteActivities}
       shiftLabel={shift?.label ?? ''}
       addenda={addenda}
-      orgLine="At Home Family Service, LLC"
-      logoSrc={logoSrc}
+      orgLine={identity.orgLine}
+      letterhead={identity.letterhead}
+      address={identity.address}
+      footerLine={identity.footer}
+      logoSrc={identity.logoSrc}
       signatureSrc={signatureSrc}
     />
   );

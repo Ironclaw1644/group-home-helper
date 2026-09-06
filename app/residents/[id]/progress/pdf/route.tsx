@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { renderToBuffer } from '@react-pdf/renderer';
-import { getSession } from '@/lib/auth/session';
+import { getSession, orgTimeZoneFor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getResident } from '@/lib/residents/repo';
 import { listOutcomes, outcomeProgress } from '@/lib/outcomes/repo';
 import { QuarterlyReport } from '@/lib/pdf/QuarterlyReport';
-import { loadLogoDataUrl } from '@/lib/pdf/assets';
+import { loadPrintIdentity } from '@/lib/branding/print';
 import { logAccess } from '@/lib/audit';
+import { addDays, todayInTimeZone } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,8 +24,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const { id } = await params;
   const url = new URL(req.url);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  // "Today" and the default window are the agency's, not the server's. A UTC
+  // host would otherwise roll the quarter over hours early for a west-coast
+  // customer and silently change which notes are counted.
+  const timeZone = await orgTimeZoneFor(session.profile.orgId);
+  const today = todayInTimeZone(timeZone);
+  const ninetyDaysAgo = addDays(today, -90);
   const from = url.searchParams.get('from') ?? ninetyDaysAgo;
   const to = url.searchParams.get('to') ?? today;
 
@@ -47,7 +52,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   await logAccess(supabase, req, 'report.quarterly', 'resident', id, { from, to });
 
-  const logoSrc = await loadLogoDataUrl();
+  const identity = await loadPrintIdentity(session.profile.orgId);
 
   const buffer = await renderToBuffer(
     <QuarterlyReport
@@ -65,9 +70,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       progress={progress}
       from={from}
       to={to}
-      orgLine="At Home Family Service, LLC"
+      orgLine={identity.orgLine}
+      letterhead={identity.letterhead}
+      address={identity.address}
+      footerLine={identity.footer}
+      generatedOn={today}
       signedNoteCount={count ?? 0}
-      logoSrc={logoSrc}
+      logoSrc={identity.logoSrc}
     />
   );
 

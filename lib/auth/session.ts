@@ -79,7 +79,64 @@ export function isSupervisor(profile: Profile): boolean {
   return profile.role === 'supervisor' || profile.role === 'admin';
 }
 
-/** The org's timezone drives what "today" means on the roster. */
-export function orgTimeZone(): string {
-  return process.env.NEXT_PUBLIC_ORG_TIMEZONE || 'America/New_York';
+/**
+ * Last-resort timezone.
+ *
+ * `NEXT_PUBLIC_ORG_TIMEZONE` is honoured for a single-tenant self-hosted
+ * install that has one agency and never set the column. It is a fallback only:
+ * on a shared install the org's own row decides, because a process-wide
+ * timezone silently files a Pacific night shift under tomorrow's service date.
+ */
+function fallbackTimeZone(): string {
+  const configured = process.env.NEXT_PUBLIC_ORG_TIMEZONE;
+  return isValidTimeZone(configured) ? (configured as string) : 'America/New_York';
 }
+
+/**
+ * An unusable timezone must not take the roster down.
+ *
+ * `organizations.timezone` is written from the browser's own
+ * `Intl.DateTimeFormat().resolvedOptions()` at signup, so it is caller-supplied
+ * and can also go stale after an IANA rename. `DateTimeFormat` throws
+ * RangeError on a name it does not know, and that would 500 the home page
+ * rather than mis-date a single note.
+ */
+export function isValidTimeZone(value: unknown): boolean {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The same lookup for a known org id, for routes that already have one. */
+export const orgTimeZoneFor = cache(async (orgId: string): Promise<string> => {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data } = await supabase
+      .from('organizations')
+      .select('timezone')
+      .eq('id', orgId)
+      .maybeSingle();
+
+    return isValidTimeZone(data?.timezone) ? (data!.timezone as string) : fallbackTimeZone();
+  } catch {
+    return fallbackTimeZone();
+  }
+});
+
+/**
+ * The organization's timezone — what "today" means for this agency.
+ *
+ * Cached per request, so the roster, the compliance panel and a PDF render in
+ * one request share a single lookup. Every service-date boundary in the app
+ * goes through here: a shift written at 22:00 in Los Angeles belongs to that
+ * calendar day in Los Angeles, not to whatever day it already is in UTC.
+ */
+export const orgTimeZone = cache(async (): Promise<string> => {
+  const session = await getSession();
+  if (!session) return fallbackTimeZone();
+  return orgTimeZoneFor(session.profile.orgId);
+});
