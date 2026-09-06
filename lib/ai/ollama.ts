@@ -47,6 +47,16 @@ const KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
  */
 const THINK = process.env.OLLAMA_THINK === 'true';
 
+/**
+ * Ollama has no authentication of its own. When the model is reached over
+ * anything other than loopback it must sit behind a proxy that requires a
+ * bearer token, and this is how we present it. Unset for a local socket.
+ */
+function authHeaders(): Record<string, string> {
+  const token = process.env.OLLAMA_AUTH_TOKEN;
+  return token ? { authorization: `Bearer ${token}` } : {};
+}
+
 type OllamaResponse = {
   message?: { content?: string };
   prompt_eval_count?: number;
@@ -74,7 +84,8 @@ function request(path: string, payload: unknown, timeoutMs: number): Promise<{ s
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'content-length': Buffer.byteLength(data)
+          'content-length': Buffer.byteLength(data),
+          ...authHeaders()
         }
       },
       (res) => {
@@ -106,7 +117,7 @@ function get(path: string, timeoutMs: number): Promise<{ status: number; body: s
   return new Promise((resolve, reject) => {
     const url = new URL(ollamaHost() + path);
     const transport = url.protocol === 'https:' ? https : http;
-    const req = transport.get(url, (res) => {
+    const req = transport.get(url, { headers: authHeaders() }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => (body += chunk));
