@@ -12,6 +12,7 @@
  * as an audit finding on a Medicaid billing record months later.
  */
 import { addDays, isValidTimeZone, todayInTimeZone } from '../lib/utils';
+import { safeNextPath } from '../lib/auth/redirect';
 
 let failures = 0;
 
@@ -91,9 +92,23 @@ try {
 }
 check('Intl really does throw on an unknown zone, which is what we are guarding', threw);
 
+console.log('\nA reset link cannot bounce someone off-origin\n');
+
+// `next` rides on a URL that was in an email inbox. An absolute value here
+// would let a crafted reset link drop a care worker on a copy of the sign-in
+// page at the moment they least expect it.
+eq('an ordinary path is kept', safeNextPath('/reset'), '/reset');
+eq('a nested path is kept', safeNextPath('/residents/import'), '/residents/import');
+eq('an absolute URL is refused', safeNextPath('https://evil.example'), '/reset');
+eq('a protocol-relative host is refused', safeNextPath('//evil.example'), '/reset');
+eq('a backslash host is refused', safeNextPath('/\\evil.example'), '/reset');
+eq('a javascript: URL is refused', safeNextPath('javascript:alert(1)'), '/reset');
+eq('null falls back', safeNextPath(null), '/reset');
+eq('undefined falls back', safeNextPath(undefined), '/reset');
+
 console.log('');
 if (failures > 0) {
-  console.error(`${failures} timezone check(s) failed.\n`);
+  console.error(`${failures} check(s) failed.\n`);
   process.exit(1);
 }
-console.log('All timezone checks passed.\n');
+console.log('All timezone and auth-redirect checks passed.\n');

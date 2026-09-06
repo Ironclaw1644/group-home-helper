@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '@/lib/outcomes/virginia-library';
 import { seedDemoHistory } from './demo-history';
+import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/auth/password';
 
 /**
  * Account provisioning: invites, new agencies, and demo sandboxes.
@@ -17,8 +18,6 @@ import { seedDemoHistory } from './demo-history';
 
 /** Long enough that guessing is not a strategy; short enough to read aloud. */
 const CODE_BYTES = 12;
-
-const MIN_PASSWORD_LENGTH = 10;
 
 /** Demo sandboxes disappear after this. Long enough to actually try it. */
 const DEMO_LIFETIME_HOURS = 48;
@@ -46,13 +45,6 @@ export type ProvisionResult =
  */
 export function generateInviteCode(): string {
   return randomBytes(CODE_BYTES).toString('base64url');
-}
-
-function passwordProblem(password: string): string | null {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
-  }
-  return null;
 }
 
 /**

@@ -15,6 +15,10 @@ import { NextResponse, type NextRequest } from 'next/server';
  *   /signup  — an agency creating its own workspace
  *   /api/auth/demo — provisioning a throwaway sandbox
  *
+ * And the way back in. /forgot and /reset are for someone who cannot sign in
+ * by definition, so gating them behind a session makes being locked out
+ * permanent — which is what it was before they existed.
+ *
  * None of these read resident data. Each one authorizes itself: /join checks
  * the code server-side, /signup only ever creates an empty org, and the demo
  * route creates fictional data in an org nobody else can reach.
@@ -22,6 +26,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PUBLIC_PATHS = [
   '/login',
   '/auth/callback',
+  '/forgot',
+  '/reset',
   '/download',
   '/api/app-version',
   '/join',
@@ -76,6 +82,9 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // /reset is deliberately excluded: following a recovery link signs the
+  // person in, and bouncing them to the roster would skip the password change
+  // they came to make.
   if (user && pathname === '/login') {
     const homeUrl = req.nextUrl.clone();
     homeUrl.pathname = '/';
