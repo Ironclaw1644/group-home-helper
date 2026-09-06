@@ -12,6 +12,7 @@
     "verify:guardrails": "tsx --tsconfig scripts/tsconfig.json scripts/verify-guardrails.ts",
     "verify:ai": "tsx --tsconfig scripts/tsconfig.json scripts/verify-ai-grounding.ts",
     "verify:branding": "tsx --tsconfig scripts/tsconfig.json scripts/verify-branding.tsx",
+    "verify:timezone": "tsx --tsconfig scripts/tsconfig.json scripts/verify-timezone.ts",
     "bootstrap:admin": "tsx --tsconfig scripts/tsconfig.json scripts/bootstrap-admin.ts",
     "db:bundle": "tsx --tsconfig scripts/tsconfig.json scripts/bundle-migrations.ts",
     "db:verify": "tsx --tsconfig scripts/tsconfig.json scripts/verify-db.ts",

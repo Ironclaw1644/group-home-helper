@@ -1,6 +1,8 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { orgTimeZone } from '@/lib/auth/session';
+import { addDays, todayInTimeZone } from '@/lib/utils';
 
 /**
  * The things that get a provider cited, surfaced before they do.
@@ -35,11 +37,13 @@ export async function complianceAlerts(homeId?: string): Promise<ComplianceAlert
   const supabase = await createSupabaseServerClient();
   const alerts: ComplianceAlert[] = [];
 
-  const today = new Date().toISOString().slice(0, 10);
-  const soon = new Date(Date.now() + EXPIRY_WARNING_DAYS * 86400000).toISOString().slice(0, 10);
-  const staleBefore = new Date(Date.now() - STALE_OUTCOME_DAYS * 86400000)
-    .toISOString()
-    .slice(0, 10);
+  // Every window here is measured in the agency's own calendar. A document
+  // that expires today is not expired yet in Los Angeles while the server has
+  // already rolled over to tomorrow in UTC.
+  const timeZone = await orgTimeZone();
+  const today = todayInTimeZone(timeZone);
+  const soon = addDays(today, EXPIRY_WARNING_DAYS);
+  const staleBefore = addDays(today, -STALE_OUTCOME_DAYS);
 
   // RLS already limits this to homes the caller may see.
   let residentQuery = supabase

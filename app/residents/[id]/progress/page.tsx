@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, FileDown, TrendingUp } from 'lucide-react';
-import { requireSession } from '@/lib/auth/session';
+import { requireSession, orgTimeZone } from '@/lib/auth/session';
 import { getResident } from '@/lib/residents/repo';
 import { listOutcomes, outcomeProgress } from '@/lib/outcomes/repo';
 import { AppShell } from '@/components/app-shell';
 import { Alert, Badge, Button, Card, EmptyState, PageHeader } from '@/components/ui';
 import { displayName } from '@/lib/types';
-import { formatServiceDate } from '@/lib/utils';
+import { addDays, formatServiceDate, todayInTimeZone } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +32,9 @@ export default async function ProgressPage({
   const resident = await getResident(id);
   if (!resident) notFound();
 
-  const today = new Date().toISOString().slice(0, 10);
-  const ninety = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const timeZone = await orgTimeZone();
+  const today = todayInTimeZone(timeZone);
+  const ninety = addDays(today, -90);
   const from = /^\d{4}-\d{2}-\d{2}$/.test(q.from ?? '') ? q.from! : ninety;
   const to = /^\d{4}-\d{2}-\d{2}$/.test(q.to ?? '') ? q.to! : today;
 
@@ -49,7 +50,7 @@ export default async function ProgressPage({
   );
 
   const range = (days: number) => {
-    const start = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const start = addDays(today, -days);
     return `/residents/${id}/progress?from=${start}&to=${today}`;
   };
 

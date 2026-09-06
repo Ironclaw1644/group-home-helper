@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Home, Profile, StaffRole } from '@/lib/types';
+import { isValidTimeZone } from '@/lib/utils';
 
 export type Session = {
   userId: string;
@@ -90,25 +91,6 @@ export function isSupervisor(profile: Profile): boolean {
 function fallbackTimeZone(): string {
   const configured = process.env.NEXT_PUBLIC_ORG_TIMEZONE;
   return isValidTimeZone(configured) ? (configured as string) : 'America/New_York';
-}
-
-/**
- * An unusable timezone must not take the roster down.
- *
- * `organizations.timezone` is written from the browser's own
- * `Intl.DateTimeFormat().resolvedOptions()` at signup, so it is caller-supplied
- * and can also go stale after an IANA rename. `DateTimeFormat` throws
- * RangeError on a name it does not know, and that would 500 the home page
- * rather than mis-date a single note.
- */
-export function isValidTimeZone(value: unknown): boolean {
-  if (typeof value !== 'string' || !value.trim()) return false;
-  try {
-    new Intl.DateTimeFormat('en-CA', { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /** The same lookup for a known org id, for routes that already have one. */

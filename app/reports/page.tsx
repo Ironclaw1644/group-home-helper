@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { FileBarChart, FileDown, FolderOpen, Target, TrendingUp } from 'lucide-react';
-import { requireSession, isSupervisor } from '@/lib/auth/session';
+import { requireSession, isSupervisor, orgTimeZone } from '@/lib/auth/session';
 import { listResidents } from '@/lib/residents/repo';
 import { AppShell } from '@/components/app-shell';
 import { Badge, Card, EmptyState, PageHeader } from '@/components/ui';
 import { displayName } from '@/lib/types';
+import { addDays, todayInTimeZone } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +36,9 @@ export default async function ReportsPage({
   const residents = await listResidents({ homeId: home.id, status: 'active' });
   const supervisor = isSupervisor(session.profile);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const quarterAgo = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const timeZone = await orgTimeZone();
+  const today = todayInTimeZone(timeZone);
+  const quarterAgo = addDays(today, -90);
 
   return (
     <AppShell session={session}>

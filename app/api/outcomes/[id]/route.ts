@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession, isSupervisor } from '@/lib/auth/session';
+import { getSession, isSupervisor, orgTimeZoneFor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { retireOutcome, updateOutcome } from '@/lib/outcomes/repo';
 import { logAccess } from '@/lib/audit';
+import { todayInTimeZone } from '@/lib/utils';
 
 const PatchBody = z.object({
   title: z.string().trim().min(1).max(160).optional(),
@@ -57,7 +58,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   const { id } = await params;
-  const result = await retireOutcome(id, new Date().toISOString().slice(0, 10));
+  // The retirement date lands on the service plan and on printed forms, so it
+  // is the agency's calendar day, not the server's.
+  const retiredOn = todayInTimeZone(await orgTimeZoneFor(session.profile.orgId));
+  const result = await retireOutcome(id, retiredOn);
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 });
 
   const supabase = await createSupabaseServerClient();

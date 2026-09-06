@@ -16,15 +16,41 @@ export function formatServiceDate(isoDate: string): string {
   return `${m}/${d}/${y}`;
 }
 
-/** Today in the given IANA timezone as `YYYY-MM-DD`. */
-export function todayInTimeZone(timeZone: string): string {
+/**
+ * An unusable timezone must not take a page down.
+ *
+ * `organizations.timezone` is written from the browser's own
+ * `Intl.DateTimeFormat().resolvedOptions()` at sign-up, so it is
+ * caller-supplied and can also go stale after an IANA rename.
+ * `DateTimeFormat` throws RangeError on a name it does not know, and that
+ * would 500 the roster rather than mis-date a single note.
+ */
+export function isValidTimeZone(value: unknown): boolean {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  try {
+    new Intl.DateTimeFormat('en-CA', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Today in the given IANA timezone as `YYYY-MM-DD`.
+ *
+ * `now` is injectable so the day-boundary behaviour can be tested against a
+ * fixed instant. That boundary is the whole point of this function: at 22:00
+ * on 1 June in Los Angeles it is already 2 June in UTC, and a note filed under
+ * the wrong service date is an audit finding on a Medicaid record.
+ */
+export function todayInTimeZone(timeZone: string, now: Date = new Date()): string {
   const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
   });
-  return fmt.format(new Date());
+  return fmt.format(now);
 }
 
 /** Shift a `YYYY-MM-DD` string by whole days, staying in calendar space. */
