@@ -129,7 +129,9 @@ export default async function BillingPage({
             'Writing and editing notes',
             'Signing, and the lock that follows',
             'Duplicate-note detection',
-            'Form #680 PDFs',
+            // Not "Form #680 PDFs". This list is shown to every agency on the
+            // install and only some of them file in Virginia.
+            'Printed PDFs of your state’s form',
             'Batch export for audits',
             'Resident roster management',
             'The access audit log'

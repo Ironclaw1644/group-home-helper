@@ -1,5 +1,16 @@
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { interpolate } from '@/lib/forms/interpolate';
+import {
+  DEFAULT_ACTIVITY_LABELS,
+  DEFAULT_ADDENDA_HEADING,
+  DEFAULT_IDENTITY_ROWS,
+  DEFAULT_META_ROWS,
+  DEFAULT_OUTCOME_HEADING,
+  DEFAULT_SIGNATURE_FOOTER_FIELDS,
+  DEFAULT_SIGNATURE_LABEL,
+  DEFAULT_STATUS_LABELS,
+  formCaptions
+} from '@/lib/forms/layout-defaults';
 import { outcomeStatus } from '@/lib/outcomes/answered';
 import { readSource } from '@/lib/pdf/print-context';
 import type {
@@ -159,56 +170,6 @@ const styles = StyleSheet.create({
   addendum: { marginBottom: 12 },
   addendumMeta: { fontSize: 8, color: '#444444', marginTop: 3 }
 });
-
-// ---------------------------------------------------------------------------
-// Defaults
-//
-// These ARE Form #680. The shipped #680 template row carries none of the layout
-// keys below, so these constants are what it prints — which is exactly why they
-// are written as the fallback rather than as an "example" template. Changing
-// one changes a signed Medicaid record's appearance; verify:jurisdictions
-// fails if any of them drift.
-// ---------------------------------------------------------------------------
-
-const DEFAULT_IDENTITY_ROWS: PrintRow[] = [
-  {
-    fields: [
-      { source: 'resident_legal_name', label: "Individual's Name: ", width: 190, grow: true },
-      { source: 'medicaid_id', label: 'Medicaid: ', width: 120 }
-    ]
-  }
-];
-
-const DEFAULT_META_ROWS: PrintRow[] = [
-  {
-    fields: [
-      { source: 'service_date', label: 'Date: ', width: 110 },
-      { source: 'shift_label', label: 'Shift/Time: ', width: 110 }
-    ]
-  }
-];
-
-const DEFAULT_SIGNATURE_LABEL = 'Staff Signature: ';
-
-const DEFAULT_SIGNATURE_FOOTER_FIELDS: PrintField[] = [
-  { source: 'signature_title', label: 'Title: ', width: 90 },
-  { source: 'service_date', label: 'Date: ', width: 90 }
-];
-
-const DEFAULT_OUTCOME_HEADING = 'Service Plan Documentation — {resident}, {date}, {shift}';
-const DEFAULT_ADDENDA_HEADING = 'Addenda — {resident}, {date}, {shift}';
-
-const DEFAULT_STATUS_LABELS = {
-  addressed: 'Addressed this shift',
-  not_addressed: 'Not addressed this shift',
-  unanswered: 'Not recorded — no answer documented'
-} as const;
-
-const DEFAULT_ACTIVITY_LABELS = {
-  yes: 'Yes',
-  no: 'No',
-  unanswered: 'Not recorded'
-} as const;
 
 /**
  * A page heading, as the sequence of text runs react-pdf would have received
@@ -393,8 +354,12 @@ export function TemplatePdf({
 
   // The form number identifies the document and comes from the template. The
   // agency identity does not — see Letterhead above.
-  const formLine =
-    config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`;
+  //
+  // Resolved through formCaptions so the on-screen preview and the sign-up
+  // picker cannot promise a caption this renderer would not print. A template
+  // with no number and no form line falls back to its own name rather than
+  // printing a bare "Form #", which claims a numbered state document exists.
+  const formLine = formCaptions(template).formLine;
   const citation = config.footer?.legal_citation ?? null;
 
   const identityRows = config.identity_rows ?? DEFAULT_IDENTITY_ROWS;

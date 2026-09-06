@@ -79,8 +79,11 @@ export function LibraryPicker({
   return (
     <Card>
       <h2 className="mb-1 text-sm font-semibold text-brand-navy">Starter outcomes</h2>
+      {/* The library comes from this agency's own jurisdiction's template, so
+          the structure it follows is that state's — naming Virginia here would
+          have been wrong for every other one. */}
       <p className="mb-4 text-xs text-brand-slate">
-        Written to Virginia DBHDS&apos;s formula so the structure is right. <strong>Rewrite every
+        Written to your state&apos;s formula so the structure is right. <strong>Rewrite every
         one in {residentName}&apos;s own words</strong> — a template outcome is not
         person-centered, which is what the state actually checks for.
       </p>

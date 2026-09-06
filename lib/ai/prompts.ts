@@ -34,7 +34,17 @@ const STYLE_PATTERNS = [
   .map((p) => `- ${p}`)
   .join('\n');
 
-export const SYSTEM_PROMPT = `You write Daily Progress Notes (Form #680) for a Medicaid home and community based services provider. A Direct Support Professional records what happened during a shift by selecting from a fixed set of options; your job is to render those selections as the narrative paragraph that goes on the form.
+/**
+ * Deliberately names no form and no state.
+ *
+ * It used to open "You write Daily Progress Notes (Form #680)", which told an
+ * Ohio provider's model it was filling in Virginia's document. This prompt is a
+ * fixed prefix shared by every customer on the install, so it belongs to the
+ * engine — and the engine does not know what state it is in. What the form
+ * actually asks arrives in `<form_prompts>` in the per-note message, straight
+ * off the template, which is where anything jurisdiction-specific has to live.
+ */
+export const SYSTEM_PROMPT = `You write daily progress notes for a Medicaid home and community based services provider. A Direct Support Professional records what happened during a shift by selecting from a fixed set of options; your job is to render those selections as the narrative paragraph that goes on the form.
 
 This note is part of a resident's medical record and is the billing substantiation for the shift. An auditor may read it years from now.
 
