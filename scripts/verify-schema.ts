@@ -110,7 +110,7 @@ const IGNORED_FIELDS: Record<string, string[]> = {
 // Build a fresh database from the repo
 // ---------------------------------------------------------------------------
 
-async function buildFromRepo(): Promise<Snapshot> {
+async function buildFromRepo(): Promise<{ built: Snapshot; db: PGlite }> {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.waitReady;
 
@@ -141,8 +141,7 @@ async function buildFromRepo(): Promise<Snapshot> {
     built[name] = res.rows;
   }
 
-  await db.close();
-  return built;
+  return { built, db };
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +211,174 @@ function checkEveryTableIsProtected(built: Snapshot) {
   }
 }
 
+/**
+ * Signed notes stay immutable, and reaping a demo does not change that.
+ *
+ * Demo sandboxes accumulated — sixteen of them beside the one real agency —
+ * because `prune_expired_demos()` deletes an org and lets the cascade reach its
+ * notes, and 0003 refuses to delete a signed note. Every prune raised and
+ * removed nothing.
+ *
+ * The tempting fix is to relax the trigger for demo rows. This proves the fix
+ * that was taken instead: reaping walks each resident through
+ * `ghh.purge_resident()`, the single audited door that already existed, and the
+ * trigger is untouched. So the checks below assert both halves — that a signed
+ * note still cannot be deleted or edited by a connection with every privilege,
+ * and that the demo cleanup nonetheless completes.
+ *
+ * PGlite connects as a superuser, which is strictly more privilege than the
+ * service_role the auditor attacked production with. If it cannot get through
+ * here, service_role cannot get through there.
+ */
+async function checkImmutabilityAndTheDemoDoor(db: PGlite) {
+  console.log('\nsigned notes are immutable, and the demo reaper does not change that\n');
+
+  const ORG = '00000000-0000-0000-0000-000000000001';
+
+  // A demo org shaped like the ones the endpoint creates: its own org, home,
+  // resident, and a signed note.
+  const setup = await db.query<{ note_id: string; resident_id: string; demo_org: string; author_id: string }>(`
+    with o as (
+      insert into ghh.organizations (name, is_demo, expires_at, created_via)
+      values ('Demo Agency', true, now() - interval '1 day', 'demo')
+      returning id
+    ),
+    h as (
+      insert into ghh.homes (org_id, name) select id, 'Demo House' from o returning id, org_id
+    ),
+    s as (
+      insert into ghh.shifts (org_id, home_id, label, start_time, end_time, sort_order)
+      select org_id, id, '7AM-7PM', '07:00', '19:00', 0 from h returning id
+    ),
+    u as (
+      insert into auth.users (email) values ('demo-verify@demo.invalid') returning id
+    ),
+    p as (
+      insert into ghh.profiles (id, org_id, full_name, title, role)
+      select u.id, o.id, 'Demo User', 'DSP', 'admin' from u, o returning id
+    ),
+    r as (
+      insert into ghh.residents (org_id, home_id, first_name, last_name, is_demo)
+      select org_id, id, 'Alex', 'Sample', true from h returning id, org_id
+    ),
+    n as (
+      insert into ghh.notes (org_id, template_id, template_version, resident_id, home_id,
+                             shift_id, service_date, author_id, narrative)
+      select r.org_id, t.id, t.version, r.id, h.id, s.id, current_date, p.id,
+             'A signed demo note.'
+      from r, h, s, p, ghh.form_templates t limit 1
+      returning id, resident_id, org_id, author_id
+    )
+    select n.id as note_id, n.resident_id, n.org_id as demo_org, n.author_id from n`);
+
+  const { note_id: noteId, demo_org: demoOrg, author_id: authorId } = setup.rows[0];
+
+  // Signed by update, the way the app does it: `locked` is set by the trigger,
+  // and a check constraint refuses a signed row that is not locked.
+  await db.query(
+    `update ghh.notes
+        set status = 'signed', signed_at = now(), signed_by = $2,
+            signature_name = 'Demo User', signature_title = 'DSP'
+      where id = $1`,
+    [noteId, authorId]
+  );
+
+  const locked = await db.query<{ locked: boolean }>(
+    'select locked from ghh.notes where id = $1',
+    [noteId]
+  );
+  check('signing sets locked by itself', locked.rows[0]?.locked === true);
+
+  const refuses = async (label: string, sql: string, params: unknown[] = []) => {
+    let blocked = false;
+    try {
+      await db.query(sql, params);
+    } catch {
+      blocked = true;
+    }
+    check(label, blocked, 'a privileged connection got through');
+  };
+
+  await refuses(
+    'a signed note cannot be edited, even as superuser',
+    `update ghh.notes set narrative = 'tampered' where id = $1`,
+    [noteId]
+  );
+  await refuses(
+    'a signed note cannot be deleted, even as superuser',
+    `delete from ghh.notes where id = $1`,
+    [noteId]
+  );
+  await refuses('the audit log cannot be rewritten', `update ghh.audit_log set action = 'x'`);
+  await refuses('the audit log cannot be deleted', `delete from ghh.audit_log`);
+
+  const narrative = await db.query<{ narrative: string }>(
+    'select narrative from ghh.notes where id = $1',
+    [noteId]
+  );
+  check(
+    'the signed text is unchanged after every attempt',
+    narrative.rows[0]?.narrative === 'A signed demo note.',
+    narrative.rows[0]?.narrative
+  );
+
+  // The old prune: delete the org and let the cascade do it. This is what has
+  // been failing silently in production, and it must still fail — the day it
+  // starts working is the day signed notes stopped being immutable.
+  await refuses(
+    'deleting a demo org outright is still refused while it holds a signed note',
+    `delete from ghh.organizations where id = $1`,
+    [demoOrg]
+  );
+
+  // The reaper's path: each resident through purge_resident, then the org.
+  let reaped = true;
+  try {
+    for (const r of (
+      await db.query<{ id: string }>('select id from ghh.residents where org_id = $1', [demoOrg])
+    ).rows) {
+      await db.query('select ghh.purge_resident($1, null, null, $2)', [r.id, 'verify']);
+    }
+    await db.query('delete from ghh.organizations where id = $1 and is_demo', [demoOrg]);
+  } catch (err) {
+    reaped = false;
+    check('the reaper path completes', false, (err as Error).message);
+  }
+
+  if (reaped) {
+    check('the reaper path completes', true);
+
+    const left = await db.query<{ n: number }>(
+      `select (select count(*) from ghh.organizations where id = $1)
+            + (select count(*) from ghh.notes where org_id = $1)
+            + (select count(*) from ghh.residents where org_id = $1)
+            + (select count(*) from ghh.note_activities where org_id = $1)
+            + (select count(*) from ghh.note_outcomes where org_id = $1)
+            + (select count(*) from ghh.outcome_activities where org_id = $1)
+            + (select count(*) from ghh.homes where org_id = $1)
+            + (select count(*) from ghh.profiles where org_id = $1) as n`,
+      [demoOrg]
+    );
+    check('the demo org leaves no child rows behind', Number(left.rows[0]?.n) === 0, String(left.rows[0]?.n));
+
+    const trail = await db.query<{ n: number }>(
+      `select count(*) as n from ghh.audit_log where action = 'resident.purge'`
+    );
+    check(
+      'and the purge is recorded on the append-only audit log',
+      Number(trail.rows[0]?.n) > 0,
+      'the only remaining evidence of what was destroyed'
+    );
+  }
+
+  // The real agency is untouched by any of it.
+  const real = await db.query<{ n: number }>(
+    'select count(*) as n from ghh.organizations where id = $1 and not is_demo',
+    [ORG]
+  );
+  check('the real agency is still there', Number(real.rows[0]?.n) === 1);
+}
+
 // ---------------------------------------------------------------------------
 
 async function refresh() {
@@ -240,10 +407,12 @@ async function main() {
   }
 
   const live = JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8')) as Snapshot;
-  const built = await buildFromRepo();
+  const { built, db } = await buildFromRepo();
 
   compare(built, live);
   checkEveryTableIsProtected(built);
+  await checkImmutabilityAndTheDemoDoor(db);
+  await db.close();
 
   console.log('');
   if (failures > 0) {

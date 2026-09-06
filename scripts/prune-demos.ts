@@ -1,76 +1,93 @@
 /**
- * Delete expired demo sandboxes.
+ * Delete demo sandboxes.
  *
- *   npm run demo:prune
+ *   npm run demo:prune                      list what would go (dry run)
+ *   npm run demo:prune -- --confirm         remove every expired sandbox
+ *   npm run demo:prune -- --all --confirm   remove every sandbox, expired or not
  *
- * Every demo visitor gets their own org, so without this they accumulate
- * forever. Deletion cascades from ghh.organizations, and the function only ever
- * selects rows flagged is_demo — a real agency cannot be caught by it.
+ * The demo endpoint now sweeps expired sandboxes itself, so this is for the
+ * backlog and for the case where nobody has opened the demo in a while.
  *
- * Run it on a schedule if demos see real traffic.
+ * It shares one implementation with that endpoint
+ * (lib/onboarding/demo-reaper.ts), which is the point. The previous version
+ * called `ghh.prune_expired_demos()`, which does a plain delete and relies on
+ * the cascade — but the cascade reaches signed notes and 0003 refuses to delete
+ * those, so every run raised, removed nothing, and sixteen dead demo orgs piled
+ * up in production behind it. Deletion now goes through `ghh.purge_resident()`,
+ * the one audited door built for exactly this.
+ *
+ * A dry run by default, and only ever rows flagged `is_demo`. This database
+ * holds real PHI for a real agency and shares an instance with unrelated
+ * businesses in other schemas, so the tool is built to be boring.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { createClient } from '@supabase/supabase-js';
+import { loadEnv } from './load-env';
 
-function loadEnv() {
-  const file = path.join(process.cwd(), '.env.local');
-  if (!fs.existsSync(file)) return;
-  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
-    if (!line.trim() || line.startsWith('#')) continue;
-    const i = line.indexOf('=');
-    if (i === -1) continue;
-    const key = line.slice(0, i).trim();
-    if (!process.env[key]) process.env[key] = line.slice(i + 1).trim();
-  }
-}
+loadEnv();
 
 async function main() {
-  loadEnv();
+  const args = process.argv.slice(2);
+  const confirm = args.includes('--confirm');
+  const all = args.includes('--all');
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error('Missing Supabase config in .env.local');
-    process.exit(1);
-  }
+  // Imported after loadEnv: the admin client reads its configuration at module
+  // load, and a static import would run before the file has been read.
+  const { createSupabaseAdminClient } = await import('../lib/supabase/admin');
+  const { listExpiredDemoOrgs, purgeDemoOrg } = await import('../lib/onboarding/demo-reaper');
 
-  const admin = createClient(url, key, {
-    db: { schema: 'ghh' },
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
+  const admin = createSupabaseAdminClient();
 
-  const { count: before } = await admin
+  // Only ever a demo org, on either branch.
+  const targets = all
+    ? (
+        (await admin.from('organizations').select('id, name').eq('is_demo', true)).data ?? []
+      ).map((o) => ({ id: o.id as string, name: o.name as string }))
+    : await listExpiredDemoOrgs(admin);
+
+  const { count: realOrgs } = await admin
     .from('organizations')
     .select('id', { count: 'exact', head: true })
-    .eq('is_demo', true);
+    .eq('is_demo', false);
 
-  const { data, error } = await admin.rpc('prune_expired_demos');
-  if (error) {
-    console.error(`Prune failed: ${error.message}`);
-    process.exit(1);
+  console.log(`\nDemo organizations to remove: ${targets.length}`);
+  console.log(`Real organizations, never touched: ${realOrgs ?? 0}\n`);
+
+  if (targets.length === 0) {
+    console.log('Nothing to do.\n');
+    return;
   }
 
-  console.log(`Demo orgs before: ${before ?? 0}`);
-  console.log(`Removed:          ${data ?? 0}`);
+  for (const org of targets) {
+    const { count: notes } = await admin
+      .from('notes')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', org.id);
+    const { count: residents } = await admin
+      .from('residents')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', org.id);
+    console.log(`  ${org.id}  ${org.name} — ${residents ?? 0} resident(s), ${notes ?? 0} note(s)`);
+  }
 
-  // The auth users behind pruned demos are orphaned by the cascade, so clear
-  // them too. Only ever the generated demo addresses.
-  const { data: users } = await admin.auth.admin.listUsers({ perPage: 200 });
-  let orphaned = 0;
-  for (const user of users?.users ?? []) {
-    if (!user.email?.endsWith('@demo.invalid')) continue;
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (!profile) {
-      await admin.auth.admin.deleteUser(user.id).catch(() => {});
-      orphaned++;
+  if (!confirm) {
+    console.log('\nDry run. Re-run with --confirm to remove these.\n');
+    return;
+  }
+
+  console.log('');
+  let removed = 0;
+  for (const org of targets) {
+    const result = await purgeDemoOrg(org.id);
+    if (result) {
+      removed++;
+      console.log(
+        `  removed  ${result.name} — ${result.residents} resident(s), ${result.notes} note(s), ${result.signedNotes} signed`
+      );
+    } else {
+      console.log(`  FAILED   ${org.id} — left in place`);
     }
   }
-  console.log(`Orphaned demo accounts removed: ${orphaned}`);
+
+  console.log(`\nRemoved ${removed} of ${targets.length} demo organization(s).\n`);
 }
 
 main().catch((err) => {

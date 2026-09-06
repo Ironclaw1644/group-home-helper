@@ -1,0 +1,32 @@
+-- Remove ghh.prune_expired_demos(). It has never worked, and it cannot.
+--
+-- The function does this:
+--
+--   delete from ghh.organizations where is_demo and expires_at < now();
+--
+-- and leaves the rest to the cascade. But the cascade reaches ghh.notes, and
+-- 0003's enforce_note_undeletable refuses to delete a signed note — which is
+-- correct and is the property the whole product rests on. Every demo sandbox is
+-- seeded with about fifty notes and nearly all of them are signed, so every
+-- prune raised restrict_violation and removed nothing. Sixteen expired demo
+-- agencies accumulated in production alongside the one real customer before
+-- anybody noticed, because the failure was silent and nothing ran the prune
+-- often enough to see it.
+--
+-- The fix is not to teach this function a way around the trigger. There is
+-- already exactly one door through it — ghh.purge_resident(), which audits
+-- before it deletes, scopes itself to a single resident with a
+-- transaction-local flag, and is granted only to service_role. Reaping walks
+-- each demo resident through that door and then deletes the org.
+--
+-- That work now lives in lib/onboarding/demo-reaper.ts and runs on the demo
+-- endpoint itself, so the cleanup rides on the traffic that creates it. It
+-- belongs in the application rather than here for a reason that is not going to
+-- change: a demo also owns storage objects in ghh-signatures and ghh-documents
+-- and an auth.users row, and SQL running inside Postgres cannot delete either.
+-- A database-side prune would always have left half the sandbox behind.
+--
+-- Nothing calls this function any more. Dropping it rather than leaving it in
+-- place because a function that fails silently is how this happened.
+
+drop function if exists ghh.prune_expired_demos();
