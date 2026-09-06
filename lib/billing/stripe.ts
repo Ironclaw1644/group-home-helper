@@ -2,6 +2,7 @@ import 'server-only';
 
 import Stripe from 'stripe';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 
 /**
  * Stripe subscription billing for the note assistant.
@@ -14,7 +15,9 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
  * resident with no record of their care that day.
  */
 
-export const FREE_ALLOWANCE = 10;
+// Re-exported so existing server callers keep their import path. The constant
+// lives in plan.ts because the sign-up page has to quote it in the browser.
+export { FREE_ALLOWANCE };
 
 let client: Stripe | null = null;
 

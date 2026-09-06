@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 import { Alert, Button, Card } from '@/components/ui';
 import {
   brandingPayload,
@@ -314,10 +315,28 @@ export function SignupForm() {
         </Link>
       </p>
 
-      <p className="mt-3 text-center text-xs text-brand-slate">
-        This system holds protected health information. Every read and every printed form is
-        logged, and your agency&apos;s records are visible only to your own staff.
-      </p>
+      {/* What a care administrator wants to know before typing a resident's
+          name in. Four claims, each one true of the code as it stands and each
+          one checkable — not a disclaimer, and not a promise about the
+          roadmap. This paragraph used to tell prospects to go and read the PHI
+          section of a README in a private repo. */}
+      <div className="mt-5 border-t border-brand-navy/10 pt-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-slate">
+          Before you enter resident information
+        </p>
+        <ul className="space-y-1.5 text-xs leading-relaxed text-brand-slate">
+          <li>Your records are visible only to staff you invite. No other agency can see them.</li>
+          <li>Every time a record is opened or a form is printed, it is logged with who and when.</li>
+          <li>
+            A signed note cannot be edited or deleted by anyone, including us. Corrections are added
+            as a dated addendum, the way a paper chart works.
+          </li>
+          <li>
+            The first {FREE_ALLOWANCE} assistant drafts are free. Writing, signing, printing and
+            exporting notes never require a subscription.
+          </li>
+        </ul>
+      </div>
     </Card>
   );
 }

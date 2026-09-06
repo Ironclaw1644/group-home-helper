@@ -217,6 +217,44 @@ async function main() {
       );
       check(`${rel} has no hardcoded agency name`, offending.length === 0, offending.join(', '));
     }
+
+    // --- Public copy --------------------------------------------------------
+    // The pages a stranger sees before they have an account. /signup used to
+    // tell a prospect to "read the PHI section of the README" — a document in a
+    // private repo — which told them the product was not cleared for real data
+    // and handed them homework they could not do. Nothing here may send a
+    // customer to internal documentation, and nothing here may reach for the
+    // vocabulary that makes copy read as machine-written.
+    console.log('\nPublic copy speaks to a customer, not to a developer\n');
+    const publicPages = [
+      'app/signup/page.tsx',
+      'components/onboarding/signup-form.tsx',
+      'app/login/page.tsx',
+      'app/login/login-form.tsx',
+      'app/join/[code]/page.tsx',
+      'app/download/page.tsx'
+    ];
+    // Matched inside quoted strings and JSX text alike, so an explanatory code
+    // comment is still allowed to name the thing it is warning about.
+    const BANNED_COPY = [
+      'README',
+      'bespoke',
+      'seamless',
+      'seamlessly',
+      'elevate',
+      'unlock the power',
+      'cutting-edge',
+      'best-in-class'
+    ];
+    for (const rel of publicPages) {
+      const body = readFileSync(path.join(process.cwd(), rel), 'utf8')
+        // Drop comments first: this file explains the bug by naming it, and so
+        // does the sign-up form.
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      const hits = BANNED_COPY.filter((w) => new RegExp(`\\b${w}\\b`, 'i').test(body));
+      check(`${rel} sends nobody to internal docs or AI filler`, hits.length === 0, hits.join(', '));
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

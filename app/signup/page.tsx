@@ -18,7 +18,8 @@ export default async function SignupPage() {
             Set up your agency
           </h1>
           <p className="mt-1 text-sm text-brand-slate">
-            Daily progress notes for your house, on Form #680.
+            Daily progress notes on Virginia&apos;s Form #680 — written, signed and printed from a
+            phone during the shift.
           </p>
         </div>
 
