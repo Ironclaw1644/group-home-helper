@@ -39,3 +39,7 @@ capacitor/www/*.map
 
 # Supabase CLI scratch
 supabase/.temp/
+
+# Logo exploration rasters — the shipped mark is public/brand/*.svg
+brand-concepts/
+audit-shots/
