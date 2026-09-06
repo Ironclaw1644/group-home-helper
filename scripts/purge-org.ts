@@ -14,8 +14,23 @@
  * scope. Deletion cascades from ghh.organizations, but storage objects and auth
  * users are outside the database and are cleared explicitly.
  */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from './load-env';
+
+/**
+ * A service-role client bound to the ghh schema.
+ *
+ * Derived from the factory rather than written out, because the schema is part
+ * of the client's type and a hand-written `SupabaseClient` defaults to public.
+ */
+function createAdmin(url: string, key: string) {
+  return createClient(url, key, {
+    db: { schema: 'ghh' },
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+type AdminClient = ReturnType<typeof createAdmin>;
 
 /**
  * Every table that can hold a row belonging to an org.
@@ -60,7 +75,7 @@ function arg(flag: string): string | null {
  * so it is counted through the org's own home ids.
  */
 async function countFor(
-  admin: SupabaseClient,
+  admin: AdminClient,
   table: string,
   orgId: string,
   homeIds: string[]
@@ -86,7 +101,7 @@ async function countFor(
 }
 
 async function inventory(
-  admin: SupabaseClient,
+  admin: AdminClient,
   orgId: string,
   homeIds: string[]
 ): Promise<Counts> {
@@ -98,7 +113,7 @@ async function inventory(
 }
 
 /** Every object under an org's prefix, across both private buckets. */
-async function listStorage(admin: SupabaseClient, orgId: string): Promise<string[]> {
+async function listStorage(admin: AdminClient, orgId: string): Promise<string[]> {
   const found: string[] = [];
 
   for (const bucket of BUCKETS) {
@@ -129,10 +144,7 @@ async function main() {
     process.exit(1);
   }
 
-  const admin = createClient(url, key, {
-    db: { schema: 'ghh' },
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
+  const admin = createAdmin(url, key);
 
   const wantName = arg('--name');
   const wantId = arg('--id');
@@ -176,7 +188,11 @@ async function main() {
   const { data: homes } = await admin.from('homes').select('id, name').eq('org_id', org.id);
   const homeIds = (homes ?? []).map((h) => h.id as string);
 
-  const { data: profiles } = await admin.from('profiles').select('id, full_name, role').eq('org_id', org.id);
+  const { data: profileRows } = await admin
+    .from('profiles')
+    .select('id, full_name, role')
+    .eq('org_id', org.id);
+  const profiles = profileRows ?? [];
 
   console.log('\nRows that belong to it');
   const before = await inventory(admin, org.id as string, homeIds);
@@ -190,7 +206,7 @@ async function main() {
   for (const o of objects) console.log(`  ${o}`);
 
   console.log('\nAuth accounts attached to it');
-  if (!profiles || profiles.length === 0) console.log('  none');
+  if (profiles.length === 0) console.log('  none');
   for (const p of profiles) console.log(`  ${p.id}  ${p.full_name} (${p.role})`);
 
   if (!confirm) {
@@ -214,7 +230,7 @@ async function main() {
   }
 
   // Auth users next, for the same reason: profiles is how they are found.
-  for (const p of profiles ?? []) {
+  for (const p of profiles) {
     const { error: userError } = await admin.auth.admin.deleteUser(p.id as string);
     console.log(`  auth user ${p.id}${userError ? ` (error: ${userError.message})` : ' removed'}`);
   }
