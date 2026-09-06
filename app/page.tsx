@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import { requireSession, orgTimeZone, isSupervisor } from '@/lib/auth/session';
+import { getSession, orgTimeZone, isSupervisor } from '@/lib/auth/session';
+import { Landing } from '@/components/marketing/landing';
 import { getRoster } from '@/lib/notes/repo';
 import { complianceAlerts } from '@/lib/compliance/checks';
 import { AppShell } from '@/components/app-shell';
@@ -15,6 +17,42 @@ import { displayName } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * The root serves two different documents to two different people.
+ *
+ * Signed in, it is the roster — the thing a DSP opens at the start of a shift,
+ * and the destination every deep link in the app already points at
+ * (`/?home=…&date=…`, the post-login redirect, the demo hand-off). Signed out,
+ * it is the public landing page.
+ *
+ * Branching here rather than moving the roster to `/app` is deliberate: those
+ * links, the middleware's login bounce, and the `router.replace('/')` in the
+ * demo button all keep working untouched, and the authenticated app below is
+ * exactly the code it was before.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  // `getSession` is request-cached, so this costs nothing on top of the render.
+  const session = await getSession();
+
+  // Signed in: inherit the app's own metadata from the layout, including its
+  // noindex. The roster is not a public document.
+  if (session) return {};
+
+  const title = 'FlipBrief — the shift note, in about forty seconds';
+  const description =
+    'Documentation for small group homes. Staff tap what happened, the progress note drafts itself, they sign on their phone, and it prints on your letterhead as Virginia’s DBHDS Form #680. $100 a month, flat.';
+
+  return {
+    title,
+    description,
+    // The one page on this deployment that should be indexed. Everything else
+    // holds PHI and stays out of every index via the root layout.
+    robots: { index: true, follow: true },
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title, description }
+  };
+}
+
 function greeting(hour: number): string {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
@@ -26,7 +64,9 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ home?: string; date?: string }>;
 }) {
-  const session = await requireSession();
+  const session = await getSession();
+  if (!session) return <Landing />;
+
   const params = await searchParams;
 
   const tz = await orgTimeZone();

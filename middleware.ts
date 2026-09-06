@@ -73,7 +73,15 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = req.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  // The root is public, and is matched exactly rather than as a prefix. It
+  // cannot go in PUBLIC_PATHS: that list is a prefix match and `'/'` is a
+  // prefix of every path there is, so putting it in the array would silently
+  // unauthenticate the entire application. `app/page.tsx` serves the marketing
+  // page to a signed-out visitor and the roster to a signed-in one; the
+  // signed-out branch reads no resident data.
+  const isPublic =
+    pathname === '/' || PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (!user && !isPublic) {
     const loginUrl = req.nextUrl.clone();
