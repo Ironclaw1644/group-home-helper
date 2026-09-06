@@ -178,14 +178,28 @@ export type NoteActivity = {
   comment: string | null;
 };
 
-/** What a DSP recorded against one outcome on one shift. */
+/**
+ * What a DSP recorded against one outcome on one shift.
+ *
+ * `addressed: null` means nobody has answered yet, and it is not the same as
+ * `false`. "Not this shift" is a clinical claim — it asserts this person's
+ * service plan was not worked on — and a fresh note must not make that claim on
+ * the DSP's behalf. An unanswered outcome is never written to the database: the
+ * absence of a `note_outcomes` row *is* the unanswered state, which is why this
+ * type carries a null the column does not have to.
+ */
 export type NoteOutcome = {
   outcomeId: string;
-  addressed: boolean;
+  addressed: boolean | null;
   supportLevel: SupportLevel | null;
   progress: ProgressLevel | null;
   comment: string | null;
 };
+
+/** An outcome with no answer yet — neither worked on nor ruled out. */
+export function isOutcomeUnanswered(entry: NoteOutcome | undefined): boolean {
+  return !entry || entry.addressed === null;
+}
 
 // ---------------------------------------------------------------------------
 // Documents

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Download, FileCheck2, Loader2, Lock, Plus, Printer } from 'lucide-react';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
+import { outcomeStatus } from '@/lib/outcomes/answered';
 import { formatServiceDate } from '@/lib/utils';
 import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
 import type { NoteActivity, NoteOutcome, Outcome, OutcomeActivity } from '@/lib/types';
@@ -150,6 +151,7 @@ export default function SignedNote({
           <ul className="space-y-3">
             {outcomes.map((outcome) => {
               const entry = savedOutcomes.find((e) => e.outcomeId === outcome.id);
+              const status = outcomeStatus(entry);
               const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
               const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
 
@@ -160,11 +162,27 @@ export default function SignedNote({
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-brand-navy">{outcome.title}</span>
-                    <Badge tone={entry?.addressed ? 'signed' : 'missing'}>
-                      {entry?.addressed ? 'Worked on' : 'Not this shift'}
+                    {/* An outcome with no entry was never answered by anyone.
+                        It has to read as a gap rather than as "Not this
+                        shift", which would show a reader a claim the DSP
+                        never made. */}
+                    <Badge
+                      tone={
+                        ({ addressed: 'signed', not_addressed: 'missing', unanswered: 'draft' } as const)[
+                          status
+                        ]
+                      }
+                    >
+                      {
+                        {
+                          addressed: 'Worked on',
+                          not_addressed: 'Not this shift',
+                          unanswered: 'Not recorded'
+                        }[status]
+                      }
                     </Badge>
                   </div>
-                  {entry?.addressed ? (
+                  {status === 'addressed' ? (
                     <p className="mt-1 text-xs text-brand-slate">
                       {[support, progress].filter(Boolean).join(' · ')}
                     </p>

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { answeredOutcomes } from '@/lib/outcomes/answered';
 import type {
   MeasureType,
   NoteActivity,
@@ -262,6 +263,8 @@ export async function getNoteOutcomes(noteId: string): Promise<NoteOutcome[]> {
     .eq('note_id', noteId);
 
   if (error) throw error;
+  // A row that exists is a row somebody answered — the unanswered outcomes are
+  // the ones with no row here at all, so they are simply absent from this list.
   return (data ?? []).map((r) => ({
     outcomeId: r.outcome_id as string,
     addressed: Boolean(r.addressed),
@@ -277,6 +280,14 @@ export async function getNoteOutcomes(noteId: string): Promise<NoteOutcome[]> {
  * Upserted in one call so a partially-saved shift cannot leave some outcomes
  * documented and others silently dropped. The database trigger rejects the
  * whole thing if the note is already signed.
+ *
+ * Entries with `addressed: null` are dropped rather than written. The column is
+ * `not null default false`, so persisting an unanswered outcome would turn "no
+ * one has looked at this yet" into the recorded clinical claim "this was not
+ * worked on" — the exact silent negative this filter exists to prevent. The
+ * client also filters, and both are deliberate: this is the one that is load
+ * bearing, because it is the last code between an unanswered chip and a
+ * Medicaid record.
  */
 export async function saveNoteOutcomes(
   noteId: string,
@@ -285,10 +296,11 @@ export async function saveNoteOutcomes(
 ): Promise<{ ok: true } | { error: string }> {
   const supabase = await createSupabaseServerClient();
 
-  if (entries.length === 0) return { ok: true };
+  const answered = answeredOutcomes(entries);
+  if (answered.length === 0) return { ok: true };
 
   const { error } = await supabase.from('note_outcomes').upsert(
-    entries.map((e) => ({
+    answered.map((e) => ({
       note_id: noteId,
       outcome_id: e.outcomeId,
       org_id: orgId,

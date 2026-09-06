@@ -24,6 +24,11 @@ import type {
  * Collapsed until the DSP marks it worked on. A resident can carry six or eight
  * outcomes, and showing every detail field for all of them turns a two-minute
  * note into a wall of inputs.
+ *
+ * Three states, not two. `addressed === null` is "not answered yet" and neither
+ * chip is lit — a fresh note used to render "Not this shift" in the selected
+ * style, which meant an untouched draft already asserted that none of this
+ * person's service-plan outcomes had been worked on. Nobody had said that.
  */
 export function OutcomeEntry({
   outcome,
@@ -47,6 +52,8 @@ export function OutcomeEntry({
 
   const set = (patch: Partial<NoteOutcome>) => onChange({ ...value, ...patch });
 
+  const unanswered = value.addressed === null;
+
   const chip = (
     active: boolean,
     label: string,
@@ -59,12 +66,15 @@ export function OutcomeEntry({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      // Now that an answer is required, these are thumb targets on a phone
+      // mid-shift, not decoration: 44 px minimum.
       className={
-        active
+        'inline-flex min-h-[44px] items-center rounded-xl px-4 text-xs ' +
+        (active
           ? tone === 'warn'
-            ? 'rounded-xl bg-status-draft px-3 py-2 text-xs font-semibold text-white'
-            : 'rounded-xl bg-brand-navy px-3 py-2 text-xs font-semibold text-white'
-          : 'rounded-xl border border-brand-navy/15 bg-white px-3 py-2 text-xs font-medium text-brand-navy hover:bg-brand-sand disabled:opacity-50'
+            ? 'bg-status-draft font-semibold text-white'
+            : 'bg-brand-navy font-semibold text-white'
+          : 'border border-brand-navy/15 bg-white font-medium text-brand-navy hover:bg-brand-sand disabled:opacity-50')
       }
     >
       {label}
@@ -74,9 +84,13 @@ export function OutcomeEntry({
   return (
     <div
       className={
-        value.addressed
+        value.addressed === true
           ? 'rounded-xl border border-brand-teal/40 bg-brand-aqua/10 p-4'
-          : 'rounded-xl border border-brand-navy/10 bg-white p-4'
+          : unanswered
+            ? // Dashed while it is still outstanding, so a DSP scrolling the
+              // note can see at a glance which outcomes still need an answer.
+              'rounded-xl border border-dashed border-status-draft/60 bg-status-draft/5 p-4'
+            : 'rounded-xl border border-brand-navy/10 bg-white p-4'
       }
     >
       <div className="mb-1 flex items-start gap-2">
@@ -126,19 +140,25 @@ export function OutcomeEntry({
         </div>
       ) : null}
 
+      {unanswered ? (
+        <p className="mb-2 ml-6 text-xs font-semibold text-status-draft">
+          Not answered yet — say whether this was worked on.
+        </p>
+      ) : null}
+
       <div className="ml-6 flex flex-wrap gap-2">
-        {chip(value.addressed, 'Worked on this', () =>
+        {chip(value.addressed === true, 'Worked on this', () =>
           set({ addressed: true, progress: value.progress ?? null })
         )}
         {chip(
-          !value.addressed,
+          value.addressed === false,
           'Not this shift',
           () => set({ addressed: false, supportLevel: null, progress: null }),
           'warn'
         )}
       </div>
 
-      {value.addressed && activities.length > 0 ? (
+      {value.addressed === true && activities.length > 0 ? (
         <div className="ml-6 mt-4 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-slate">
             Support activities
@@ -163,7 +183,7 @@ export function OutcomeEntry({
         </div>
       ) : null}
 
-      {value.addressed ? (
+      {value.addressed === true ? (
         <div className="ml-6 mt-4 space-y-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-slate">

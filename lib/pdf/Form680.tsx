@@ -1,5 +1,6 @@
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { interpolate } from '@/lib/forms/interpolate';
+import { outcomeStatus } from '@/lib/outcomes/answered';
 import { formatServiceDate } from '@/lib/utils';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
 import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
@@ -347,17 +348,28 @@ export function Form680({
             const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
             const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
 
+            // Three states, not two. "Not addressed this shift" is a statement
+            // someone made about this person's service plan; an outcome with no
+            // entry is a gap in the record and has to read as one, exactly like
+            // an unanswered activity below. Printing a blank as a negative
+            // would put an unmade clinical claim on a Medicaid document.
+            const status = {
+              addressed: 'Addressed this shift',
+              not_addressed: 'Not addressed this shift',
+              unanswered: 'Not recorded — no answer documented'
+            }[outcomeStatus(entry)];
+
             return (
               <View key={outcome.id} style={styles.outcomeBlock} wrap={false}>
                 <Text style={styles.outcomeTitle}>
-                  {outcome.title} — {entry?.addressed ? 'Addressed this shift' : 'Not addressed this shift'}
+                  {outcome.title} — {status}
                 </Text>
 
                 {outcome.statement ? (
                   <Text style={styles.outcomeStatement}>{outcome.statement}</Text>
                 ) : null}
 
-                {entry?.addressed && (support || progress) ? (
+                {entry?.addressed === true && (support || progress) ? (
                   <Text style={styles.outcomeMeta}>
                     {[support, progress].filter(Boolean).join(' · ')}
                   </Text>

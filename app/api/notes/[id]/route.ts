@@ -6,7 +6,10 @@ import { saveNoteActivities, saveNoteOutcomes } from '@/lib/outcomes/repo';
 
 const OutcomeEntry = z.object({
   outcomeId: z.string().uuid(),
-  addressed: z.boolean(),
+  // Nullable on purpose: null is "nobody has answered this yet". Rejecting it
+  // would only push the client into sending `false`, which is the bug. It is
+  // accepted here and then dropped by `saveNoteOutcomes` rather than written.
+  addressed: z.boolean().nullable(),
   supportLevel: z
     .enum(['independent', 'verbal_prompt', 'gestural_prompt', 'hands_on', 'full_support'])
     .nullable(),

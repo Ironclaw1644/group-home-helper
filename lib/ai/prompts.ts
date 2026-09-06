@@ -100,7 +100,13 @@ export type DraftInput = {
    */
   outcomes?: Array<{
     title: string;
-    addressed: boolean;
+    /**
+     * `null` means the DSP has not answered this outcome yet. That is a third
+     * state, not a soft "no": telling the model "NOT worked on this shift"
+     * would hand it a fact nobody recorded, and the phrasing below keeps the
+     * two apart while suppressing the topic either way.
+     */
+    addressed: boolean | null;
     supportLevel?: string | null;
     progress?: string | null;
     comment?: string | null;
@@ -154,6 +160,10 @@ export function buildDraftUserMessage(input: DraftInput): string {
     lines.push('');
     lines.push('<service_plan_outcomes>');
     for (const o of input.outcomes) {
+      if (o.addressed === null) {
+        lines.push(`- ${o.title}: no answer recorded. Do not mention it at all.`);
+        continue;
+      }
       if (!o.addressed) {
         lines.push(`- ${o.title}: NOT worked on this shift. Do not describe it.`);
         continue;

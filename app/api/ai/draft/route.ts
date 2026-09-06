@@ -148,7 +148,10 @@ export async function POST(req: Request) {
       const entry = documented.find((d) => d.outcomeId === o.id);
       return {
         title: o.title,
-        addressed: Boolean(entry?.addressed),
+        // No row means nobody has answered. Coercing that to `false` would
+        // tell the model that "not worked on this shift" was recorded, which
+        // is a fact the DSP never entered.
+        addressed: entry ? entry.addressed : null,
         supportLevel: SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label ?? null,
         progress: PROGRESS_LEVELS.find((pl) => pl.value === entry?.progress)?.label ?? null,
         // Free text the DSP wrote. Scrubbed on the same terms as everything

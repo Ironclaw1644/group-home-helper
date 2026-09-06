@@ -9,6 +9,7 @@ import { OutcomeEntry } from '@/components/note/outcome-entry';
 import { SignaturePad, type SignatureMethod } from '@/components/form/SignaturePad';
 import { Alert, Button, Card } from '@/components/ui';
 import { hasAnySelection, interpolate } from '@/lib/forms/interpolate';
+import { answeredOutcomes, unansweredOutcomes } from '@/lib/outcomes/answered';
 import {
   clearLocalDraft,
   localDraftIsNewer,
@@ -61,9 +62,9 @@ export default function NoteEditor({
 
   const [data, setData] = useState<StructuredData>(note.structuredData);
 
-  // Every outcome starts present-but-unaddressed, so a shift where nothing was
-  // worked on is recorded as exactly that rather than as missing data. A run of
-  // "not addressed" is a signal a supervisor needs to see.
+  // Activities start unanswered (`completed: null`) and stay that way until a
+  // DSP answers the question. A blank is a gap in the record; a "no" is a
+  // documented fact. They are not interchangeable.
   const [activityEntries, setActivityEntries] = useState<NoteActivity[]>(() =>
     activities.map(
       (a) =>
@@ -76,12 +77,17 @@ export default function NoteEditor({
     )
   );
 
+  // Outcomes start genuinely unanswered. `addressed: null` is not "no" — a
+  // fresh note used to open with every outcome already showing "Not this
+  // shift", which put an unverified clinical claim into a Medicaid record
+  // before any human had looked at it. Unanswered entries are filtered out of
+  // every save, so nothing is written until the DSP chooses.
   const [outcomeEntries, setOutcomeEntries] = useState<NoteOutcome[]>(() =>
     outcomes.map(
       (o) =>
         savedOutcomes.find((s) => s.outcomeId === o.id) ?? {
           outcomeId: o.id,
-          addressed: false,
+          addressed: null,
           supportLevel: null,
           progress: null,
           comment: null
@@ -149,7 +155,10 @@ export default function NoteEditor({
           body: JSON.stringify({
             structuredData: nextData,
             narrative: nextNarrative,
-            outcomes: outcomesRef.current,
+            // Only outcomes somebody actually answered. An unanswered one has
+            // no row, and no row is how the record says "not documented" —
+            // sending it would serialize as the negative "not worked on".
+            outcomes: answeredOutcomes(outcomesRef.current),
             activities: activitiesRef.current
           })
         });
@@ -310,7 +319,15 @@ export default function NoteEditor({
 
   const narrativeTooShort =
     narrative.trim().length < (template.schema.narrative.min_length ?? 0);
-  const readyToSign = attested && narrative.trim().length > 0 && !narrativeTooShort;
+
+  // Signing is what turns this into a permanent Medicaid record, so every
+  // outcome has to have a human answer behind it by then. Leaving one blank
+  // used to be impossible to notice, because blank rendered as "Not this
+  // shift"; now it blocks the signature instead of quietly becoming a claim.
+  const stillUnanswered = unansweredOutcomes(outcomes, outcomeEntries);
+
+  const readyToSign =
+    attested && narrative.trim().length > 0 && !narrativeTooShort && stillUnanswered.length === 0;
 
   return (
     <div className="space-y-5">
@@ -375,7 +392,7 @@ export default function NoteEditor({
               const entry =
                 outcomeEntries.find((e) => e.outcomeId === outcome.id) ?? {
                   outcomeId: outcome.id,
-                  addressed: false,
+                  addressed: null,
                   supportLevel: null,
                   progress: null,
                   comment: null
@@ -568,12 +585,26 @@ export default function NoteEditor({
             {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
             {signing ? 'Signing…' : 'Sign and lock note'}
           </Button>
-          {!attested ? (
+          {stillUnanswered.length > 0 ? (
+            <span className="text-xs font-semibold text-status-draft">
+              {stillUnanswered.length === 1
+                ? '1 service-plan outcome still needs an answer.'
+                : `${stillUnanswered.length} service-plan outcomes still need an answer.`}
+            </span>
+          ) : !attested ? (
             <span className="text-xs text-brand-slate">Check the attestation to sign.</span>
           ) : narrativeTooShort ? (
             <span className="text-xs text-brand-slate">Add more detail before signing.</span>
           ) : null}
         </div>
+
+        {stillUnanswered.length > 0 ? (
+          <p className="mt-2 text-xs text-brand-slate">
+            {stillUnanswered.map((o) => o.title).join(' · ')} — mark each one &ldquo;Worked on
+            this&rdquo; or &ldquo;Not this shift&rdquo; in {resident.pronouns.possessive} service
+            plan above. Nothing is recorded against an outcome until you say so.
+          </p>
+        ) : null}
 
         <p className="mt-3 text-xs text-brand-slate">
           Signing locks this note permanently. Corrections are added as a separate addendum.
