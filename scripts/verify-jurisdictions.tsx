@@ -30,6 +30,7 @@ import { ShippedForm680 } from './reference/Form680.shipped';
 import { TemplatePdf } from '../lib/pdf/TemplatePdf';
 import { buildPrintContext } from '../lib/pdf/print-context';
 import { pickTemplate } from '../lib/notes/repo';
+import { libraryFor, personalize } from '../lib/outcomes/library';
 import * as f from './reference/fixture';
 import type { FormTemplate, RenderConfig } from '../lib/types';
 
@@ -528,6 +529,79 @@ async function main() {
       new Set(templates.map((t) => t.jurisdiction)).size === templates.length,
       'two templates share a jurisdiction; resolution then depends on version alone'
     );
+
+    // -----------------------------------------------------------------------
+    section('Every jurisdiction ships a usable starter outcome library');
+    // -----------------------------------------------------------------------
+    //
+    // These checks used to live in verify:import and covered Virginia only,
+    // because Virginia's library was the only one and it was a TypeScript
+    // const. Now that the library is template data they run for every
+    // jurisdiction, which is the point of having moved it.
+    //
+    // The pronoun sweep is the one that actually catches things: someone whose
+    // pronouns are they/them must not get "they feels good". A present-tense
+    // verb straight after {subject} breaks for exactly one of the three sets —
+    // the one least likely to be spotted by eye.
+
+    const PRONOUN_SETS = [
+      { subject: 'he', object: 'him', possessive: 'his' },
+      { subject: 'she', object: 'her', possessive: 'her' },
+      { subject: 'they', object: 'them', possessive: 'their' }
+    ];
+    const BAD_AGREEMENT =
+      /\bthey (feels|wants|likes|looks|chooses|prepares|goes|does|has|is|needs|makes|takes|puts|greets|meets|spends|completes|picks|rides|pays|takes)\b/i;
+
+    for (const template of templates) {
+      const label = `${template.jurisdiction} (${template.key})`;
+      const library = libraryFor(template);
+
+      check(`${label}: ships a starter library`, library.length > 0);
+      check(
+        `${label}: every starter outcome has at least one activity`,
+        library.every((o) => o.activities.length > 0)
+      );
+      check(
+        `${label}: every activity carries a daily question`,
+        library.every((o) => o.activities.every((a) => a.dailyQuestion.trim().length > 0))
+      );
+      check(
+        `${label}: starter outcome keys are unique`,
+        new Set(library.map((o) => o.key)).size === library.length
+      );
+
+      const offenders: string[] = [];
+      for (const outcome of library) {
+        for (const set of PRONOUN_SETS) {
+          const texts = [
+            personalize(outcome.statement, 'Jordan', set),
+            ...outcome.activities.flatMap((a) => [
+              personalize(a.description, 'Jordan', set),
+              personalize(a.measure, 'Jordan', set),
+              personalize(a.supportInstructions, 'Jordan', set),
+              personalize(a.dailyQuestion, 'Jordan', set)
+            ])
+          ];
+          for (const t of texts) if (BAD_AGREEMENT.test(t)) offenders.push(t);
+        }
+      }
+      check(
+        `${label}: no starter text produces "they <verb>s"`,
+        offenders.length === 0,
+        offenders.slice(0, 3).join(' | ')
+      );
+    }
+
+    // A jurisdiction must never be offered another one's plans.
+    if (virginia && ohio) {
+      const vaKeys = new Set(libraryFor(virginia).map((o) => o.key));
+      const ohKeys = new Set(libraryFor(ohio).map((o) => o.key));
+      check(
+        'Virginia and Ohio ship different starter vocabularies',
+        [...ohKeys].some((k) => !vaKeys.has(k)),
+        'Ohio was handed a copy of Virginia\'s library'
+      );
+    }
 
     // -----------------------------------------------------------------------
     section('The renderer branches on no jurisdiction');

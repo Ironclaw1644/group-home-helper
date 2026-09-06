@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { getSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getResident } from '@/lib/residents/repo';
-import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '@/lib/outcomes/virginia-library';
+import { getTemplateForOrg } from '@/lib/notes/repo';
+import { libraryFor, personalize } from '@/lib/outcomes/library';
 import { logAccess } from '@/lib/audit';
 import { displayName } from '@/lib/types';
 
@@ -17,7 +18,11 @@ const Body = z.object({
  *
  * These are a drafting aid, not a plan. They land as ordinary editable rows so
  * a supervisor rewrites them in the person's own words — a template outcome is
- * by definition not person-centered, which is the whole point in Virginia.
+ * by definition not person-centered, which is the whole point of a
+ * person-centred plan.
+ *
+ * The vocabulary offered is the one belonging to the caller's own jurisdiction,
+ * read from their template. An Ohio supervisor is never offered Virginia's.
  */
 export async function POST(req: Request) {
   const session = await getSession();
@@ -39,7 +44,8 @@ export async function POST(req: Request) {
   const fill = (t: string) => personalize(t, name, resident.pronouns);
 
   const supabase = await createSupabaseServerClient();
-  const chosen = VIRGINIA_OUTCOME_LIBRARY.filter((o) => parsed.data.keys.includes(o.key));
+  const formTemplate = await getTemplateForOrg(session.profile.orgId);
+  const chosen = libraryFor(formTemplate).filter((o) => parsed.data.keys.includes(o.key));
   let installed = 0;
 
   for (const [index, template] of chosen.entries()) {
