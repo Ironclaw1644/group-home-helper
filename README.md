@@ -87,8 +87,9 @@ file.
 
 ### 3. Apply the schema
 
-Already applied to the current project. For a fresh one, run
-`supabase/migrations/` in order:
+Run every file in `supabase/migrations/` in filename order. All of them — this
+table is a guide to the interesting ones, not the list. A partial apply is what
+left the repo unable to rebuild the database at all.
 
 | File | What it does |
 | --- | --- |
@@ -97,6 +98,29 @@ Already applied to the current project. For a fresh one, run
 | `0003_immutability.sql` | Signed notes become permanently un-editable |
 | `0005_audit.sql` | Audit triggers and the roster query |
 | `0006_storage.sql` | Private `ghh-signatures` bucket |
+| `0007`–`0008` | Per-org branding; exposing `ghh` to PostgREST |
+| `0015`–`0017` | ISP outcomes, documents, Virginia support activities |
+| `0018_purge_resident.sql` | The one audited door that can remove a signed note |
+| `0020_week_prestage.sql` | Pre-staged notes, and the rules that keep them honest |
+
+> **Migrations go out before the app does.** The code reads columns these files
+> add, so shipping a build ahead of its migration takes the note editor down for
+> a live customer. `npm run verify:schema` reports anything the repo has that
+> production has not run yet.
+
+Check the result rather than assuming it:
+
+```bash
+npm run verify:schema
+```
+
+That applies every migration to a throwaway embedded Postgres and compares the
+result against `supabase/schema-snapshot.json` — a structural record of
+production, no row data. It then asserts every table has RLS with at least one
+policy, that signed notes and the audit log hold against a superuser
+connection, and that a pre-staged note cannot sign itself. After deploying,
+refresh the snapshot with
+`npm run verify:schema -- --refresh --applied-through=<last file applied>`.
 
 Then seed the Form #680 template and starting data:
 
