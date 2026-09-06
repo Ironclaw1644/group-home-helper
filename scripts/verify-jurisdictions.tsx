@@ -3,7 +3,7 @@
  *
  *   npm run verify:jurisdictions
  *
- * Six things, in the order they matter:
+ * Seven things, in the order they matter:
  *
  *   (a) Virginia's output is UNCHANGED — the same note rendered through the
  *       renderer frozen at 7d06e00 and through the new template-driven one
@@ -14,6 +14,8 @@
  *   (e) The templates shipped in migrations are well-formed and claim nothing
  *       they should not.
  *   (f) The TypeScript precedence rule and the SQL one agree.
+ *   (g) Correcting a jurisdiction changes new notes only — a note that is
+ *       already signed keeps the form it was filed on.
  *
  * (a) is the regression bar. Everything else is new capability; (a) is the
  * promise that the new capability cost nothing.
@@ -30,6 +32,7 @@ import { ShippedForm680 } from './reference/Form680.shipped';
 import { TemplatePdf } from '../lib/pdf/TemplatePdf';
 import { buildPrintContext } from '../lib/pdf/print-context';
 import { pickTemplate } from '../lib/notes/repo';
+import { DEFAULT_IDENTITY_LABELS, formCaptions } from '../lib/forms/layout-defaults';
 import { libraryFor, personalize } from '../lib/outcomes/library';
 import * as f from './reference/fixture';
 import type { FormTemplate, RenderConfig } from '../lib/types';
@@ -604,25 +607,240 @@ async function main() {
     }
 
     // -----------------------------------------------------------------------
-    section('The renderer branches on no jurisdiction');
+    section('(g) A signed note keeps the form it was signed under');
+    // -----------------------------------------------------------------------
+    //
+    // The correction case. An agency picks the wrong state at sign-up, files
+    // notes under it, and then fixes the setting. Fixing it must change what
+    // NEW notes print and nothing else: a note that is already signed, locked
+    // and sent to Medicaid must keep rendering the document that was filed.
+    // Re-styling it would leave the record unchanged and the evidence of the
+    // record changed, which is worse than the original mistake.
+    //
+    // Proved twice — the database refuses the edit, and the renderer, handed
+    // the pinned row, still draws the old state's form.
+
+    if (virginia && ohio) {
+      const seeded = await db.query<{ note_id: string; org_id: string; author_id: string }>(`
+        with o as (
+          insert into ghh.organizations (name, jurisdiction, created_via)
+          values ('ZZ Verify Corrected', 'US-VA', 'signup')
+          returning id
+        ),
+        h as (
+          insert into ghh.homes (org_id, name) select id, 'Maple Street House' from o
+          returning id, org_id
+        ),
+        s as (
+          insert into ghh.shifts (org_id, home_id, label, start_time, end_time, sort_order)
+          select org_id, id, '7AM-7PM', '07:00', '19:00', 0 from h returning id
+        ),
+        u as (
+          insert into auth.users (email) values ('corrected-verify@demo.invalid') returning id
+        ),
+        p as (
+          insert into ghh.profiles (id, org_id, full_name, title, role)
+          select u.id, o.id, 'Verify User', 'DSP', 'admin' from u, o returning id
+        ),
+        r as (
+          insert into ghh.residents (org_id, home_id, first_name, last_name)
+          select org_id, id, 'Alex', 'Sample' from h returning id, org_id
+        ),
+        n as (
+          insert into ghh.notes (org_id, template_id, template_version, resident_id, home_id,
+                                 shift_id, service_date, author_id, narrative)
+          select r.org_id, t.id, t.version, r.id, h.id, s.id, current_date, p.id,
+                 'A note filed while the agency was set to Virginia.'
+            from r, h, s, p, ghh.form_templates t
+           where t.jurisdiction = 'US-VA'
+          returning id, org_id, author_id
+        )
+        select n.id as note_id, n.org_id, n.author_id from n
+      `);
+
+      const { note_id: noteId, org_id: orgId, author_id: authorId } = seeded.rows[0];
+
+      await db.query(
+        `update ghh.notes
+            set status = 'signed', signed_at = now(), signed_by = $2,
+                signature_name = 'Verify User', signature_title = 'DSP'
+          where id = $1`,
+        [noteId, authorId]
+      );
+
+      // The correction: the agency was never in Virginia.
+      await db.query(`update ghh.organizations set jurisdiction = 'US-OH' where id = $1`, [orgId]);
+
+      const nowResolves = await db.query<{ jurisdiction: string }>(
+        `select jurisdiction from ghh.template_for_org($1)`,
+        [orgId]
+      );
+      check(
+        'after the correction the agency resolves the new state for new work',
+        nowResolves.rows[0]?.jurisdiction === 'US-OH'
+      );
+
+      const pinned = await db.query<{ jurisdiction: string }>(
+        `select t.jurisdiction
+           from ghh.notes n join ghh.form_templates t on t.id = n.template_id
+          where n.id = $1`,
+        [noteId]
+      );
+      check(
+        'the note signed beforehand still points at the form it was signed under',
+        pinned.rows[0]?.jurisdiction === 'US-VA',
+        `it now points at ${pinned.rows[0]?.jurisdiction ?? 'nothing'}`
+      );
+
+      check(
+        'the database refuses to repoint a signed note at another form',
+        await db
+          .query(`update ghh.notes set template_id = $2 where id = $1`, [noteId, ohio.id])
+          .then(() => false)
+          .catch(() => true),
+        'a signed note could be moved onto another jurisdiction\'s template'
+      );
+
+      // And the renderer, given the pinned row, still draws Virginia — which
+      // is what getTemplateForNote hands it for a signed note.
+      const pinnedPdf = await renderWith(virginia);
+      const pinnedText = extractText(pinnedPdf, dir, 'pinned.pdf');
+      if (pinnedText) {
+        check(
+          'rendered against the pinned row it is still the form that was filed',
+          pinnedText.includes('680') && !pinnedText.includes('5123-9-30')
+        );
+      }
+    }
+
+    // Every route that produces a PDF has to ask for the NOTE's template, not
+    // the org's current one. The rule above is only as good as its call sites,
+    // and the call sites are the thing a later change quietly reverts.
+    for (const route of [
+      path.join('app', 'notes', '[id]', 'pdf', 'route.tsx'),
+      path.join('app', 'supervisor', 'export', 'route.tsx'),
+      path.join('app', 'notes', '[id]', 'page.tsx')
+    ]) {
+      const src = readFileSync(path.join(process.cwd(), route), 'utf8');
+      check(
+        `${route} resolves the template per note, not per org`,
+        src.includes('getTemplateForNote') && !/\bgetTemplateForOrg\(/.test(src),
+        'a signed note would re-render on whatever form the agency uses today'
+      );
+    }
+
+    // Retiring a template version must not restyle what was signed under it.
+    const repoSource = readFileSync(path.join(process.cwd(), 'lib', 'notes', 'repo.ts'), 'utf8');
+    const byId = repoSource.slice(repoSource.indexOf('export async function getTemplateById'));
+    check(
+      'getTemplateById does not filter on active',
+      !byId.slice(0, byId.indexOf('\n}')).includes("'active'"),
+      'a retired template version would stop printing the records signed under it'
+    );
+
+    // -----------------------------------------------------------------------
+    section('The picker offers exactly what is installed');
+    // -----------------------------------------------------------------------
+    //
+    // ghh.available_jurisdictions() is what sign-up and Settings show. It has
+    // to name every installed jurisdiction, name no other, and describe each
+    // one the way that jurisdiction's form actually prints — otherwise the
+    // preview beside the picker promises a document the renderer will not
+    // produce.
+
+    const offered = await db.query<{
+      code: string;
+      name: string;
+      form_title: string;
+      form_line: string;
+      identity_labels: string[] | null;
+    }>(`select * from ghh.available_jurisdictions()`);
+
+    check(
+      'every installed jurisdiction is offered',
+      new Set(offered.rows.map((r) => r.code)).size === new Set(templates.map((t) => t.jurisdiction)).size &&
+        templates.every((t) => offered.rows.some((r) => r.code === t.jurisdiction)),
+      `offered ${offered.rows.map((r) => r.code).join(', ')}`
+    );
+
+    check(
+      'each one is offered under a human name, not its code',
+      offered.rows.every((r) => r.name.trim().length > 0 && r.name !== r.code),
+      offered.rows.map((r) => `${r.code}=${r.name}`).join(', ')
+    );
+
+    for (const row of offered.rows) {
+      const template = templates.find((t) => t.jurisdiction === row.code)!;
+      const captions = formCaptions(template);
+      check(
+        `${row.code}: the offered title is the one the renderer prints`,
+        row.form_title === captions.title,
+        `SQL says "${row.form_title}", the renderer says "${captions.title}"`
+      );
+      check(
+        `${row.code}: the offered form line is the one the renderer prints`,
+        row.form_line === captions.formLine,
+        `SQL says "${row.form_line}", the renderer says "${captions.formLine}"`
+      );
+      check(
+        `${row.code}: the offered identity labels are the ones the renderer prints`,
+        JSON.stringify((row.identity_labels ?? DEFAULT_IDENTITY_LABELS).map((l) => l.trim())) ===
+          JSON.stringify(captions.identityLabels)
+      );
+    }
+
+    check(
+      'the general-purpose option is offered without a form number',
+      !offered.rows.find((r) => r.code === 'GENERIC')?.form_line.includes('#'),
+      'the no-state option was captioned with a form number'
+    );
+
+    // A template belonging to one agency is that agency's business. Offering
+    // it on a public sign-up page would tell a stranger it exists.
+    await db.exec(`
+      insert into ghh.form_templates (org_id, key, version, name, form_number, jurisdiction,
+                                      jurisdiction_name, schema, render_config, active)
+      select o.id, 'zz_private_only', 1, 'Private', null, 'US-MT', 'Montana',
+             t.schema, t.render_config, true
+        from ghh.organizations o, ghh.form_templates t
+       where o.name = 'ZZ Verify Virginia' and t.jurisdiction = 'GENERIC'
+       limit 1;
+    `);
+    const afterPrivate = await db.query<{ code: string }>(
+      `select code from ghh.available_jurisdictions()`
+    );
+    check(
+      "one agency's private template is not offered to everyone else",
+      !afterPrivate.rows.some((r) => r.code === 'US-MT'),
+      'a private template put its jurisdiction on the public sign-up page'
+    );
+
+    // -----------------------------------------------------------------------
+    section('The engine branches on no jurisdiction');
     // -----------------------------------------------------------------------
     //
     // Cheap, and it catches the reintroduction of a special case before anyone
-    // renders anything. The renderer may not know Virginia from Ohio.
+    // renders anything. Neither the renderer nor the shared model prompt may
+    // know Virginia from Ohio: both are one artifact serving every customer on
+    // the install, so a literal in either is a claim made to all of them.
 
-    const rendererSource = readFileSync(
-      path.join(process.cwd(), 'lib', 'pdf', 'TemplatePdf.tsx'),
-      'utf8'
-    )
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/^\s*\/\/.*$/gm, '');
+    const engineFiles: [string, string][] = [
+      ['lib/pdf/TemplatePdf.tsx', path.join('lib', 'pdf', 'TemplatePdf.tsx')],
+      ['lib/ai/prompts.ts', path.join('lib', 'ai', 'prompts.ts')]
+    ];
 
-    for (const needle of ['US-VA', 'US-OH', 'DBHDS', 'DODD', '680', '5123']) {
-      check(
-        `TemplatePdf.tsx contains no "${needle}" outside comments`,
-        !rendererSource.includes(needle),
-        'a jurisdiction leaked back into the renderer'
-      );
+    for (const [label, file] of engineFiles) {
+      const source = readFileSync(path.join(process.cwd(), file), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+
+      for (const needle of ['US-VA', 'US-OH', 'DBHDS', 'DODD', '680', '5123']) {
+        check(
+          `${label} contains no "${needle}" outside comments`,
+          !source.includes(needle),
+          'a jurisdiction leaked back into the engine'
+        );
+      }
     }
   } finally {
     await db.close();
