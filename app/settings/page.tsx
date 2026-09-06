@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/app-shell';
 import { SettingsForm } from '@/components/settings/settings-form';
 import { PageHeader } from '@/components/ui';
-import { DEFAULT_BRAND, parseBranding } from '@/lib/branding/theme';
+import { parseBranding } from '@/lib/branding/theme';
+import { parsePrintFields } from '@/lib/branding/print';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,7 @@ export default async function SettingsPage() {
     .maybeSingle();
 
   const tokens = parseBranding(org?.branding);
+  const print = parsePrintFields(org?.branding);
 
   return (
     <AppShell session={session}>
@@ -31,16 +33,27 @@ export default async function SettingsPage() {
         initial={{
           fullName: session.profile.fullName,
           title: session.profile.title,
-          orgName: org?.name ?? '',
-          legalName: org?.legal_name ?? '',
           medicaidProviderId: org?.medicaid_provider_id ?? '',
-          logoUrl: tokens.logoUrl,
-          colors: {
-            navy: tokens.navy,
-            teal: tokens.teal,
-            aqua: tokens.aqua,
-            sand: tokens.sand,
-            slate: tokens.slate
+          branding: {
+            orgName: org?.name ?? '',
+            legalName: org?.legal_name ?? '',
+            letterheadLine: print.letterhead ?? '',
+            addressLine: print.address ?? '',
+            footerLine: print.footer ?? '',
+            colors: {
+              navy: tokens.navy,
+              teal: tokens.teal,
+              aqua: tokens.aqua,
+              sand: tokens.sand,
+              slate: tokens.slate
+            },
+            // A bucket-backed logo is shown through the route that serves this
+            // session's own org; an older inline one is already a data URL.
+            logoPreview: print.logoPath ? '/api/branding/logo' : tokens.logoUrl,
+            logoPath: print.logoPath,
+            logoInline: print.logoPath ? null : tokens.logoUrl,
+            // Settings always has a session, so a picked file uploads at once.
+            logoFile: null
           }
         }}
       />

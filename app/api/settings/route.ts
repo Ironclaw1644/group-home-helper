@@ -8,11 +8,13 @@ import { LOGO_DATA_URL } from '@/lib/branding/theme';
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
 /**
- * Logos are stored inline as a data URL rather than in a bucket.
+ * Logos now go to the private `ghh-documents` bucket via /api/branding/logo,
+ * and this stores the returned path.
  *
- * A logo is a few kilobytes, it is not PHI, and every consumer already handles
- * data URLs — the PDF renderer, the browser, and the PWA manifest. A bucket
- * would add signed URLs and a lifecycle to manage for no benefit.
+ * `logoDataUrl` is still accepted because agencies that uploaded before the
+ * bucket existed have their mark inline in `branding.logo_url`, and their
+ * Settings form posts it back unchanged on every save. Dropping it would make
+ * those agencies unable to save any setting at all.
  */
 const MAX_LOGO_CHARS = 400_000;
 
@@ -25,6 +27,16 @@ const Body = z.object({
   orgName: z.string().trim().min(2).max(120).optional(),
   legalName: z.string().trim().max(160).nullable().optional(),
   medicaidProviderId: z.string().trim().max(60).nullable().optional(),
+
+  // What prints on the form under and around the agency name. Length caps are
+  // layout limits: a pasted essay here would push the resident's name off the
+  // top of a Medicaid document.
+  letterheadLine: z.string().trim().max(120).nullable().optional(),
+  addressLine: z.string().trim().max(200).nullable().optional(),
+  footerLine: z.string().trim().max(160).nullable().optional(),
+
+  /** A path issued by POST /api/branding/logo. Ownership is checked below. */
+  logoPath: z.string().trim().max(500).nullable().optional(),
   // Accepts either a freshly uploaded data URL or the value already stored —
   // an agency whose logo is a shipped path would otherwise be unable to save
   // any setting at all, because the form sends the logo back unchanged.
@@ -86,6 +98,10 @@ export async function PATCH(req: Request) {
     body.legalName !== undefined ||
     body.medicaidProviderId !== undefined ||
     body.logoDataUrl !== undefined ||
+    body.logoPath !== undefined ||
+    body.letterheadLine !== undefined ||
+    body.addressLine !== undefined ||
+    body.footerLine !== undefined ||
     body.colors !== undefined;
 
   if (wantsOrgChange) {
@@ -104,8 +120,31 @@ export async function PATCH(req: Request) {
 
     const branding = { ...((org?.branding as Record<string, unknown>) ?? {}) };
     if (body.colors) Object.assign(branding, body.colors);
-    // null clears the logo back to the neutral default.
-    if (body.logoDataUrl !== undefined) branding.logo_url = body.logoDataUrl;
+
+    // null clears each of these back to the neutral default.
+    if (body.letterheadLine !== undefined) branding.letterhead_line = body.letterheadLine || null;
+    if (body.addressLine !== undefined) branding.address_line = body.addressLine || null;
+    if (body.footerLine !== undefined) branding.footer_line = body.footerLine || null;
+
+    if (body.logoPath !== undefined) {
+      // The path must be one this org was issued. Without this an agency could
+      // point its branding at another agency's object and have the logo route
+      // — which trusts the stored path — fetch it with the service role.
+      if (body.logoPath && !body.logoPath.startsWith(`${session.profile.orgId}/branding/`)) {
+        return NextResponse.json({ error: 'Invalid logo path.' }, { status: 400 });
+      }
+      branding.logo_path = body.logoPath;
+      // A bucket upload replaces any inline logo, so the two cannot disagree.
+      if (body.logoPath) branding.logo_url = null;
+    }
+
+    if (body.logoDataUrl !== undefined) {
+      branding.logo_url = body.logoDataUrl;
+      // Clearing the inline logo clears the uploaded one too — "Remove" on the
+      // settings screen means the agency has no logo, not that it has the
+      // previous one back.
+      if (body.logoDataUrl === null && body.logoPath === undefined) branding.logo_path = null;
+    }
 
     const patch: Record<string, unknown> = { branding, updated_at: new Date().toISOString() };
     if (body.orgName !== undefined) patch.name = body.orgName;

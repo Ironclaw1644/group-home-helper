@@ -3,9 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Alert, Button, Card } from '@/components/ui';
+import {
+  brandingPayload,
+  ColorFields,
+  emptyBranding,
+  FormPreview,
+  LogoPicker,
+  ResetColorsButton,
+  uploadPendingLogo,
+  type BrandingValues
+} from '@/components/branding/branding-editor';
 
 /**
  * Create a new agency workspace.
@@ -13,6 +23,12 @@ import { Alert, Button, Card } from '@/components/ui';
  * For a group home that found this on its own. The workspace starts empty —
  * no residents, no other staff — and the person signing up becomes its
  * administrator.
+ *
+ * Branding is offered here rather than only in Settings because the first
+ * thing a new customer does is print a note to see whether this is real, and
+ * that note carries their name to a Medicaid file. It is collapsed by default:
+ * skipping it prints the agency's own name with no logo, which is correct
+ * rather than merely acceptable.
  */
 export function SignupForm() {
   const router = useRouter();
@@ -24,6 +40,12 @@ export function SignupForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [showBranding, setShowBranding] = useState(false);
+  const [branding, setBranding] = useState<BrandingValues>(emptyBranding());
+
+  // The agency name is typed once, at the top, and flows into the preview.
+  const brandingWithName: BrandingValues = { ...branding, orgName };
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +82,26 @@ export function SignupForm() {
         return;
       }
 
+      // Branding is saved after sign-in, through the same endpoint Settings
+      // uses: it needs a session, and there is no second code path to keep in
+      // step. A failure here is not fatal — the workspace exists and every
+      // field can be set later — so it must not strand someone on this screen.
+      if (hasBranding(brandingWithName)) {
+        try {
+          // The logo was only held until now — there was no session to upload
+          // it with while the account did not exist.
+          const logoPath = await uploadPendingLogo(brandingWithName);
+
+          await fetch('/api/settings', {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(brandingPayload({ ...brandingWithName, logoPath }))
+          });
+        } catch {
+          /* Settings can fix this; sign-up should not fail on it. */
+        }
+      }
+
       router.replace('/residents');
       router.refresh();
     } catch {
@@ -82,7 +124,7 @@ export function SignupForm() {
             className="field-input"
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
-            placeholder="At Home Family Services"
+            placeholder="Your agency's name"
           />
         </div>
 
@@ -98,7 +140,7 @@ export function SignupForm() {
             placeholder="Main House"
           />
           <p className="mt-1.5 text-xs text-brand-slate">
-            You can rename it or add more later. Two shifts are set up for you.
+            You can rename it in Settings. Two 12-hour shifts are set up for you.
           </p>
         </div>
 
@@ -148,6 +190,115 @@ export function SignupForm() {
           <p className="mt-1.5 text-xs text-brand-slate">At least 10 characters.</p>
         </div>
 
+        {/* Optional, and collapsed: five fields is the sign-up, and everything
+            below can be set later without losing anything. */}
+        <div className="rounded-xl border border-brand-navy/15">
+          <button
+            type="button"
+            onClick={() => setShowBranding((v) => !v)}
+            className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-3 text-left"
+          >
+            <span>
+              <span className="block text-sm font-semibold text-brand-navy">
+                Brand your printed forms
+              </span>
+              <span className="block text-xs text-brand-slate">
+                Optional — your legal name, logo and colours. Changeable later.
+              </span>
+            </span>
+            {showBranding ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-brand-slate" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 text-brand-slate" />
+            )}
+          </button>
+
+          {showBranding ? (
+            <div className="space-y-4 border-t border-brand-navy/10 px-3 py-4">
+              <div>
+                <label htmlFor="su-legal" className="field-label">
+                  Legal name
+                </label>
+                <input
+                  id="su-legal"
+                  className="field-input"
+                  value={branding.legalName}
+                  onChange={(e) => setBranding({ ...branding, legalName: e.target.value })}
+                  placeholder="Your Agency, LLC"
+                />
+                <p className="mt-1.5 text-xs text-brand-slate">
+                  Printed at the top of every form. Use the name on your licence.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="su-letterhead" className="field-label">
+                  Letterhead line
+                </label>
+                <input
+                  id="su-letterhead"
+                  className="field-input"
+                  value={branding.letterheadLine}
+                  onChange={(e) => setBranding({ ...branding, letterheadLine: e.target.value })}
+                  placeholder="Residential Support Program"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="su-address" className="field-label">
+                  Address
+                </label>
+                <input
+                  id="su-address"
+                  className="field-input"
+                  value={branding.addressLine}
+                  onChange={(e) => setBranding({ ...branding, addressLine: e.target.value })}
+                  placeholder="19 Example Road, Richmond, VA 23220"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="su-footer" className="field-label">
+                  Footer line
+                </label>
+                <input
+                  id="su-footer"
+                  className="field-input"
+                  value={branding.footerLine}
+                  onChange={(e) => setBranding({ ...branding, footerLine: e.target.value })}
+                  placeholder="Provider #123456"
+                />
+              </div>
+
+              <div>
+                <span className="field-label">Logo</span>
+                <p className="mb-2 text-xs text-brand-slate">
+                  Saved to your workspace at the end of sign-up.
+                </p>
+                <LogoPicker
+                  value={branding}
+                  onChange={setBranding}
+                  onError={setError}
+                  deferUpload
+                />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="field-label mb-0">Colours</span>
+                  <ResetColorsButton value={branding} onChange={setBranding} />
+                </div>
+                <ColorFields value={branding} onChange={setBranding} />
+              </div>
+
+              <div>
+                <span className="field-label">How your form will print</span>
+                <FormPreview value={brandingWithName} />
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         {error ? <Alert tone="error">{error}</Alert> : null}
 
         <Button type="submit" variant="primary" className="w-full" disabled={busy}>
@@ -164,9 +315,20 @@ export function SignupForm() {
       </p>
 
       <p className="mt-3 text-center text-xs text-brand-slate">
-        Before entering real resident information, read the PHI section of the README — this needs
-        signed agreements with your host and model vendor.
+        This system holds protected health information. Every read and every printed form is
+        logged, and your agency&apos;s records are visible only to your own staff.
       </p>
     </Card>
+  );
+}
+
+/** True when the person actually filled something in worth saving. */
+function hasBranding(v: BrandingValues): boolean {
+  return Boolean(
+    v.legalName.trim() ||
+      v.letterheadLine.trim() ||
+      v.addressLine.trim() ||
+      v.footerLine.trim() ||
+      v.logoFile
   );
 }

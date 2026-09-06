@@ -3,6 +3,7 @@ import 'server-only';
 import { cache } from 'react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { DEFAULT_BRAND, parseBranding, type BrandTokens } from './theme';
+import { parsePrintFields } from './print';
 
 /**
  * Load the signed-in user's organization branding.
@@ -31,8 +32,16 @@ export const loadBrand = cache(async (): Promise<BrandTokens> => {
     if (!data) return DEFAULT_BRAND;
 
     const tokens = parseBranding(data.branding);
+
+    // A logo uploaded to the private bucket wins over everything else: it is
+    // the current upload path, and those bytes are not addressable directly,
+    // so the browser is pointed at the route that serves this session's own
+    // organization and no other.
+    const { logoPath } = parsePrintFields(data.branding);
+    if (logoPath) return { ...tokens, logoUrl: '/api/branding/logo' };
+
     // A top-level logo_url column wins over the one inside branding, since
-    // that is what an explicit logo upload writes to.
+    // that is what an explicit logo upload used to write to.
     return data.logo_url ? { ...tokens, logoUrl: data.logo_url } : tokens;
   } catch {
     return DEFAULT_BRAND;
