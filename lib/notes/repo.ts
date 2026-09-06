@@ -63,6 +63,64 @@ export function pickTemplate<T extends TemplateCandidate>(
   );
 }
 
+/**
+ * One specific template, by id, whether or not it is still active.
+ *
+ * A signed note must keep printing the form it was signed under. `active` is
+ * deliberately not filtered: retiring a template version, or an agency moving
+ * to another jurisdiction, must not silently restyle records that are already
+ * signed, locked, and filed.
+ */
+export async function getTemplateById(templateId: string): Promise<FormTemplate | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('form_templates')
+    .select(TEMPLATE_COLUMNS)
+    .eq('id', templateId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id as string,
+    key: data.key as string,
+    version: data.version as number,
+    name: data.name as string,
+    formNumber: (data.form_number as string | null) ?? null,
+    jurisdiction: data.jurisdiction as string,
+    schema: data.schema as FormTemplateSchema,
+    renderConfig: (data.render_config ?? {}) as RenderConfig
+  };
+}
+
+/**
+ * The template a note should be PRINTED against.
+ *
+ * A signed note renders on the form it was signed under, always. A draft
+ * renders on the agency's current form, so that correcting a jurisdiction — or
+ * publishing a new version of one — takes effect on work not yet filed.
+ *
+ * Without this rule, an agency that fixed its jurisdiction in Settings would
+ * have every previously signed note re-render on the new state's layout the
+ * next time anyone opened or exported it. The record would not have changed;
+ * the document representing it would have, which is the same problem wearing a
+ * different hat.
+ *
+ * Falls back to the org's current template only if the stored one has been
+ * deleted outright — printing something is better than a supervisor being
+ * unable to produce a record at all, and a deletion is loud enough to notice.
+ */
+export async function getTemplateForNote(
+  note: Pick<Note, 'templateId' | 'status'>,
+  orgId: string
+): Promise<FormTemplate> {
+  if (note.status === 'signed') {
+    const pinned = await getTemplateById(note.templateId);
+    if (pinned) return pinned;
+  }
+  return getTemplateForOrg(orgId);
+}
+
 /** The jurisdiction an organization files under. */
 export async function getOrgJurisdiction(orgId: string): Promise<string> {
   const supabase = await createSupabaseServerClient();

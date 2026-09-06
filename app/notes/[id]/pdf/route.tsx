@@ -9,7 +9,7 @@ import {
   getNote,
   getResident,
   getShifts,
-  getTemplateForOrg
+  getTemplateForNote
 } from '@/lib/notes/repo';
 import { TemplatePdf } from '@/lib/pdf/TemplatePdf';
 import { buildPrintContext } from '@/lib/pdf/print-context';
@@ -40,7 +40,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [resident, template, shifts, addenda, outcomes, noteOutcomes, noteActivities] =
     await Promise.all([
       getResident(note.residentId, true),
-      getTemplateForOrg(session.profile.orgId),
+      // Signed notes print the form they were signed under; see
+      // getTemplateForNote. A jurisdiction change must not restyle a
+      // record that is already filed.
+      getTemplateForNote(note, session.profile.orgId),
       getShifts(note.homeId),
       getAddenda(note.id),
       // Retired outcomes are included: a note signed while an outcome was live
