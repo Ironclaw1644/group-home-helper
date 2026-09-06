@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getSession } from '@/lib/auth/session';
+import { getSession, orgTimeZoneFor } from '@/lib/auth/session';
 import { getActiveTemplate, getPreviousSignedNarrative } from '@/lib/notes/repo';
 import { DUPLICATE_WARN_THRESHOLD, narrativeSimilarity } from '@/lib/notes/similarity';
 import { logAccess } from '@/lib/audit';
+import { formatServiceDate, todayInTimeZone } from '@/lib/utils';
 
 const SignBody = z.object({
   // PNG data URL from the signature canvas. Optional: a typed attestation is
@@ -38,7 +39,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { data: note } = await supabase
     .from('notes')
-    .select('id, org_id, resident_id, service_date, narrative, status, locked, author_id')
+    .select(
+      'id, org_id, resident_id, service_date, narrative, status, locked, author_id, prestaged_at, prestage_confirmed_at'
+    )
     .eq('id', id)
     .maybeSingle();
 
@@ -54,6 +57,36 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   if (!note.narrative || note.narrative.trim().length === 0) {
     return NextResponse.json({ error: 'Write the note before signing.' }, { status: 400 });
+  }
+
+  // A note cannot be signed before the day it documents. Pre-staging creates
+  // drafts for dates that have not arrived yet, so without this someone could
+  // open Friday's note on Monday and attest to a shift nobody has worked.
+  // Measured against the agency's own timezone, since that is what a Medicaid
+  // service date means. The database enforces this as well; the check here
+  // exists to say so in words rather than surfacing a constraint violation.
+  const tz = await orgTimeZoneFor(note.org_id as string);
+  if ((note.service_date as string) > todayInTimeZone(tz)) {
+    return NextResponse.json(
+      {
+        error: `This note is for ${formatServiceDate(note.service_date as string)}, which has not happened yet. It can be signed at the end of that shift.`
+      },
+      { status: 400 }
+    );
+  }
+
+  // A prepared note carries the resident's usual pattern, which is a starting
+  // point and not an observation. Somebody has to say it matches the shift they
+  // actually worked before it becomes a permanent record.
+  if (note.prestaged_at && !note.prestage_confirmed_at) {
+    return NextResponse.json(
+      {
+        code: 'prestage_unconfirmed',
+        error:
+          'This note was prepared in advance. Check the entries and confirm they match your shift before signing.'
+      },
+      { status: 409 }
+    );
   }
 
   // Duplicate check. Copy-forward notes are the most common audit finding, so
@@ -101,7 +134,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     .from('notes')
     .update({
       status: 'signed',
-      signed_at: new Date().toISOString(),
+      // signed_at is deliberately not sent. 0020's trigger sets it from the
+      // database clock at the moment of signing, so the time on a signature is
+      // not something any caller — including this one — gets to supply.
       signed_by: session.profile.id,
       signature_name: session.profile.fullName,
       signature_title: session.profile.title,

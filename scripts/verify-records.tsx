@@ -24,8 +24,19 @@ import path from 'node:path';
 import { Form680 } from '../lib/pdf/Form680';
 import { answeredOutcomes, outcomeStatus, unansweredOutcomes } from '../lib/outcomes/answered';
 import { createAutosave } from '../lib/notes/autosave';
+import {
+  addDays,
+  concernKeys,
+  isFutureServiceDate,
+  MIN_HISTORY,
+  recentHistory,
+  routineSelections,
+  weekDates,
+  type PriorNote
+} from '../lib/notes/prestage';
 import type {
   FormTemplate,
+  FormTemplateSchema,
   Note,
   NoteOutcome,
   Outcome,
@@ -325,8 +336,205 @@ const note: Note = {
   updatedAt: '2026-09-01T12:00:00Z'
 } as unknown as Note;
 
+// ---------------------------------------------------------------------------
+// Pre-staging a week. A prepared note saves a DSP most of ten minutes, and it
+// does that by guessing. So the thing worth testing exhaustively is what it
+// refuses to guess.
+// ---------------------------------------------------------------------------
+function prestageChecks() {
+  const schema: FormTemplateSchema = {
+    prompts: [],
+    sections: [
+      {
+        key: 'activity',
+        title: 'Activity',
+        fields: [
+          {
+            key: 'location',
+            type: 'chips',
+            label: 'Where did {name} go?',
+            multiple: true,
+            options: [
+              { value: 'stayed_home', label: 'Stayed home' },
+              { value: 'day_program', label: 'Day program' },
+              { value: 'museum', label: 'Museum' }
+            ]
+          },
+          {
+            key: 'transport',
+            type: 'chips',
+            // Single-select, and nothing in it can flag a concern.
+            label: 'How did they travel?',
+            multiple: false,
+            options: [
+              { value: 'agency_van', label: 'Agency van' },
+              { value: 'walked', label: 'Walked' }
+            ]
+          },
+          {
+            key: 'mood',
+            type: 'chips',
+            label: 'Mood',
+            multiple: false,
+            options: [
+              { value: 'calm', label: 'Calm' },
+              { value: 'agitated', label: 'Agitated', flags_concern: true }
+            ]
+          }
+        ]
+      },
+      {
+        key: 'status',
+        title: 'Concerns',
+        fields: [
+          {
+            key: 'incident',
+            type: 'boolean',
+            label: 'Was there an incident?',
+            flags_concern_when_true: true
+          },
+          { key: 'notes', type: 'text', label: 'Anything else', multiline: true }
+        ]
+      }
+    ],
+    narrative: { key: 'narrative', type: 'narrative', label: 'Progress note' },
+    signature: { key: 'signature', type: 'signature', attestation: '' }
+  };
+
+  // Four weeks of a settled routine: day program every day, calm every day,
+  // one museum trip, one bad day, and free text on one of them.
+  const usual = {
+    'activity.location': ['day_program'],
+    'activity.transport': ['agency_van'],
+    'activity.mood': ['calm']
+  };
+  const history: PriorNote[] = [
+    { serviceDate: '2026-09-01', structuredData: { ...usual } },
+    { serviceDate: '2026-09-02', structuredData: { ...usual } },
+    { serviceDate: '2026-09-03', structuredData: { ...usual } },
+    {
+      serviceDate: '2026-09-04',
+      structuredData: {
+        'activity.location': ['museum'],
+        'activity.transport': ['agency_van'],
+        'activity.mood': ['agitated'],
+        'status.incident': true,
+        'status.notes': 'Refused the van for twenty minutes.'
+      }
+    },
+    { serviceDate: '2026-09-05', structuredData: { ...usual } }
+  ];
+
+  section('Pre-staging suggests the routine and refuses to guess anything else');
+
+  const suggested = routineSelections(schema, history);
+
+  check(
+    'the four-out-of-five routine is suggested',
+    JSON.stringify(suggested['activity.location']) === JSON.stringify(['day_program']),
+    JSON.stringify(suggested['activity.location'])
+  );
+  check(
+    'the one-off outing is not',
+    !JSON.stringify(suggested['activity.location'] ?? []).includes('museum'),
+    'doing something once must not become doing it every day'
+  );
+  check(
+    'a concern option is never suggested, even when it is the routine',
+    !JSON.stringify(suggested).includes('agitated')
+  );
+  check(
+    'and neither is the safe half of a field that can flag a concern',
+    suggested['activity.mood'] === undefined,
+    'suggesting "calm" is quietly asserting the shift was fine — the whole field is left to the DSP'
+  );
+  check(
+    'a concern boolean is never suggested',
+    suggested['status.incident'] === undefined,
+    'a prepared note must not open already reporting an incident'
+  );
+  check(
+    'free text is never carried forward',
+    suggested['status.notes'] === undefined,
+    "last week's words describe last week"
+  );
+  check(
+    'a single-select field gets exactly one value',
+    JSON.stringify(suggested['activity.transport']) === JSON.stringify(['agency_van']),
+    JSON.stringify(suggested['activity.transport'])
+  );
+
+  check(
+    'nothing is suggested from too little history',
+    Object.keys(routineSelections(schema, history.slice(0, MIN_HISTORY - 1))).length === 0,
+    'two notes is not a pattern'
+  );
+  check('nothing is suggested from no history at all', Object.keys(routineSelections(schema, [])).length === 0);
+
+  // Below the threshold: half the days is not a routine.
+  const inconsistent: PriorNote[] = [
+    { serviceDate: '2026-09-01', structuredData: { 'activity.location': ['day_program'] } },
+    { serviceDate: '2026-09-02', structuredData: { 'activity.location': ['museum'] } },
+    { serviceDate: '2026-09-03', structuredData: { 'activity.location': ['day_program'] } },
+    { serviceDate: '2026-09-04', structuredData: { 'activity.location': ['museum'] } }
+  ];
+  check(
+    'a habit split down the middle is not suggested either way',
+    routineSelections(schema, inconsistent)['activity.location'] === undefined,
+    JSON.stringify(routineSelections(schema, inconsistent))
+  );
+
+  check(
+    'concern fields are identified from the schema, not hardcoded',
+    concernKeys(schema).has('status.incident') && concernKeys(schema).has('activity.mood'),
+    [...concernKeys(schema)].join(', ')
+  );
+
+  section('The week a pre-stage covers');
+
+  const week = weekDates('2026-09-28');
+  check('is seven days', week.length === 7);
+  check('starts on the day asked for', week[0] === '2026-09-28');
+  check(
+    'and crosses a month end without slipping',
+    JSON.stringify(week.slice(2, 5)) === JSON.stringify(['2026-09-30', '2026-10-01', '2026-10-02']),
+    JSON.stringify(week)
+  );
+
+  // A service date is a calendar day on a Medicaid record, not an instant.
+  // Going through local time is how it lands on the wrong day.
+  check('a spring-forward boundary does not lose a day', addDays('2026-03-07', 1) === '2026-03-08');
+  check('a fall-back boundary does not repeat one', addDays('2026-11-01', 1) === '2026-11-02');
+  check('a leap day is a day', addDays('2028-02-28', 1) === '2028-02-29');
+  check('and the year rolls over', addDays('2026-12-31', 1) === '2027-01-01');
+
+  check(
+    'only signed notes from the last four weeks inform the pattern',
+    recentHistory(
+      [
+        { serviceDate: '2026-07-01', structuredData: {} },
+        { serviceDate: '2026-09-04', structuredData: {} },
+        { serviceDate: '2026-09-30', structuredData: {} }
+      ],
+      '2026-09-10'
+    ).length === 1,
+    'older than the window, and later than the note itself, are both excluded'
+  );
+
+  check(
+    "tomorrow's note is in the future",
+    isFutureServiceDate('2026-09-08', '2026-09-07')
+  );
+  check(
+    "today's note is not",
+    !isFutureServiceDate('2026-09-07', '2026-09-07'),
+    'a shift can be written up the day it happens'
+  );
+}
+
 async function main() {
   await autosaveChecks();
+  prestageChecks();
 
   section('A partially-completed note does not print an unanswered outcome as answered');
 

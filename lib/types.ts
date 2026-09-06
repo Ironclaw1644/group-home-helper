@@ -362,6 +362,17 @@ export type Note = {
   locked: boolean;
   similarityPrev: number | null;
   updatedAt: string;
+  /**
+   * Set when this draft was prepared ahead of the shift rather than opened by
+   * hand, carrying the resident's usual pattern. It is provenance, not a claim:
+   * nothing prepared has been observed by anyone.
+   */
+  prestagedAt: string | null;
+  /**
+   * Set when a DSP confirmed the prepared entries describe the shift they
+   * worked. Signing is refused until then, by the route and by the database.
+   */
+  prestageConfirmedAt: string | null;
 };
 
 export type NoteAddendum = {

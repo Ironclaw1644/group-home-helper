@@ -44,6 +44,7 @@ export default function NoteEditor({
   shiftLabel,
   signerName,
   signerTitle,
+  today,
   outcomes,
   savedOutcomes,
   activities,
@@ -55,6 +56,8 @@ export default function NoteEditor({
   shiftLabel: string;
   signerName: string;
   signerTitle: string;
+  /** Today in the agency's own timezone, resolved on the server. */
+  today: string;
   /** This resident's ISP outcomes. Different for every person — that is the point. */
   outcomes: Outcome[];
   savedOutcomes: NoteOutcome[];
@@ -112,6 +115,11 @@ export default function NoteEditor({
   // message.
   const [aiUnavailable, setAiUnavailable] = useState(false);
   const [aiFlags, setAiFlags] = useState<string[]>([]);
+
+  const [prestageConfirmedAt, setPrestageConfirmedAt] = useState<string | null>(
+    note.prestageConfirmedAt
+  );
+  const [confirmingPrestage, setConfirmingPrestage] = useState(false);
 
   const [signing, setSigning] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -290,6 +298,28 @@ export default function NoteEditor({
     }
   }
 
+  async function confirmPrestage() {
+    setConfirmingPrestage(true);
+    setSignError(null);
+    try {
+      // Flush first: the DSP has usually corrected something before confirming,
+      // and the confirmation should cover what is on screen.
+      await autosave.flush();
+
+      const res = await fetch(`/api/notes/${note.id}/confirm-prestage`, { method: 'POST' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSignError(body?.error ?? 'Could not record the confirmation.');
+        return;
+      }
+      setPrestageConfirmedAt(body.confirmedAt ?? new Date().toISOString());
+    } catch {
+      setSignError('Could not reach the server. Your note is saved on this device.');
+    } finally {
+      setConfirmingPrestage(false);
+    }
+  }
+
   async function submitSignature(force: boolean) {
     setSigning(true);
     setSignError(null);
@@ -337,6 +367,15 @@ export default function NoteEditor({
   const narrativeTooShort =
     narrative.trim().length < (template.schema.narrative.min_length ?? 0);
 
+  // A prepared note opens carrying the resident's routine. That is a starting
+  // point, not an observation, so a person has to say it matches the shift they
+  // worked before it can be signed. The database refuses too.
+  const needsPrestageConfirm = Boolean(note.prestagedAt) && prestageConfirmedAt === null;
+
+  // Prepared notes exist for days that have not arrived. Nobody can attest to a
+  // shift they have not worked.
+  const isFutureShift = note.serviceDate > today;
+
   // Signing is what turns this into a permanent Medicaid record, so every
   // outcome has to have a human answer behind it by then. Leaving one blank
   // used to be impossible to notice, because blank rendered as "Not this
@@ -344,13 +383,54 @@ export default function NoteEditor({
   const stillUnanswered = unansweredOutcomes(outcomes, outcomeEntries);
 
   const readyToSign =
-    attested && narrative.trim().length > 0 && !narrativeTooShort && stillUnanswered.length === 0;
+    attested &&
+    narrative.trim().length > 0 &&
+    !narrativeTooShort &&
+    stillUnanswered.length === 0 &&
+    !needsPrestageConfirm &&
+    !isFutureShift;
 
   return (
     <div className="space-y-5">
       {restored ? (
         <Alert tone="warning" title="Recovered an unsaved draft">
           This device had newer changes than the server. Review the note before signing.
+        </Alert>
+      ) : null}
+
+      {/* A prepared note says so, at the top, before anything else. The entries
+          below came from what usually happens, not from anyone watching this
+          shift, and the difference has to be the first thing the DSP reads. */}
+      {note.prestagedAt && needsPrestageConfirm ? (
+        <Alert tone="warning" title="Prepared ahead of the shift — check it">
+          <p>
+            The entries below were filled in from {displayName(resident)}&apos;s usual{' '}
+            {shiftLabel} shift. Nobody has watched this one yet. Change anything that was
+            different, then confirm.
+          </p>
+          <p className="mt-1">
+            {resident.pronouns.possessive.charAt(0).toUpperCase() +
+              resident.pronouns.possessive.slice(1)}{' '}
+            service plan below was left blank on purpose — those answers are yours to give.
+          </p>
+          <div className="mt-3">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={confirmPrestage}
+              disabled={confirmingPrestage || isFutureShift}
+            >
+              {confirmingPrestage ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              This matches my shift
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+
+      {isFutureShift ? (
+        <Alert tone="info" title="This shift has not happened yet">
+          This note is for {formatServiceDate(note.serviceDate)}. It is here so it is ready when
+          the shift ends — it cannot be signed until that day.
         </Alert>
       ) : null}
 
@@ -602,7 +682,15 @@ export default function NoteEditor({
             {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
             {signing ? 'Signing…' : 'Sign and lock note'}
           </Button>
-          {stillUnanswered.length > 0 ? (
+          {isFutureShift ? (
+            <span className="text-xs font-semibold text-status-draft">
+              Can be signed on {formatServiceDate(note.serviceDate)}.
+            </span>
+          ) : needsPrestageConfirm ? (
+            <span className="text-xs font-semibold text-status-draft">
+              Confirm the prepared entries above first.
+            </span>
+          ) : stillUnanswered.length > 0 ? (
             <span className="text-xs font-semibold text-status-draft">
               {stillUnanswered.length === 1
                 ? '1 service-plan outcome still needs an answer.'

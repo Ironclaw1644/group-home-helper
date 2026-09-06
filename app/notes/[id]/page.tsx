@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FileDown } from 'lucide-react';
-import { requireSession } from '@/lib/auth/session';
+import { requireSession, orgTimeZoneFor } from '@/lib/auth/session';
 import { getActiveTemplate, getAddenda, getNote, getResident, getRoster, getShifts } from '@/lib/notes/repo';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui';
@@ -13,7 +13,7 @@ import {
   listOutcomes
 } from '@/lib/outcomes/repo';
 import { displayName } from '@/lib/types';
-import { formatServiceDate } from '@/lib/utils';
+import { formatServiceDate, todayInTimeZone } from '@/lib/utils';
 import NoteEditor from './note-editor';
 import SignedNote from './signed-note';
 
@@ -134,6 +134,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           shiftLabel={shift.label}
           signerName={session.profile.fullName}
           signerTitle={session.profile.title}
+          // Resolved here, in the agency's own timezone. A note prepared for
+          // later in the week cannot be signed early, and the phone's clock is
+          // not what decides when that day has arrived.
+          today={todayInTimeZone(await orgTimeZoneFor(session.profile.orgId))}
           outcomes={outcomes}
           savedOutcomes={savedOutcomes}
           activities={activities}

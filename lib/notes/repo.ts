@@ -112,7 +112,9 @@ function mapNote(input: unknown): Note {
     attestationText: (row.attestation_text as string) ?? null,
     locked: row.locked as boolean,
     similarityPrev: (row.similarity_prev as number) ?? null,
-    updatedAt: row.updated_at as string
+    updatedAt: row.updated_at as string,
+    prestagedAt: (row.prestaged_at as string) ?? null,
+    prestageConfirmedAt: (row.prestage_confirmed_at as string) ?? null
   };
 }
 
@@ -120,7 +122,7 @@ const NOTE_COLUMNS =
   'id, org_id, template_id, template_version, resident_id, home_id, shift_id, service_date, ' +
   'author_id, status, structured_data, narrative, ai_assisted, ai_mode, is_training_example, ' +
   'signed_at, signature_name, signature_title, signature_image_path, attestation_text, ' +
-  'locked, similarity_prev, updated_at';
+  'locked, similarity_prev, updated_at, prestaged_at, prestage_confirmed_at';
 
 export async function getNote(noteId: string): Promise<Note | null> {
   const supabase = await createSupabaseServerClient();

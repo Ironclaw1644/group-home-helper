@@ -110,18 +110,23 @@ const IGNORED_FIELDS: Record<string, string[]> = {
 // Build a fresh database from the repo
 // ---------------------------------------------------------------------------
 
-async function buildFromRepo(): Promise<{ built: Snapshot; db: PGlite }> {
+function migrationFiles(): string[] {
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+}
+
+async function buildFromRepo(
+  files: string[],
+  label: string
+): Promise<{ built: Snapshot; db: PGlite }> {
   const db = new PGlite({ extensions: { pgcrypto } });
   await db.waitReady;
 
   await db.exec(fs.readFileSync(COMPAT, 'utf8'));
 
-  const files = fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-
-  console.log(`\nApplying ${files.length} migration(s) to a throwaway database\n`);
+  console.log(`\nApplying ${files.length} migration(s) to a throwaway database — ${label}\n`);
 
   for (const file of files) {
     try {
@@ -379,17 +384,212 @@ async function checkImmutabilityAndTheDemoDoor(db: PGlite) {
   check('the real agency is still there', Number(real.rows[0]?.n) === 1);
 }
 
+/**
+ * A prepared note cannot become a signed record on its own.
+ *
+ * Pre-staging creates a week of unsigned drafts carrying each resident's usual
+ * pattern. That saves most of ten minutes a note, and it is only defensible
+ * because of what it cannot do. All three of these are enforced by the
+ * database, not by the route, so they hold against a caller that skips the app
+ * entirely.
+ */
+async function checkPrestageGuarantees(db: PGlite) {
+  console.log('\na prepared note cannot sign itself\n');
+
+  const setup = await db.query<{ resident_id: string; home_id: string; shift_id: string; author_id: string; org_id: string }>(`
+    with h as (
+      insert into ghh.homes (org_id, name)
+      values ('00000000-0000-0000-0000-000000000001', 'Prestage House') returning id, org_id
+    ),
+    s as (
+      insert into ghh.shifts (org_id, home_id, label, start_time, end_time, sort_order)
+      select org_id, id, '7AM-7PM', '07:00', '19:00', 0 from h returning id
+    ),
+    u as (insert into auth.users (email) values ('prestage@example.com') returning id),
+    p as (
+      insert into ghh.profiles (id, org_id, full_name, title, role)
+      select u.id, h.org_id, 'Prestage DSP', 'DSP', 'dsp' from u, h returning id
+    ),
+    r as (
+      insert into ghh.residents (org_id, home_id, first_name, last_name)
+      select org_id, id, 'Robin', 'Prestage' from h returning id
+    )
+    select r.id as resident_id, h.id as home_id, s.id as shift_id, p.id as author_id, h.org_id
+    from r, h, s, p`);
+
+  const { resident_id, home_id, shift_id, author_id, org_id } = setup.rows[0];
+
+  // `dateExpr` is SQL, inlined rather than bound, so the service date is
+  // computed by the same clock the trigger compares it against. Test-only, and
+  // never anything but a literal from this file.
+  const prepare = async (dateExpr: string, confirmed: boolean) => {
+    const row = await db.query<{ id: string }>(
+      `insert into ghh.notes (org_id, template_id, template_version, resident_id, home_id,
+                              shift_id, service_date, author_id, narrative,
+                              prestaged_at, prestaged_by, prestage_confirmed_at)
+       select $1, t.id, t.version, $2, $3, $4, ${dateExpr}, $5,
+              'Prepared narrative the DSP wrote.', now(), $5,
+              case when $6 then now() else null end
+       from ghh.form_templates t limit 1
+       returning id`,
+      [org_id, resident_id, home_id, shift_id, author_id, confirmed]
+    );
+    return row.rows[0].id;
+  };
+
+  const sign = async (noteId: string) => {
+    await db.query(
+      `update ghh.notes
+          set status = 'signed', signed_by = $2,
+              signature_name = 'Prestage DSP', signature_title = 'DSP'
+        where id = $1`,
+      [noteId, author_id]
+    );
+  };
+
+  const refuses = async (label: string, run: () => Promise<unknown>, detail?: string) => {
+    let blocked = false;
+    try {
+      await run();
+    } catch {
+      blocked = true;
+    }
+    check(label, blocked, detail ?? 'the database let it through');
+  };
+
+  // 1. A day that has not happened cannot be attested to.
+  const tomorrow = await prepare("ghh.org_today('00000000-0000-0000-0000-000000000001') + 3", true);
+  await refuses(
+    'a note for a future date cannot be signed, however it was prepared',
+    () => sign(tomorrow),
+    'somebody could attest to a shift nobody has worked'
+  );
+
+  await refuses(
+    'and it cannot be inserted already signed either',
+    () =>
+      db.query(
+        `insert into ghh.notes (org_id, template_id, template_version, resident_id, home_id,
+                                shift_id, service_date, author_id, narrative, status, locked,
+                                signed_at, signed_by, signature_name, signature_title)
+         select $1, t.id, t.version, $2, $3, $4, (now() + interval '4 days')::date, $5,
+                'Written ahead.', 'signed', true, now(), $5, 'Prestage DSP', 'DSP'
+         from ghh.form_templates t limit 1`,
+        [org_id, resident_id, home_id, shift_id, author_id]
+      ),
+    'the update trigger is not the only way in'
+  );
+
+  // 2. A prepared note has to be confirmed by a person first.
+  const unconfirmed = await prepare("ghh.org_today('00000000-0000-0000-0000-000000000001')", false);
+  await refuses(
+    'a prepared note that nobody confirmed cannot be signed',
+    () => sign(unconfirmed),
+    'a guess from last week would have become an attested record'
+  );
+
+  await db.query('update ghh.notes set prestage_confirmed_at = now(), prestage_confirmed_by = $2 where id = $1', [
+    unconfirmed,
+    author_id
+  ]);
+  let signedOk = true;
+  try {
+    await sign(unconfirmed);
+  } catch (err) {
+    signedOk = false;
+    check('once confirmed, it signs normally', false, (err as Error).message);
+  }
+  if (signedOk) check('once confirmed, it signs normally', true);
+
+  // 3. The signing time is the database's, not the caller's.
+  const backdated = await prepare("ghh.org_today('00000000-0000-0000-0000-000000000001') - 1", true);
+  await db.query(
+    `update ghh.notes
+        set status = 'signed', signed_by = $2, signed_at = timestamptz '2020-01-01 00:00:00+00',
+            signature_name = 'Prestage DSP', signature_title = 'DSP'
+      where id = $1`,
+    [backdated, author_id]
+  );
+  const when = await db.query<{ signed_at: string; backdated: boolean }>(
+    `select signed_at, signed_at < now() - interval '1 day' as backdated
+       from ghh.notes where id = $1`,
+    [backdated]
+  );
+  check(
+    'a supplied signing time is overwritten by the database clock',
+    when.rows[0]?.backdated === false,
+    `signed_at came back as ${when.rows[0]?.signed_at}`
+  );
+
+  // And the note it just signed is immutable like any other.
+  await refuses(
+    'a signed prepared note is as immutable as any other',
+    () => db.query(`update ghh.notes set narrative = 'tampered' where id = $1`, [backdated])
+  );
+
+  // 4. Pre-staging answers no outcomes. The route writes no note_outcomes rows;
+  //    this asserts the shape that makes that observable.
+  const outcomes = await db.query<{ n: number }>(
+    `select count(*) as n from ghh.note_outcomes o
+      join ghh.notes n on n.id = o.note_id
+     where n.prestaged_at is not null`
+  );
+  check(
+    'no prepared note carries outcome documentation',
+    Number(outcomes.rows[0]?.n) === 0,
+    'pre-staging must never answer a service plan on the DSP’s behalf'
+  );
+}
+
 // ---------------------------------------------------------------------------
 
+/**
+ * The snapshot, plus the one fact that makes it interpretable.
+ *
+ * `appliedThrough` is the last migration that has actually been deployed. Repo
+ * and production are not the same thing between writing a migration and running
+ * it, and a check that cannot express that either fails on every unmerged
+ * change or has to be run only after deploys. So the comparison is made against
+ * the migrations that were applied when the snapshot was taken, and anything
+ * after that is reported as pending rather than as a defect — while still
+ * having to apply cleanly and still having to pass the behavioural checks.
+ */
+type SnapshotFile = {
+  appliedThrough: string;
+  capturedAt: string;
+  objects: Snapshot;
+};
+
+function readSnapshot(): SnapshotFile {
+  return JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8')) as SnapshotFile;
+}
+
 async function refresh() {
-  console.log('\nReading production structure (read-only, no row data)\n');
-  const snapshot: Snapshot = {};
-  for (const name of Object.keys(COMPARED)) {
-    snapshot[name] = await readOnlyQuery<Row>(QUERIES[name]);
-    console.log(`  ${name}: ${snapshot[name].length} row(s)`);
+  const flag = process.argv.find((a) => a.startsWith('--applied-through='));
+  const files = migrationFiles();
+  const appliedThrough =
+    flag?.split('=')[1] ??
+    (fs.existsSync(SNAPSHOT) ? readSnapshot().appliedThrough : files[files.length - 1]);
+
+  if (!files.includes(appliedThrough)) {
+    console.error(`\n--applied-through must name a migration file. Got: ${appliedThrough}\n`);
+    process.exit(1);
   }
-  fs.writeFileSync(SNAPSHOT, `${JSON.stringify(snapshot, null, 2)}\n`);
-  console.log(`\nWrote ${path.relative(process.cwd(), SNAPSHOT)}\n`);
+
+  console.log('\nReading production structure (read-only, no row data)\n');
+  const objects: Snapshot = {};
+  for (const name of Object.keys(COMPARED)) {
+    objects[name] = await readOnlyQuery<Row>(QUERIES[name]);
+    console.log(`  ${name}: ${objects[name].length} row(s)`);
+  }
+
+  const file: SnapshotFile = {
+    appliedThrough,
+    capturedAt: new Date().toISOString(),
+    objects
+  };
+  fs.writeFileSync(SNAPSHOT, `${JSON.stringify(file, null, 2)}\n`);
+  console.log(`\nWrote ${path.relative(process.cwd(), SNAPSHOT)} (applied through ${appliedThrough})\n`);
 }
 
 async function main() {
@@ -406,13 +606,41 @@ async function main() {
     process.exit(1);
   }
 
-  const live = JSON.parse(fs.readFileSync(SNAPSHOT, 'utf8')) as Snapshot;
-  const { built, db } = await buildFromRepo();
+  const snapshot = readSnapshot();
+  const all = migrationFiles();
+  const cutoff = all.indexOf(snapshot.appliedThrough);
 
-  compare(built, live);
-  checkEveryTableIsProtected(built);
-  await checkImmutabilityAndTheDemoDoor(db);
+  if (cutoff === -1) {
+    console.error(
+      `\nThe snapshot was taken through ${snapshot.appliedThrough}, which no longer exists.\n` +
+        'Refresh it, or restore the file.\n'
+    );
+    process.exit(1);
+  }
+
+  const deployed = all.slice(0, cutoff + 1);
+  const pending = all.slice(cutoff + 1);
+
+  // What production is running today has to be reproducible exactly.
+  const { built, db } = await buildFromRepo(deployed, 'as deployed');
+  compare(built, snapshot.objects);
   await db.close();
+
+  // Everything, including migrations not yet run. These still have to apply to
+  // a database in production's state, and the guarantees still have to hold
+  // afterwards — that is what stops a pending migration quietly removing one.
+  const full = await buildFromRepo(all, pending.length ? 'including pending' : 'complete');
+  checkEveryTableIsProtected(full.built);
+  await checkImmutabilityAndTheDemoDoor(full.db);
+  await checkPrestageGuarantees(full.db);
+  await full.db.close();
+
+  if (pending.length) {
+    console.log('\nnot yet deployed\n');
+    for (const file of pending) console.log(`  pending  ${file}`);
+    console.log('\n  These apply cleanly and keep every guarantee, but production has not run');
+    console.log('  them yet. Re-run with --refresh --applied-through=<file> after deploying.');
+  }
 
   console.log('');
   if (failures > 0) {

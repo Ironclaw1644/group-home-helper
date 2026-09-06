@@ -10,6 +10,7 @@ import { ComplianceAlertsCard } from '@/components/compliance/alerts-card';
 import { addDays, formatServiceDate, todayInTimeZone } from '@/lib/utils';
 import { DUPLICATE_WARN_THRESHOLD } from '@/lib/notes/similarity';
 import ExportPanel from './export-panel';
+import PrestagePanel from './prestage-panel';
 import type { RosterEntry } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -158,6 +159,8 @@ export default async function SupervisorPage({
           </ul>
         </Card>
       ) : null}
+
+      <PrestagePanel homes={session.homes} today={today} />
 
       <ExportPanel homes={session.homes} defaultDate={serviceDate} />
     </AppShell>

@@ -65,6 +65,8 @@ const template: FormTemplate = {
 
 const note: Note = {
   id: 'note',
+  prestagedAt: null,
+  prestageConfirmedAt: null,
   orgId: 'org',
   templateId: 'tpl',
   templateVersion: 1,
