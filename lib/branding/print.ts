@@ -26,6 +26,15 @@ export type PrintIdentity = {
   footer: string | null;
   /** Data URL react-pdf can resolve, or null when the org has no logo. */
   logoSrc: string | null;
+  /**
+   * The agency's Medicaid provider number.
+   *
+   * Ohio's documentation rule asks for it by name (OAC 5123-9-30(E)(7),
+   * "provider identifier/contract number"); Virginia's Form #680 does not print
+   * it. Loaded here either way, because it is a fact about who filed the
+   * document, and which jurisdictions print it is the template's business.
+   */
+  providerId: string | null;
 };
 
 /**
@@ -70,7 +79,7 @@ export const loadPrintIdentity = cache(async (orgId: string): Promise<PrintIdent
 
   const { data } = await supabase
     .from('organizations')
-    .select('name, legal_name, branding')
+    .select('name, legal_name, branding, medicaid_provider_id')
     .eq('id', orgId)
     .maybeSingle();
 
@@ -86,6 +95,7 @@ export const loadPrintIdentity = cache(async (orgId: string): Promise<PrintIdent
 
   return {
     orgLine,
+    providerId: line(data?.medicaid_provider_id, 64),
     letterhead: fields.letterhead,
     address: fields.address,
     footer: fields.footer,

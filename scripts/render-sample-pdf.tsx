@@ -10,7 +10,8 @@
 import { renderToFile } from '@react-pdf/renderer';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { Form680 } from '../lib/pdf/Form680';
+import { TemplatePdf } from '../lib/pdf/TemplatePdf';
+import { buildPrintContext } from '../lib/pdf/print-context';
 import type { FormTemplate, Note, NoteAddendum, Resident } from '../lib/types';
 
 const EXEMPLAR_NARRATIVE = [
@@ -44,6 +45,7 @@ const template: FormTemplate = {
   version: 1,
   name: 'Daily Progress Note',
   formNumber: '680',
+  jurisdiction: 'US-VA',
   schema: {
     prompts: [
       'Where did {name} choose to go?',
@@ -104,10 +106,16 @@ async function main() {
 
   const out = path.join(process.cwd(), 'tmp', 'sample-form-680.pdf');
   await renderToFile(
-    <Form680
+    <TemplatePdf
       note={note}
       resident={resident}
       template={template}
+      ctx={buildPrintContext({
+        note,
+        resident,
+        shiftLabel: '7AM-7PM',
+        orgLine: 'At Home Family Service, LLC'
+      })}
       shiftLabel="7AM-7PM"
       addenda={addenda}
       orgLine="At Home Family Service, LLC"

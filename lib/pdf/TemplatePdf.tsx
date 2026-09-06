@@ -1,8 +1,19 @@
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { interpolate } from '@/lib/forms/interpolate';
 import { outcomeStatus } from '@/lib/outcomes/answered';
-import { formatServiceDate } from '@/lib/utils';
-import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
+import { readSource } from '@/lib/pdf/print-context';
+import type {
+  FormTemplate,
+  Note,
+  NoteAddendum,
+  PrintContext,
+  PrintField,
+  PrintRow,
+  ProgressLevel,
+  RenderConfig,
+  Resident,
+  SupportLevel
+} from '@/lib/types';
 import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
 import type {
   NoteActivity,
@@ -12,16 +23,34 @@ import type {
 } from '@/lib/types';
 
 /**
- * Form #680 — Daily Progress Note.
+ * The generic, template-driven progress-note renderer.
  *
- * This is a deliberate recreation of the paper form in EE/detail.jpg: the same
- * header, the same five numbered prompts, the same narrative block, and the
- * same "Daily Progress Notes Form #680" / "Title: ___ Date: ___" footer. An
- * auditor comparing a printout against the binder should see one form.
+ * This component draws whatever the template's `render_config` describes. It
+ * has no idea which state it is printing for, and there is no branch anywhere
+ * below on a form number, a jurisdiction, or an agency. Virginia's Form #680 is
+ * the first template rather than a special case — it reaches this renderer as a
+ * row, exactly like Ohio's does.
  *
- * Training examples render through this same component with no watermark and
- * no distinguishing mark — a stamped-up sample teaches nothing, so trainees
- * see exactly what their own finished note should look like.
+ * Three rules hold the design together:
+ *
+ *   1. **The template describes the form.** Labels, field order, page headings
+ *      and the outcome vocabulary all come from `render_config`.
+ *
+ *   2. **The org describes who filed it.** `orgLine`, `letterhead`, `address`,
+ *      `footerLine` and `logoSrc` are supplied by the caller from the
+ *      requesting user's own organization and are never read off the template —
+ *      the shipped #680 row is global, shared by every agency on the install,
+ *      so an identity there would print on everybody's Medicaid records. That
+ *      is a bug this codebase has already had once.
+ *
+ *   3. **Every default is Form #680.** A template that sets none of the new
+ *      keys renders exactly what shipped before templates existed. The #680 row
+ *      in production sets none of them, which is what makes that provable —
+ *      see scripts/verify-jurisdictions.tsx.
+ *
+ * Training examples render through here with no watermark and no distinguishing
+ * mark: a stamped-up sample teaches nothing, so trainees see exactly what their
+ * own finished note should look like.
  */
 
 const styles = StyleSheet.create({
@@ -112,6 +141,7 @@ const styles = StyleSheet.create({
     right: 42
   },
   footerFormLine: { fontSize: 9, marginBottom: 4 },
+  footerCitation: { fontSize: 7, color: '#666666', marginBottom: 4 },
   footerAgencyLine: { fontSize: 8, color: '#444444', marginBottom: 4 },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
 
@@ -125,9 +155,117 @@ const styles = StyleSheet.create({
   addendumMeta: { fontSize: 8, color: '#444444', marginTop: 3 }
 });
 
+// ---------------------------------------------------------------------------
+// Defaults
+//
+// These ARE Form #680. The shipped #680 template row carries none of the layout
+// keys below, so these constants are what it prints — which is exactly why they
+// are written as the fallback rather than as an "example" template. Changing
+// one changes a signed Medicaid record's appearance; verify:jurisdictions
+// fails if any of them drift.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_IDENTITY_ROWS: PrintRow[] = [
+  {
+    fields: [
+      { source: 'resident_legal_name', label: "Individual's Name: ", width: 190, grow: true },
+      { source: 'medicaid_id', label: 'Medicaid: ', width: 120 }
+    ]
+  }
+];
+
+const DEFAULT_META_ROWS: PrintRow[] = [
+  {
+    fields: [
+      { source: 'service_date', label: 'Date: ', width: 110 },
+      { source: 'shift_label', label: 'Shift/Time: ', width: 110 }
+    ]
+  }
+];
+
+const DEFAULT_SIGNATURE_LABEL = 'Staff Signature: ';
+
+const DEFAULT_SIGNATURE_FOOTER_FIELDS: PrintField[] = [
+  { source: 'signature_title', label: 'Title: ', width: 90 },
+  { source: 'service_date', label: 'Date: ', width: 90 }
+];
+
+const DEFAULT_OUTCOME_HEADING = 'Service Plan Documentation — {resident}, {date}, {shift}';
+const DEFAULT_ADDENDA_HEADING = 'Addenda — {resident}, {date}, {shift}';
+
+const DEFAULT_STATUS_LABELS = {
+  addressed: 'Addressed this shift',
+  not_addressed: 'Not addressed this shift',
+  unanswered: 'Not recorded — no answer documented'
+} as const;
+
+const DEFAULT_ACTIVITY_LABELS = {
+  yes: 'Yes',
+  no: 'No',
+  unanswered: 'Not recorded'
+} as const;
+
+/**
+ * A page heading, as the sequence of text runs react-pdf would have received
+ * from JSX interpolation.
+ *
+ * Returning runs rather than one joined string is not fussiness: react-pdf
+ * emits one `TJ` operator per text child, so `Addenda — {resident}` written as
+ * JSX produces a different content stream from the same characters passed as a
+ * single string. The rendered page looks identical either way, but the PDF
+ * bytes do not — and the Virginia regression bar is byte-level. Splitting the
+ * pattern on its placeholders reproduces exactly the child list the JSX had.
+ *
+ * Empty runs are dropped, which is what JSX does with a trailing literal and is
+ * output-equivalent for an empty value.
+ */
+function headingRuns(
+  pattern: string,
+  parts: { resident: string; date: string; shift: string }
+): string[] {
+  return pattern
+    .split(/(\{resident\}|\{date\}|\{shift\})/g)
+    .map((piece) =>
+      piece === '{resident}'
+        ? parts.resident
+        : piece === '{date}'
+          ? parts.date
+          : piece === '{shift}'
+            ? parts.shift
+            : piece
+    )
+    .filter((run) => run !== '');
+}
+
 function Blank({ value, width }: { value: string; width: number }) {
+  return <Text style={[styles.fieldValue, { width }]}>{value || ' '}</Text>;
+}
+
+/** One labelled blank, resolved from the print context. */
+function Field({ field, ctx }: { field: PrintField; ctx: PrintContext }) {
   return (
-    <Text style={[styles.fieldValue, { width }]}>{value || ' '}</Text>
+    <View style={field.grow ? [styles.identityCell, { flex: 1 }] : styles.identityCell}>
+      <Text style={styles.fieldLabel}>{field.label}</Text>
+      <Blank value={readSource(ctx, field.source)} width={field.width ?? 120} />
+    </View>
+  );
+}
+
+function FieldRow({
+  row,
+  ctx,
+  style
+}: {
+  row: PrintRow;
+  ctx: PrintContext;
+  style: (typeof styles)['identityRow'] | (typeof styles)['metaRow'];
+}) {
+  return (
+    <View style={style}>
+      {row.fields.map((field, i) => (
+        <Field key={`${field.source}-${i}`} field={field} ctx={ctx} />
+      ))}
+    </View>
   );
 }
 
@@ -135,7 +273,7 @@ function Blank({ value, width }: { value: string; width: number }) {
  * The agency identity block at the top of every page.
  *
  * `template.renderConfig.header.org_line` is deliberately NOT consulted here.
- * The shipped Form #680 template is global (`org_id` null) and carries one
+ * The shipped Form #680 template is global (`org_id` null) and carried one
  * agency's legal name and logo path, so honouring it printed that agency's
  * letterhead on every other agency's forms — which is the whole bug the
  * org-scoped props exist to fix. The template describes the *form*; the org
@@ -165,31 +303,36 @@ function Letterhead({
 }
 
 /**
- * The form line, plus the agency's own footer when it has set one.
+ * The form line, its citation, plus the agency's own footer when it has one.
  *
- * The form number stays whatever the template says. It identifies the Virginia
- * document a reviewer is holding, so it is not the agency's to overwrite — an
- * agency footer is added as a second line rather than replacing it.
+ * The form number stays whatever the template says. It identifies the document
+ * a reviewer is holding, so it is not the agency's to overwrite — an agency
+ * footer is added as a further line rather than replacing it.
  */
 function FormFooter({
   formLine,
+  citation,
   footerLine
 }: {
   formLine: string;
+  citation?: string | null;
   footerLine?: string | null;
 }) {
   return (
     <>
       <Text style={styles.footerFormLine}>{formLine}</Text>
+      {citation ? <Text style={styles.footerCitation}>{citation}</Text> : null}
       {footerLine ? <Text style={styles.footerAgencyLine}>{footerLine}</Text> : null}
     </>
   );
 }
 
-export type Form680Props = {
+export type TemplatePdfProps = {
   note: Note;
   resident: Resident;
   template: FormTemplate;
+  /** Resolved values the template may draw on. See lib/pdf/print-context.ts. */
+  ctx: PrintContext;
   shiftLabel: string;
   addenda: NoteAddendum[];
   /**
@@ -214,10 +357,11 @@ export type Form680Props = {
   noteActivities?: NoteActivity[];
 };
 
-export function Form680({
+export function TemplatePdf({
   note,
   resident,
   template,
+  ctx,
   shiftLabel,
   addenda,
   orgLine,
@@ -230,18 +374,42 @@ export function Form680({
   noteOutcomes = [],
   activities = [],
   noteActivities = []
-}: Form680Props) {
-  // The five printed questions read naturally with the preferred name...
-  const ctx = { name: displayName(resident), pronouns: resident.pronouns };
-  // ...but "Individual's Name" is the identity field on a Medicaid document
-  // and must carry the legal name, whatever the house calls them.
-  const residentName = `${resident.firstName} ${resident.lastName}`;
-  const serviceDate = formatServiceDate(note.serviceDate);
-  const config = template.renderConfig;
-  // The form number identifies the Virginia document and comes from the
-  // template. The agency identity does not — see Letterhead above.
+}: TemplatePdfProps) {
+  // The printed questions read naturally with the preferred name...
+  const promptCtx = { name: displayName(resident), pronouns: resident.pronouns };
+  // ...but the identity fields carry the legal name, whatever the house calls
+  // them. Both come out of the print context rather than being derived here.
+  const residentName = ctx.resident_legal_name;
+  const serviceDate = ctx.service_date;
+  const config: RenderConfig = template.renderConfig;
+
+  // The form number identifies the document and comes from the template. The
+  // agency identity does not — see Letterhead above.
   const formLine =
     config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`;
+  const citation = config.footer?.legal_citation ?? null;
+
+  const identityRows = config.identity_rows ?? DEFAULT_IDENTITY_ROWS;
+  const metaRows = config.meta_rows ?? DEFAULT_META_ROWS;
+  const signatureLabel = config.signature_block?.label ?? DEFAULT_SIGNATURE_LABEL;
+  const signatureFooterFields =
+    config.signature_block?.footer_fields ?? DEFAULT_SIGNATURE_FOOTER_FIELDS;
+
+  const statusLabels = { ...DEFAULT_STATUS_LABELS, ...config.outcome_page?.status_labels };
+  const activityLabels = { ...DEFAULT_ACTIVITY_LABELS, ...config.outcome_page?.activity_labels };
+  const headingParts = { resident: residentName, date: serviceDate, shift: shiftLabel };
+
+  const supportLabel = (value: SupportLevel | null | undefined) =>
+    (value ? config.support_level_labels?.[value] : undefined) ??
+    SUPPORT_LEVELS.find((s) => s.value === value)?.label;
+  const progressLabel = (value: ProgressLevel | null | undefined) =>
+    (value ? config.progress_labels?.[value] : undefined) ??
+    PROGRESS_LEVELS.find((p) => p.value === value)?.label;
+
+  // A jurisdiction whose form has no service-plan page can turn it off, but the
+  // default is on: the page comparing the ISP outcome against what was
+  // documented is the one a reviewer actually checks.
+  const showOutcomePage = config.outcome_page?.enabled !== false && outcomes.length > 0;
 
   return (
     <Document
@@ -257,35 +425,21 @@ export function Form680({
           logoSrc={logoSrc}
         />
 
-        <View style={styles.identityRow}>
-          <View style={[styles.identityCell, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>Individual&apos;s Name: </Text>
-            <Blank value={residentName} width={190} />
-          </View>
-          <View style={styles.identityCell}>
-            <Text style={styles.fieldLabel}>Medicaid: </Text>
-            <Blank value={resident.medicaidId ?? ''} width={120} />
-          </View>
-        </View>
+        {identityRows.map((row, i) => (
+          <FieldRow key={`identity-${i}`} row={row} ctx={ctx} style={styles.identityRow} />
+        ))}
 
         <Text style={styles.title}>{config.header?.title ?? template.name}</Text>
 
-        <View style={styles.metaRow}>
-          <View style={styles.identityCell}>
-            <Text style={styles.fieldLabel}>Date: </Text>
-            <Blank value={serviceDate} width={110} />
-          </View>
-          <View style={styles.identityCell}>
-            <Text style={styles.fieldLabel}>Shift/Time: </Text>
-            <Blank value={shiftLabel} width={110} />
-          </View>
-        </View>
+        {metaRows.map((row, i) => (
+          <FieldRow key={`meta-${i}`} row={row} ctx={ctx} style={styles.metaRow} />
+        ))}
 
-        {/* The five prompts, run together on one line exactly as printed. */}
+        {/* The prompts, run together on one line exactly as printed. */}
         <View style={styles.prompts}>
           <Text style={styles.promptText}>
             {template.schema.prompts
-              .map((p, i) => `${i + 1}. ${interpolate(p, ctx)}`)
+              .map((p, i) => `${i + 1}. ${interpolate(p, promptCtx)}`)
               .join('  ')}
           </Text>
         </View>
@@ -295,7 +449,7 @@ export function Form680({
         </View>
 
         <View style={styles.signatureRow}>
-          <Text style={styles.fieldLabel}>Staff Signature: </Text>
+          <Text style={styles.fieldLabel}>{signatureLabel}</Text>
           {signatureSrc ? (
             <Image src={signatureSrc} style={styles.signatureImage} />
           ) : (
@@ -310,26 +464,21 @@ export function Form680({
         ) : null}
 
         <View style={styles.footer} fixed>
-          <FormFooter formLine={formLine} footerLine={footerLine} />
+          <FormFooter formLine={formLine} citation={citation} footerLine={footerLine} />
           <View style={styles.footerRow}>
-            <View style={styles.identityCell}>
-              <Text style={styles.fieldLabel}>Title: </Text>
-              <Blank value={note.signatureTitle ?? ''} width={90} />
-            </View>
-            <View style={styles.identityCell}>
-              <Text style={styles.fieldLabel}>Date: </Text>
-              <Blank value={serviceDate} width={90} />
-            </View>
+            {signatureFooterFields.map((field, i) => (
+              <Field key={`sigfoot-${i}`} field={field} ctx={ctx} />
+            ))}
           </View>
         </View>
       </Page>
 
       {/* Service-plan documentation on its own page.
-          This is the page a Virginia reviewer actually checks: it puts the
-          outcome statement from the ISP next to what was documented against it,
-          so the comparison they would otherwise do across two documents is
-          already made on one sheet. */}
-      {outcomes.length > 0 ? (
+          This is the page a reviewer actually checks: it puts the outcome
+          statement from the ISP next to what was documented against it, so the
+          comparison they would otherwise do across two documents is already
+          made on one sheet. */}
+      {showOutcomePage ? (
         <Page size="LETTER" style={styles.page}>
           <Letterhead
             orgLine={orgLine}
@@ -339,25 +488,25 @@ export function Form680({
           />
 
           <Text style={styles.addendaHeading}>
-            Service Plan Documentation — {residentName}, {serviceDate}, {shiftLabel}
+            {headingRuns(config.outcome_page?.heading ?? DEFAULT_OUTCOME_HEADING, headingParts)}
           </Text>
 
           {outcomes.map((outcome) => {
             const entry = noteOutcomes.find((n) => n.outcomeId === outcome.id);
             const mine = activities.filter((a) => a.outcomeId === outcome.id);
-            const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
-            const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
+            const support = supportLabel(entry?.supportLevel);
+            const progress = progressLabel(entry?.progress);
 
             // Three states, not two. "Not addressed this shift" is a statement
             // someone made about this person's service plan; an outcome with no
             // entry is a gap in the record and has to read as one, exactly like
             // an unanswered activity below. Printing a blank as a negative
             // would put an unmade clinical claim on a Medicaid document.
-            const status = {
-              addressed: 'Addressed this shift',
-              not_addressed: 'Not addressed this shift',
-              unanswered: 'Not recorded — no answer documented'
-            }[outcomeStatus(entry)];
+            //
+            // Every template gets all three. A template may rename them; it
+            // cannot collapse unanswered into not-addressed, because the label
+            // set is merged over the defaults rather than replacing them.
+            const status = statusLabels[outcomeStatus(entry)];
 
             return (
               <View key={outcome.id} style={styles.outcomeBlock} wrap={false}>
@@ -382,10 +531,10 @@ export function Form680({
                   // hidden by the layout.
                   const label =
                     answer?.completed === true
-                      ? 'Yes'
+                      ? activityLabels.yes
                       : answer?.completed === false
-                        ? 'No'
-                        : 'Not recorded';
+                        ? activityLabels.no
+                        : activityLabels.unanswered;
 
                   return (
                     <View key={activity.id} style={styles.activityRow}>
@@ -407,7 +556,7 @@ export function Form680({
           })}
 
           <View style={styles.footer} fixed>
-            <FormFooter formLine={formLine} footerLine={footerLine} />
+            <FormFooter formLine={formLine} citation={citation} footerLine={footerLine} />
           </View>
         </Page>
       ) : null}
@@ -424,7 +573,7 @@ export function Form680({
           />
 
           <Text style={styles.addendaHeading}>
-            Addenda — {residentName}, {serviceDate}, {shiftLabel}
+            {headingRuns(config.addenda_page?.heading ?? DEFAULT_ADDENDA_HEADING, headingParts)}
           </Text>
 
           {addenda.map((a) => (
@@ -437,7 +586,7 @@ export function Form680({
           ))}
 
           <View style={styles.footer} fixed>
-            <FormFooter formLine={formLine} footerLine={footerLine} />
+            <FormFooter formLine={formLine} citation={citation} footerLine={footerLine} />
           </View>
         </Page>
       ) : null}

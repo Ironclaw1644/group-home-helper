@@ -2,8 +2,17 @@ import { NextResponse } from 'next/server';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { getSession } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getActiveTemplate, getAddenda, getNote, getResident, getShifts } from '@/lib/notes/repo';
-import { Form680 } from '@/lib/pdf/Form680';
+import {
+  countServedOnShift,
+  getAddenda,
+  getHomeName,
+  getNote,
+  getResident,
+  getShifts,
+  getTemplateForOrg
+} from '@/lib/notes/repo';
+import { TemplatePdf } from '@/lib/pdf/TemplatePdf';
+import { buildPrintContext } from '@/lib/pdf/print-context';
 import {
   getNoteActivities,
   getNoteOutcomes,
@@ -31,7 +40,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [resident, template, shifts, addenda, outcomes, noteOutcomes, noteActivities] =
     await Promise.all([
       getResident(note.residentId, true),
-      getActiveTemplate(),
+      getTemplateForOrg(session.profile.orgId),
       getShifts(note.homeId),
       getAddenda(note.id),
       // Retired outcomes are included: a note signed while an outcome was live
@@ -50,16 +59,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   // The letterhead comes from the requesting user's own organization. It is
   // never a constant: this route used to print one agency's name and mark on
   // every customer's Medicaid form.
-  const [identity, signatureSrc] = await Promise.all([
+  //
+  // The home name and the head count are loaded whether or not this
+  // jurisdiction's template prints them. Which fields appear on the page is the
+  // template's decision; assembling the facts is this route's.
+  const [identity, signatureSrc, placeOfService, groupSize] = await Promise.all([
     loadPrintIdentity(session.profile.orgId),
-    loadSignatureDataUrl(note.signatureImagePath)
+    loadSignatureDataUrl(note.signatureImagePath),
+    getHomeName(note.homeId),
+    countServedOnShift(note.homeId, note.shiftId, note.serviceDate)
   ]);
 
   const buffer = await renderToBuffer(
-    <Form680
+    <TemplatePdf
       note={note}
       resident={resident}
       template={template}
+      ctx={buildPrintContext({
+        note,
+        resident,
+        shift,
+        shiftLabel: shift?.label ?? '',
+        orgLine: identity.orgLine,
+        providerId: identity.providerId,
+        placeOfService,
+        serviceType: template.renderConfig.service_type,
+        groupSize
+      })}
       outcomes={outcomes}
       noteOutcomes={noteOutcomes}
       activities={activities}

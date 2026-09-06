@@ -11,7 +11,7 @@ import {
 import { PROGRESS_LEVELS, SUPPORT_LEVELS } from '@/lib/types';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { getActiveTemplate, getNote, getResident, getShifts } from '@/lib/notes/repo';
+import { getTemplateForOrg, getNote, getResident, getShifts } from '@/lib/notes/repo';
 import {
   describeSelections,
   hasAnySelection,
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
 
   const [resident, template, shifts] = await Promise.all([
     getResident(note.residentId),
-    getActiveTemplate(),
+    getTemplateForOrg(session.profile.orgId),
     getShifts(note.homeId)
   ]);
   if (!resident) return NextResponse.json({ error: 'Resident not found' }, { status: 404 });

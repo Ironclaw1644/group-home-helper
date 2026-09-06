@@ -5,6 +5,10 @@
  * supabase/migrations/0004_seed_680.sql. If you add a field type there, add it
  * to `FormField` here and handle it in both components/form/FieldRenderer.tsx
  * and lib/pdf/TemplatePdf.tsx.
+ *
+ * A form template is one jurisdiction's document expressed as data. See
+ * docs/engine-jurisdiction-seam.md for what belongs here versus in code, and
+ * docs/adding-a-state.md for how to author one.
  */
 
 export type StaffRole = 'dsp' | 'supervisor' | 'admin';
@@ -37,6 +41,9 @@ export type Shift = {
   label: string;
   sortOrder: number;
   crossesMidnight: boolean;
+  /** 'HH:MM:SS'. Ohio's rule asks for the times service started and stopped. */
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export type Resident = {
@@ -302,18 +309,138 @@ export type FormSection = {
 };
 
 export type FormTemplateSchema = {
-  /** The five questions printed on the paper form, with {name} placeholders. */
+  /** The questions printed on the paper form, with {name} placeholders. */
   prompts: string[];
   sections: FormSection[];
   narrative: { key: string; type: 'narrative'; label: string; min_length?: number };
   signature: { key: string; type: 'signature'; attestation: string };
+  /**
+   * Starter service-plan outcomes offered to a supervisor in this jurisdiction.
+   *
+   * Optional. When a template omits it, the resident's plan starts empty and
+   * the "start from the library" affordance is simply not offered — which is a
+   * better outcome than offering another state's vocabulary.
+   */
+  outcome_library?: LibraryOutcome[];
 };
 
+// ---------------------------------------------------------------------------
+// Print layout
+//
+// The renderer draws whatever the template tells it to draw, from a closed set
+// of value sources. It is a closed set on purpose: a template is data loaded
+// from the database, and letting a row name an arbitrary expression would make
+// the PDF renderer an evaluator for untrusted input.
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything a printed form is allowed to say about a note.
+ *
+ * Every member is resolved once per render by `buildPrintContext()`. A template
+ * that names a source the caller could not resolve prints a blank, exactly like
+ * an unfilled field on the paper form — never a placeholder, never an error,
+ * and never a value borrowed from somewhere else.
+ */
+export const PRINT_SOURCES = [
+  'resident_legal_name',
+  'resident_preferred_name',
+  'medicaid_id',
+  'service_date',
+  'shift_label',
+  'shift_start',
+  'shift_stop',
+  'org_line',
+  'provider_id',
+  'place_of_service',
+  'service_type',
+  'group_size',
+  'signature_name',
+  'signature_title'
+] as const;
+
+export type PrintSource = (typeof PRINT_SOURCES)[number];
+
+export type PrintContext = Record<PrintSource, string>;
+
+/** One labelled blank on the printed form. */
+export type PrintField = {
+  source: PrintSource;
+  label: string;
+  /** Width of the ruled blank in PDF points. Defaults to 120. */
+  width?: number;
+  /** Share the row evenly rather than sitting at its natural width. */
+  grow?: boolean;
+};
+
+export type PrintRow = { fields: PrintField[] };
+
+/**
+ * How one jurisdiction's document is laid out.
+ *
+ * Every key is optional and every default reproduces Virginia's Form #680
+ * exactly as it printed before templates existed. That is deliberate: the
+ * shipped #680 row carries none of these keys, so "omitted" has to mean
+ * "unchanged" or the regression bar could not be met.
+ */
 export type RenderConfig = {
   page?: { size?: string; margin?: number };
   header?: { logo?: string; org_line?: string; title?: string };
-  footer?: { form_line?: string };
+  footer?: {
+    form_line?: string;
+    /**
+     * The rule or form this layout was built from, printed small under the
+     * form line. Cite a real, public source or leave it out — an invented
+     * citation on a Medicaid document is worse than none.
+     */
+    legal_citation?: string;
+  };
   narrative_min_height?: number;
+
+  /**
+   * What service this document records, in the jurisdiction's own words —
+   * Ohio's rule asks for "type of service" and its answer for a group home is
+   * "Homemaker/Personal Care". Printed only where a template's layout asks for
+   * the `service_type` source, so Virginia's #680 is unaffected.
+   */
+  service_type?: string;
+
+  /** Identity blanks above the title. Defaults to #680's name + Medicaid row. */
+  identity_rows?: PrintRow[];
+  /** Blanks between the title and the prompts. Defaults to #680's date + shift row. */
+  meta_rows?: PrintRow[];
+
+  signature_block?: {
+    /** Defaults to 'Staff Signature: '. */
+    label?: string;
+    /** Fields printed in the fixed page footer. Defaults to #680's Title + Date. */
+    footer_fields?: PrintField[];
+  };
+
+  /** The service-plan page. Omit `enabled: false` to keep it. */
+  outcome_page?: {
+    enabled?: boolean;
+    /** `{resident}`, `{date}`, `{shift}` are substituted. */
+    heading?: string;
+    status_labels?: {
+      addressed?: string;
+      not_addressed?: string;
+      unanswered?: string;
+    };
+    activity_labels?: { yes?: string; no?: string; unanswered?: string };
+  };
+
+  addenda_page?: { heading?: string };
+
+  /**
+   * Printed labels for the support/progress vocabulary.
+   *
+   * Labels only. The stored VALUES are Postgres enums
+   * (`ghh.outcome_support_level`, `ghh.outcome_progress`), so a jurisdiction
+   * can rename "With verbal prompts" but cannot invent a sixth support level
+   * without a migration. docs/adding-a-state.md says so too.
+   */
+  support_level_labels?: Partial<Record<SupportLevel, string>>;
+  progress_labels?: Partial<Record<ProgressLevel, string>>;
 };
 
 export type FormTemplate = {
@@ -322,8 +449,40 @@ export type FormTemplate = {
   version: number;
   name: string;
   formNumber: string | null;
+  /** 'US-VA', 'US-OH', or the reserved 'GENERIC'. */
+  jurisdiction: string;
   schema: FormTemplateSchema;
   renderConfig: RenderConfig;
+};
+
+/** The no-state-claimed fallback. Not a place. */
+export const GENERIC_JURISDICTION = 'GENERIC';
+
+// ---------------------------------------------------------------------------
+// Starter outcome library
+//
+// Carried inside a template's `schema.outcome_library`, so adding a state's
+// vocabulary is part of authoring its template row rather than editing a
+// TypeScript module and redeploying.
+// ---------------------------------------------------------------------------
+
+export type LibraryActivity = {
+  description: string;
+  measureType: MeasureType;
+  measure: string;
+  supportInstructions: string;
+  dailyQuestion: string;
+};
+
+export type LibraryOutcome = {
+  key: string;
+  title: string;
+  lens: 'independence' | 'integration' | 'quality_of_life';
+  importantTo: string;
+  importantFor?: string;
+  statement: string;
+  frequency: string;
+  activities: LibraryActivity[];
 };
 
 // ---------------------------------------------------------------------------
