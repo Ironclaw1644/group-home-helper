@@ -5,6 +5,9 @@ import { SettingsForm } from '@/components/settings/settings-form';
 import { PageHeader } from '@/components/ui';
 import { parseBranding } from '@/lib/branding/theme';
 import { parsePrintFields } from '@/lib/branding/print';
+import { listJurisdictions } from '@/lib/jurisdictions';
+import { getTemplateForOrg } from '@/lib/notes/repo';
+import { formCaptions } from '@/lib/forms/layout-defaults';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +17,25 @@ export default async function SettingsPage() {
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, legal_name, medicaid_provider_id, branding')
+    .select('name, legal_name, medicaid_provider_id, branding, jurisdiction')
     .eq('id', session.profile.orgId)
     .maybeSingle();
 
   const tokens = parseBranding(org?.branding);
   const print = parsePrintFields(org?.branding);
+
+  const jurisdictions = await listJurisdictions();
+
+  // The preview shows the form this agency actually resolves — its own
+  // template if it has one, not merely the global row for its state.
+  //
+  // Deliberately non-fatal. Settings is where a wrongly-set jurisdiction gets
+  // corrected, so an org whose state has no template installed must still be
+  // able to open this page and fix it. A missing preview is a worse page; a
+  // 500 here would be a trap.
+  const previewForm = await getTemplateForOrg(session.profile.orgId)
+    .then(formCaptions)
+    .catch(() => null);
 
   return (
     <AppShell session={session}>
@@ -30,10 +46,13 @@ export default async function SettingsPage() {
 
       <SettingsForm
         canEditAgency={isSupervisor(session.profile)}
+        jurisdictions={jurisdictions}
+        previewForm={previewForm}
         initial={{
           fullName: session.profile.fullName,
           title: session.profile.title,
           medicaidProviderId: org?.medicaid_provider_id ?? '',
+          jurisdiction: org?.jurisdiction ?? '',
           branding: {
             orgName: org?.name ?? '',
             legalName: org?.legal_name ?? '',

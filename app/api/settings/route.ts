@@ -4,6 +4,7 @@ import { getSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logAccess } from '@/lib/audit';
 import { LOGO_DATA_URL } from '@/lib/branding/theme';
+import { isSelectableJurisdiction } from '@/lib/jurisdictions';
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -27,6 +28,16 @@ const Body = z.object({
   orgName: z.string().trim().min(2).max(120).optional(),
   legalName: z.string().trim().max(160).nullable().optional(),
   medicaidProviderId: z.string().trim().max(60).nullable().optional(),
+
+  /**
+   * The state this agency files under.
+   *
+   * Correctable, because someone will pick the wrong one. Changing it changes
+   * which form NEW notes print on; notes that are already signed keep printing
+   * the form they were signed under (see getTemplateForNote). A correction here
+   * must not restyle a record that has already gone to Medicaid.
+   */
+  jurisdiction: z.string().trim().min(2).max(16).optional(),
 
   // What prints on the form under and around the agency name. Length caps are
   // layout limits: a pasted essay here would push the resident's name off the
@@ -97,6 +108,7 @@ export async function PATCH(req: Request) {
     body.orgName !== undefined ||
     body.legalName !== undefined ||
     body.medicaidProviderId !== undefined ||
+    body.jurisdiction !== undefined ||
     body.logoDataUrl !== undefined ||
     body.logoPath !== undefined ||
     body.letterheadLine !== undefined ||
@@ -151,6 +163,18 @@ export async function PATCH(req: Request) {
     if (body.legalName !== undefined) patch.legal_name = body.legalName || null;
     if (body.medicaidProviderId !== undefined) {
       patch.medicaid_provider_id = body.medicaidProviderId || null;
+    }
+    if (body.jurisdiction !== undefined) {
+      // Only a jurisdiction with an installed template. Otherwise an agency
+      // could put itself in a state that has no form, and discover it when a
+      // DSP tries to sign a note at the end of a shift.
+      if (!(await isSelectableJurisdiction(body.jurisdiction))) {
+        return NextResponse.json(
+          { error: 'That state is not available yet.' },
+          { status: 400 }
+        );
+      }
+      patch.jurisdiction = body.jurisdiction;
     }
 
     const { error } = await supabase
