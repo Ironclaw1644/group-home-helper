@@ -10,6 +10,7 @@ import { SignaturePad, type SignatureMethod } from '@/components/form/SignatureP
 import { Alert, Button, Card } from '@/components/ui';
 import { hasAnySelection, interpolate } from '@/lib/forms/interpolate';
 import { answeredOutcomes, unansweredOutcomes } from '@/lib/outcomes/answered';
+import { createAutosave, type Autosave } from '@/lib/notes/autosave';
 import {
   clearLocalDraft,
   localDraftIsNewer,
@@ -30,6 +31,9 @@ import {
 } from '@/lib/types';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'offline';
+
+/** What one autosave writes. Outcomes and activities are read from refs. */
+type SavePayload = { structuredData: StructuredData; narrative: string };
 
 const AUTOSAVE_DEBOUNCE_MS = 1200;
 
@@ -133,10 +137,6 @@ export default function NoteEditor({
     }
   }, [note.id, note.updatedAt]);
 
-  // Autosave: localStorage immediately, server on a debounce.
-  const dirty = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Read through a ref so the debounced save always sends the latest outcome
   // documentation, not whatever was captured when the timer was set.
   const outcomesRef = useRef<NoteOutcome[]>(outcomeEntries);
@@ -145,16 +145,22 @@ export default function NoteEditor({
   const activitiesRef = useRef<NoteActivity[]>(activityEntries);
   activitiesRef.current = activityEntries;
 
-  const persist = useCallback(
-    async (nextData: StructuredData, nextNarrative: string) => {
-      setSaveState('saving');
-      try {
+  // Autosave: localStorage immediately, server on a debounce. The controller
+  // owns the timer and the in-flight request so that anything needing the
+  // server to be current — generating a draft, signing — can flush and wait
+  // rather than hope the debounce has fired.
+  const autosaveRef = useRef<Autosave<SavePayload> | null>(null);
+  if (autosaveRef.current === null) {
+    autosaveRef.current = createAutosave<SavePayload>({
+      delayMs: AUTOSAVE_DEBOUNCE_MS,
+      onState: setSaveState,
+      save: async ({ structuredData, narrative: body }) => {
         const res = await fetch(`/api/notes/${note.id}`, {
           method: 'PATCH',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            structuredData: nextData,
-            narrative: nextNarrative,
+            structuredData,
+            narrative: body,
             // Only outcomes somebody actually answered. An unanswered one has
             // no row, and no row is how the record says "not documented" —
             // sending it would serialize as the negative "not worked on".
@@ -162,42 +168,34 @@ export default function NoteEditor({
             activities: activitiesRef.current
           })
         });
+        // Throwing is what tells the controller the write did not land.
         if (!res.ok) throw new Error(await res.text());
-        setSaveState('saved');
-        dirty.current = false;
         clearLocalDraft(note.id);
-      } catch {
-        // Keep the local copy and say so rather than pretending it saved.
-        setSaveState('offline');
       }
-    },
-    [note.id]
-  );
+    });
+  }
+  const autosave = autosaveRef.current;
 
   const scheduleSave = useCallback(
     (nextData: StructuredData, nextNarrative: string) => {
-      dirty.current = true;
       saveLocalDraft({ noteId: note.id, structuredData: nextData, narrative: nextNarrative });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void persist(nextData, nextNarrative), AUTOSAVE_DEBOUNCE_MS);
+      autosave.schedule({ structuredData: nextData, narrative: nextNarrative });
     },
-    [note.id, persist]
+    [note.id, autosave]
   );
 
   useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
+    return () => autosave.cancel();
+  }, [autosave]);
 
   // Warn before closing a tab with unsaved work.
   useEffect(() => {
     function onBeforeUnload(e: BeforeUnloadEvent) {
-      if (dirty.current) e.preventDefault();
+      if (autosave.isDirty()) e.preventDefault();
     }
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
-  }, []);
+  }, [autosave]);
 
   function updateField(key: string, value: string[] | boolean | string) {
     setData((prev) => {
@@ -255,6 +253,19 @@ export default function NoteEditor({
     setAiNeedsPlan(false);
     setAiFlags([]);
     try {
+      // The server generates from the saved row, not from this screen, because
+      // the grounding check has to compare the narrative against what the
+      // record actually contains. So the row has to be current first. Without
+      // this, tapping chips quickly and hitting generate raced the 1.2 s
+      // debounce and came back "Record what happened this shift first" on a
+      // screen full of selections.
+      if ((await autosave.flush()) === 'failed') {
+        setAiError(
+          'Your entries have not reached the server yet, so there is nothing to write from. Check your connection and try again — nothing is lost.'
+        );
+        return;
+      }
+
       const res = await fetch('/api/ai/draft', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -283,9 +294,15 @@ export default function NoteEditor({
     setSigning(true);
     setSignError(null);
     try {
-      // Flush any pending edit so we sign exactly what is on screen.
-      if (timer.current) clearTimeout(timer.current);
-      await persist(data, narrative);
+      // Sign exactly what is on screen. If the flush did not land, stop: a
+      // signature is permanent, and locking a note whose entries never reached
+      // the server would preserve the wrong record forever.
+      if ((await autosave.flush()) === 'failed') {
+        setSignError(
+          'Your note has not saved to the server yet, so it cannot be signed. It is safe on this device — check your connection and try again.'
+        );
+        return;
+      }
 
       const res = await fetch(`/api/notes/${note.id}/sign`, {
         method: 'POST',

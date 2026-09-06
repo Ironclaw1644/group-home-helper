@@ -23,6 +23,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Form680 } from '../lib/pdf/Form680';
 import { answeredOutcomes, outcomeStatus, unansweredOutcomes } from '../lib/outcomes/answered';
+import { createAutosave } from '../lib/notes/autosave';
 import type {
   FormTemplate,
   Note,
@@ -141,6 +142,131 @@ section('Signing is blocked while any outcome is unanswered');
 }
 
 // ---------------------------------------------------------------------------
+// The autosave race. A DSP who taps quickly and hits "Write from my entries"
+// used to get HTTP 400 "Record what happened this shift first" on a screen
+// full of selections, because the 1.2 s debounce had not fired and the server
+// re-reads the row. The property that fixes it is flush(): after it resolves,
+// what is on screen is on the server.
+// ---------------------------------------------------------------------------
+async function autosaveChecks() {
+  section('Autosave can be flushed, so the AI draft never races the debounce');
+
+  const DEBOUNCE = 50;
+
+  {
+    // Ten fast taps, then generate — the shape of the reproduction.
+    const written: string[] = [];
+    const autosave = createAutosave<string>({
+      delayMs: DEBOUNCE,
+      save: async (p) => {
+        await new Promise((r) => setTimeout(r, 5));
+        written.push(p);
+      }
+    });
+
+    for (let i = 1; i <= 10; i++) autosave.schedule(`tap-${i}`);
+
+    check('nothing has been written while the DSP is still tapping', written.length === 0);
+
+    const result = await autosave.flush();
+
+    check('flushing reports the write landed', result === 'saved', result);
+    check('the ten taps collapse into one write', written.length === 1, String(written.length));
+    check(
+      'and that write carries the newest entries, not the first tap',
+      written[0] === 'tap-10',
+      written[0]
+    );
+    check('nothing is left dirty afterwards', !autosave.isDirty());
+  }
+
+  {
+    // A tap that lands while a save is already in flight must not be lost —
+    // this is the window a plain "await the in-flight request" fix misses.
+    const written: string[] = [];
+    const gate: { release: (() => void) | null } = { release: null };
+    const autosave = createAutosave<string>({
+      delayMs: DEBOUNCE,
+      save: async (p) => {
+        if (p === 'first') {
+          await new Promise<void>((r) => {
+            gate.release = r;
+          });
+        }
+        written.push(p);
+      }
+    });
+
+    autosave.schedule('first');
+    const flushing = autosave.flush();
+    // Give the save a tick to start, then tap again mid-request.
+    await new Promise((r) => setTimeout(r, 5));
+    autosave.schedule('second');
+    gate.release?.();
+
+    const result = await flushing;
+
+    check('a tap during an in-flight save is still written', written.includes('second'), written.join(','));
+    check('and the flush waits for it rather than resolving early', result === 'saved', result);
+    check('writes stay in order, so the newest wins', written.join(',') === 'first,second', written.join(','));
+  }
+
+  {
+    // Saves must never overlap. Two in flight can complete in either order and
+    // silently overwrite newer entries with older ones.
+    let concurrent = 0;
+    let maxConcurrent = 0;
+    const autosave = createAutosave<number>({
+      delayMs: DEBOUNCE,
+      save: async () => {
+        concurrent++;
+        maxConcurrent = Math.max(maxConcurrent, concurrent);
+        await new Promise((r) => setTimeout(r, 5));
+        concurrent--;
+      }
+    });
+
+    autosave.schedule(1);
+    const a = autosave.flush();
+    autosave.schedule(2);
+    const b = autosave.flush();
+    autosave.schedule(3);
+    const c = autosave.flush();
+    await Promise.all([a, b, c]);
+
+    check('only one save is ever in flight', maxConcurrent === 1, String(maxConcurrent));
+  }
+
+  {
+    // A failed flush has to say so. The caller blocks the draft and the
+    // signature on it, because both would otherwise act on a stale row.
+    const autosave = createAutosave<string>({
+      delayMs: DEBOUNCE,
+      save: async () => {
+        throw new Error('offline');
+      }
+    });
+
+    autosave.schedule('unsaved');
+    check('a flush that could not write reports failure', (await autosave.flush()) === 'failed');
+    check('flushing with nothing pending is not a failure', (await autosave.flush()) === 'nothing');
+  }
+
+  {
+    // The state the DSP sees has to match what actually happened.
+    const states: string[] = [];
+    const autosave = createAutosave<string>({
+      delayMs: DEBOUNCE,
+      onState: (s) => states.push(s),
+      save: async () => {}
+    });
+    autosave.schedule('x');
+    await autosave.flush();
+    check('the indicator goes saving then saved', states.join(',') === 'saving,saved', states.join(','));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // The printed form. This is the copy that gets filed with Medicaid, so it is
 // the one that matters most.
 // ---------------------------------------------------------------------------
@@ -200,6 +326,8 @@ const note: Note = {
 } as unknown as Note;
 
 async function main() {
+  await autosaveChecks();
+
   section('A partially-completed note does not print an unanswered outcome as answered');
 
   const dir = mkdtempSync(path.join(tmpdir(), 'ghh-records-'));
