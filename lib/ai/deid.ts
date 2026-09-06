@@ -44,12 +44,42 @@ export function prepareName(
 
   return {
     outboundName: PLACEHOLDER,
-    rehydrate: (text: string) => {
-      // Replace the placeholder token wherever it appears. The trailing period
-      // is part of the token, so a lookahead keeps sentence punctuation intact.
-      return text.replace(/\bR\.(?=\s|$|[,;:'’])/g, realFirstName);
-    }
+    rehydrate: (text: string) => rehydratePlaceholder(text, realFirstName)
   };
+}
+
+/** Where the placeholder may legitimately appear: end, whitespace, or punctuation. */
+const PLACEHOLDER_TOKEN = /\bR\.(?=$|\s|[,;:)'’"”])/g;
+
+/**
+ * Put the real name back without eating a sentence.
+ *
+ * The placeholder's period does double duty. In "R. ate breakfast" it belongs
+ * to the abbreviation and has to disappear along with it. In "Staff provided
+ * verbal prompts to support R." it is *also* the full stop ending the sentence,
+ * and dropping it produced this, live, in a signed and printed Form #680:
+ *
+ *   "...to support JP There were no problems or concerns during shift."
+ *
+ * Which of the two it is can be read off what follows. End of text, or a new
+ * sentence beginning with a capital, means the period was carrying the stop and
+ * must be kept. A lowercase word after it means the sentence continues and the
+ * period belonged to the abbreviation alone.
+ */
+function rehydratePlaceholder(text: string, realFirstName: string): string {
+  return text.replace(PLACEHOLDER_TOKEN, (_match, offset: number, whole: string) => {
+    const rest = whole.slice(offset + PLACEHOLDER.length);
+
+    // Nothing follows: the period was ending the note.
+    if (rest.trim() === '') return `${realFirstName}.`;
+
+    const next = /^\s+(\S)/.exec(rest);
+    // A capital — or an opening quote or bracket — after the space starts a new
+    // sentence, so the period was the previous sentence's full stop.
+    if (next && /[A-Z"“(]/.test(next[1])) return `${realFirstName}.`;
+
+    return realFirstName;
+  });
 }
 
 /**

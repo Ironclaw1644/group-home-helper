@@ -26,6 +26,25 @@ export function stripClosingSentence(narrative: string): string {
   return narrative.replace(CLOSER_PATTERN, '').trim();
 }
 
+/** A sentence already ended by a stop, allowing a closing quote or bracket. */
+const TERMINATED = /[.!?]["'’”)\]]?$/;
+
+/**
+ * Finish the body on a full stop before anything is appended to it.
+ *
+ * Second line of defence for a bug that reached a printed Medicaid form. The
+ * "R." placeholder used to swallow the sentence-ending period on rehydration,
+ * and this file then joined the result to the closing sentence with a bare
+ * space — "...to support JP There were no problems or concerns during shift."
+ * That is fixed at source in deid.ts, but a model that simply forgot its last
+ * period would produce the identical run-on, so the join refuses to run two
+ * sentences together whatever the cause.
+ */
+function ensureTerminalPunctuation(body: string): string {
+  if (body === '') return body;
+  return TERMINATED.test(body) ? body : `${body}.`;
+}
+
 /**
  * Apply the closing sentence the data calls for.
  *
@@ -35,7 +54,7 @@ export function stripClosingSentence(narrative: string): string {
  *   logged is the more dangerous error of the two.
  */
 export function applyClosingSentence(narrative: string, hasConcern: boolean): string {
-  const body = stripClosingSentence(narrative);
+  const body = ensureTerminalPunctuation(stripClosingSentence(narrative));
   if (hasConcern) return body;
   if (body === '') return NO_CONCERN_CLOSER;
   return `${body} ${NO_CONCERN_CLOSER}`;

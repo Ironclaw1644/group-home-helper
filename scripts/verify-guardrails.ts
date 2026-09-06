@@ -10,6 +10,7 @@
  */
 import { checkClosingSentence, checkGrounding } from '../lib/ai/guard';
 import { findResidualIdentifiers, prepareName, scrubFreeText } from '../lib/ai/deid';
+import { finalizeNarrative } from '../lib/ai/postprocess';
 import { narrativeSimilarity, isLikelyDuplicate } from '../lib/notes/similarity';
 import { describeSelections, shiftHasConcern } from '../lib/forms/interpolate';
 import type { FormTemplateSchema, StructuredData } from '../lib/types';
@@ -344,6 +345,24 @@ section('Concern rule: the closing sentence follows the data');
     false
   );
   check('allows the closer on a clean shift', rightCloser.length === 0);
+
+  // A model that forgets its last period must not produce a run-on either.
+  const unterminated = finalizeNarrative('Alex chose to walk to the park', false);
+  check(
+    'an unterminated draft gets a full stop before the closer',
+    unterminated === 'Alex chose to walk to the park. There were no problems or concerns during shift.',
+    unterminated
+  );
+  check(
+    'an already-terminated draft is not given a second full stop',
+    finalizeNarrative('Alex chose to walk to the park.', false) ===
+      'Alex chose to walk to the park. There were no problems or concerns during shift.'
+  );
+  check(
+    'a concern shift is still ended properly, with no reassuring closer added',
+    finalizeNarrative('Alex was agitated in the afternoon', true) ===
+      'Alex was agitated in the afternoon.'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -369,6 +388,47 @@ section('De-identification (AI_DEIDENTIFY=true)');
       'This morning Alex was observed resting comfortably. Staff greeted Alex, and Alex greeted staff in return.',
     restored
   );
+
+  // The bug this section exists for. The placeholder's period does double duty
+  // — abbreviation stop *and* sentence stop — and rehydration used to consume
+  // both. This shipped: a signed, printed Form #680 in production reads
+  // "Staff provided verbal prompts to support JP There were no problems or
+  // concerns during shift."
+  {
+    const endsOnTheName = 'Staff provided verbal prompts to support R.';
+    const rehydrated = rehydrate(endsOnTheName);
+    check(
+      'a sentence ending on the resident keeps its full stop',
+      rehydrated === 'Staff provided verbal prompts to support Alex.',
+      rehydrated
+    );
+
+    // End to end, exactly as the route composes it: rehydrate, then append the
+    // closing sentence the data calls for.
+    const finished = finalizeNarrative(rehydrated, false);
+    check(
+      'and the closing sentence does not run into it',
+      finished ===
+        'Staff provided verbal prompts to support Alex. There were no problems or concerns during shift.',
+      finished
+    );
+    check('no two words are joined without a stop', !/Alex There were/.test(finished), finished);
+
+    // Mid-sentence, the period belongs to the abbreviation and must go.
+    const midSentence = rehydrate('R. ate breakfast, and R. and staff walked to the park.');
+    check(
+      'the abbreviation period is dropped when the sentence continues',
+      midSentence === 'Alex ate breakfast, and Alex and staff walked to the park.',
+      midSentence
+    );
+
+    const twoSentences = rehydrate('Staff greeted R. Later R. rested quietly.');
+    check(
+      'a new sentence after the name keeps the stop that separates them',
+      twoSentences === 'Staff greeted Alex. Later Alex rested quietly.',
+      twoSentences
+    );
+  }
 
   check('scrubs a Medicaid-length id', scrubFreeText('id 109016522050 noted') === 'id [id] noted');
   check('scrubs a date', scrubFreeText('fell on 06/01/2026') === 'fell on [date]');
