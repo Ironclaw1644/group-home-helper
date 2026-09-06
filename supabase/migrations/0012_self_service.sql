@@ -95,13 +95,17 @@ grant all privileges on ghh.invitations to service_role;
 -- Staff visibility for supervisors
 -- ---------------------------------------------------------------------------
 
--- A supervisor has to be able to see their own staff to manage them. The
--- original profiles policy only let a person read their own row, which made a
--- staff list impossible to build.
-drop policy if exists profiles_read_org on ghh.profiles;
-create policy profiles_read_org on ghh.profiles
-  for select to authenticated
-  using (org_id = ghh.auth_org() and ghh.is_supervisor());
+-- A supervisor has to be able to see their own staff to manage them.
+--
+-- This file used to add a second SELECT policy, `profiles_read_org`, for that.
+-- Production does not have it, and does not need it: 0002's `profiles_read`
+-- already reads `id = auth.uid() or (org_id = auth_org() and is_supervisor())`,
+-- so the supervisor case was covered before this migration was written and the
+-- extra permissive policy widened nothing. It is removed rather than kept,
+-- because a policy that exists in the repo and not in the database leaves the
+-- next reader unable to tell which is authoritative — and "can a supervisor
+-- read this row?" is exactly the question that has to be answerable from
+-- source. Found by verify:schema.
 
 -- Supervisors may deactivate staff and change titles. They may not edit their
 -- own role — that would let a supervisor promote themselves to admin.

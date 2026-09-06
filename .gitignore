@@ -36,3 +36,6 @@ capacitor/www/*.map
 # One-time passwords written by bootstrap:admin / staff:add — delete after first login
 .admin-credentials
 .staff-credentials
+
+# Supabase CLI scratch
+supabase/.temp/
