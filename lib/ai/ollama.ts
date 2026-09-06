@@ -2,7 +2,13 @@ import 'server-only';
 
 import http from 'node:http';
 import https from 'node:https';
-import { coerceDraft, NOTE_DRAFT_SCHEMA, type DraftResult, type ModelProvider } from './provider';
+import {
+  coerceDraft,
+  NOTE_DRAFT_SCHEMA,
+  type DraftResult,
+  type ModelProvider,
+  type StructuredResult
+} from './provider';
 
 /**
  * Local model provider (Ollama).
@@ -11,14 +17,14 @@ import { coerceDraft, NOTE_DRAFT_SCHEMA, type DraftResult, type ModelProvider } 
  * resident names, Medicaid IDs, and shift narratives never leave the building
  * — which means no BAA with any vendor and no per-note cost.
  *
- * Measured on the reference machine with qwen3.5:9b and reasoning disabled:
+ * Measured on the reference machine with a 9B qwen3.5 build and reasoning off:
  * roughly 15s for the first note after a cold load, then 6–8s while the model
  * stays resident. Reasoning mode is off deliberately — with it enabled the
  * same model took over seven minutes per note, which no DSP will wait for.
  */
 
 const DEFAULT_HOST = 'http://127.0.0.1:11434';
-const DEFAULT_MODEL = 'qwen3.5:9b';
+const DEFAULT_MODEL = 'qwen3.5-9b-64k';
 
 export function ollamaHost(): string {
   return (process.env.OLLAMA_HOST || DEFAULT_HOST).replace(/\/$/, '');
@@ -238,6 +244,94 @@ export function ollamaProvider(): ModelProvider {
           elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
         }
       };
+    },
+
+    /**
+     * Extract structured data against a caller-supplied schema.
+     *
+     * Ollama takes a JSON Schema in `format` and constrains decoding to it, so
+     * this is the same mechanism generate() already uses for the note draft —
+     * no prompt-and-hope parsing.
+     *
+     * This exists because it was previously implemented only on the OpenAI
+     * adapter. With that removed, the roster importer would have had no
+     * provider at all that could read a pasted list, on the provider that is
+     * now the default.
+     */
+    async generateStructured<T>(
+      system: string,
+      userMessage: string,
+      schema: Record<string, unknown>,
+      _schemaName: string
+    ): Promise<StructuredResult<T>> {
+      const started = Date.now();
+
+      let res: { status: number; body: string };
+      try {
+        res = await request(
+          '/api/chat',
+          {
+            model,
+            stream: false,
+            format: schema,
+            keep_alive: KEEP_ALIVE,
+            think: THINK,
+            options: {
+              // Extraction, not composition: the answer is in the text or it
+              // is not, so temperature buys nothing and costs accuracy.
+              temperature: 0,
+              // A full house roster with the surrounding prose it was pasted
+              // from does not fit in the 8k used for a single note.
+              num_ctx: 16384
+            },
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: userMessage }
+            ]
+          },
+          GENERATION_TIMEOUT_MS
+        );
+      } catch (err) {
+        const timedOut = err instanceof Error && err.message === 'timeout';
+        return {
+          ok: false,
+          message: timedOut
+            ? 'The local model took too long to read that list.'
+            : `Cannot reach the local model at ${ollamaHost()}.`
+        };
+      }
+
+      if (res.status !== 200) {
+        return { ok: false, message: `The local model returned an error (${res.status}).` };
+      }
+
+      let body: OllamaResponse;
+      try {
+        body = JSON.parse(res.body) as OllamaResponse;
+      } catch {
+        return { ok: false, message: 'Could not read the local model response.' };
+      }
+
+      if (body.error) return { ok: false, message: body.error };
+
+      try {
+        const data = JSON.parse(body.message?.content ?? '') as T;
+        if (!data || typeof data !== 'object') {
+          return { ok: false, message: 'The local model returned nothing usable.' };
+        }
+        return {
+          ok: true,
+          data,
+          usage: {
+            inputTokens: body.prompt_eval_count ?? null,
+            outputTokens: body.eval_count ?? null,
+            cacheReadTokens: null,
+            elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
+          }
+        };
+      } catch {
+        return { ok: false, message: 'The local model returned malformed JSON.' };
+      }
     }
   };
 }

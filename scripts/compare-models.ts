@@ -28,7 +28,7 @@ const RESIDENTS = Number(process.env.COMPARE_RESIDENTS || 6);
 const SHIFTS_PER_DAY = Number(process.env.COMPARE_SHIFTS || 2);
 const NOTES_PER_MONTH = RESIDENTS * SHIFTS_PER_DAY * 30;
 
-type Vendor = 'anthropic' | 'openai' | 'local';
+type Vendor = 'anthropic' | 'local';
 
 type Candidate = {
   id: string;
@@ -53,13 +53,9 @@ const CANDIDATES: Candidate[] = [
   { id: 'claude-sonnet-5', vendor: 'anthropic', price: { input: 3, output: 15 }, cacheDiscount: 0.1 },
   { id: 'claude-opus-5', vendor: 'anthropic', price: { input: 5, output: 25 }, cacheDiscount: 0.1 },
 
-  // OpenAI — automatic prefix caching, cached input billed at a discount.
-  // Confirm current model names and prices before relying on the cost column;
-  // the OpenAI lineup turns over faster than this file does.
-  { id: 'gpt-4o-mini', vendor: 'openai', price: { input: 0.15, output: 0.6 }, cacheDiscount: 0.5 },
-  { id: 'gpt-4o', vendor: 'openai', price: { input: 2.5, output: 10 }, cacheDiscount: 0.5 },
-
   // Local — free, and the baseline everything else has to beat on value.
+  // No PHI leaves the machine, so this is also the only row that needs no BAA.
+  { id: 'qwen3.5-9b-64k', vendor: 'local', price: null, cacheDiscount: 0 },
   { id: 'qwen2.5:7b', vendor: 'local', price: null, cacheDiscount: 0 }
 ];
 
@@ -68,10 +64,6 @@ async function providerFor(candidate: Candidate): Promise<ModelProvider> {
     case 'anthropic': {
       const { anthropicProvider } = await import('../lib/ai/anthropic');
       return anthropicProvider(candidate.id);
-    }
-    case 'openai': {
-      const { openaiProvider } = await import('../lib/ai/openai');
-      return openaiProvider(candidate.id);
     }
     default: {
       process.env.OLLAMA_MODEL = candidate.id;
@@ -187,11 +179,7 @@ async function main() {
         const known = CANDIDATES.find((c) => c.id === id);
         if (known) return known;
         // An unlisted model still runs; it just cannot be priced.
-        const vendor: Vendor = id.startsWith('claude')
-          ? 'anthropic'
-          : id.startsWith('gpt') || id.startsWith('o')
-            ? 'openai'
-            : 'local';
+        const vendor: Vendor = id.startsWith('claude') ? 'anthropic' : 'local';
         return { id, vendor, price: null, cacheDiscount: 0 } satisfies Candidate;
       })
     : CANDIDATES;
@@ -208,7 +196,7 @@ async function main() {
   }
 
   if (rows.length === 0) {
-    console.log('\nNothing ran. Set ANTHROPIC_API_KEY / OPENAI_API_KEY, or start Ollama.\n');
+    console.log('\nNothing ran. Set ANTHROPIC_API_KEY, or start Ollama.\n');
     process.exit(2);
   }
 

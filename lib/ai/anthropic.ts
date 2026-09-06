@@ -6,7 +6,7 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 // zod 3.25+ on this subpath. Request validation elsewhere in the app uses the
 // classic `zod` import; the two coexist deliberately.
 import * as z from 'zod/v4';
-import type { DraftResult, ModelProvider } from './provider';
+import type { DraftResult, ModelProvider, StructuredResult } from './provider';
 
 /**
  * Hosted provider (Anthropic).
@@ -14,6 +14,10 @@ import type { DraftResult, ModelProvider } from './provider';
  * Opt in with AI_PROVIDER=anthropic. This sends note content off the machine,
  * so it requires signed BAAs with Anthropic and your host — see README. The
  * default provider is local, which needs none of that.
+ *
+ * This is the intended production path once those agreements exist. It is the
+ * only hosted provider: the OpenAI adapter was removed because production was
+ * running on it without a BAA.
  */
 
 /**
@@ -169,6 +173,68 @@ export function anthropicProvider(modelOverride?: string): ModelProvider {
           model,
           message: 'Could not generate a draft right now. Please write the note manually.'
         };
+      }
+    },
+
+    /**
+     * Extract structured data against a caller-supplied schema.
+     *
+     * Used by the roster importer. Previously only the OpenAI adapter had this,
+     * so removing that adapter would have left the intended production
+     * provider unable to read a pasted list at all.
+     *
+     * The schema arrives as plain JSON Schema rather than zod, because it is
+     * defined by the caller. `messages.create` with a forced tool call is the
+     * path that accepts one.
+     */
+    async generateStructured<T>(
+      system: string,
+      userMessage: string,
+      schema: Record<string, unknown>,
+      schemaName: string
+    ): Promise<StructuredResult<T>> {
+      const started = Date.now();
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return { ok: false, message: 'The assistant has not been set up yet.' };
+      }
+
+      try {
+        const response = await getClient().messages.create({
+          model,
+          max_tokens: 4000,
+          system,
+          tools: [
+            {
+              name: schemaName,
+              description: 'Return the extracted data.',
+              input_schema: schema as unknown as Anthropic.Tool['input_schema']
+            }
+          ],
+          // Forced, so the model answers with the schema rather than prose
+          // about the schema.
+          tool_choice: { type: 'tool', name: schemaName },
+          messages: [{ role: 'user', content: userMessage }]
+        });
+
+        const block = response.content.find((c) => c.type === 'tool_use');
+        if (!block || block.type !== 'tool_use') {
+          return { ok: false, message: 'The model returned nothing usable.' };
+        }
+
+        return {
+          ok: true,
+          data: block.input as T,
+          usage: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+            cacheReadTokens: response.usage?.cache_read_input_tokens ?? null,
+            elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
+          }
+        };
+      } catch (err) {
+        console.error('[ai] anthropic structured extraction failed', err);
+        return { ok: false, message: 'Could not read that list right now.' };
       }
     }
   };

@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { getProvider } from '@/lib/ai/provider';
+import { getProvider, type ModelProvider } from '@/lib/ai/provider';
+import { findResidualIdentifiers, scrubFreeText } from '@/lib/ai/deid';
 import { parsePronouns, type ParsedResident, type ParseResult } from './import';
 
 /**
@@ -12,10 +13,26 @@ import { parsePronouns, type ParsedResident, type ParseResult } from './import';
  * in — and only there. The parser runs first every time, because it is instant,
  * free, and produces the same answer twice.
  *
- * NOTE ON PHI: a roster is names and dates of birth, and possibly Medicaid IDs.
- * De-identifying is not an option here — the names are the payload. So this
- * sends protected information to the model vendor and needs a signed BAA with
- * them, exactly like the note assistant. The UI says so before it runs.
+ * NOTE ON PHI. A roster is the densest identifier payload in the app: full
+ * legal names, dates of birth and Medicaid IDs for an entire house, in one
+ * request. This used to post the pasted text straight to the provider with no
+ * scrubbing at all — no prepareName, no scrubFreeText, no residual check —
+ * routing around the whole pipeline the note assistant goes through, while
+ * production was pointed at a third-party vendor.
+ *
+ * It now goes through the same de-identification as every other model call,
+ * which behaves differently depending on where the model is:
+ *
+ * - **Local provider (the default).** Nothing leaves the machine, so scrubbing
+ *   is a no-op and the importer reads dates of birth and Medicaid IDs exactly
+ *   as it always did. This is the configuration where the feature is whole.
+ * - **Hosted provider.** Identifiers are stripped before the request. The
+ *   model still sees the names — they are genuinely the payload, and a roster
+ *   with the names removed is not a roster — but numeric identifiers do not
+ *   leave, and the reviewer types them in on the confirmation screen.
+ *
+ * The check before sending is fail-closed: if a Medicaid-length digit run
+ * survived scrubbing, the request is abandoned rather than sent anyway.
  */
 
 const SYSTEM = `You extract resident roster entries from messy text for a group home.
@@ -81,13 +98,33 @@ export type AiParseResult = ParseResult & {
   usedAi: true;
   /** Rough cost of this call, for the receipt shown in the UI. */
   costCents: number | null;
+  /**
+   * True when identifiers were stripped before the request, so the reviewer
+   * knows the blank Medicaid and DOB columns are redaction rather than a
+   * failure to read them.
+   */
+  redacted: boolean;
 };
 
-export async function aiParseRoster(text: string): Promise<AiParseResult | { error: string }> {
+/** Digit runs long enough to be a Medicaid ID, as they appear in the source. */
+function identifierRuns(text: string): string[] {
+  return Array.from(new Set(text.match(/\b\d{9,}\b/g) ?? []));
+}
+
+/**
+ * @param injectedProvider a stand-in for the configured provider. Only
+ * verify:roster-privacy passes this: it asserts on the exact bytes handed to
+ * the adapter, which is the boundary that matters, and there is no way to see
+ * those bytes from outside without a seam here.
+ */
+export async function aiParseRoster(
+  text: string,
+  injectedProvider?: ModelProvider
+): Promise<AiParseResult | { error: string }> {
   const trimmed = text.trim().slice(0, MAX_CHARS);
   if (!trimmed) return { error: 'Nothing to read.' };
 
-  const provider = await getProvider();
+  const provider = injectedProvider ?? (await getProvider());
   const health = await provider.health();
   if (!health.ok) {
     return { error: 'The assistant is not set up, so the list has to be a spreadsheet for now.' };
@@ -99,9 +136,27 @@ export async function aiParseRoster(text: string): Promise<AiParseResult | { err
     };
   }
 
+  // The same call every other model request makes. On the local provider this
+  // returns the text unchanged; on a hosted one it removes the identifiers.
+  const offMachine = provider.sendsDataOffMachine;
+  const outbound = scrubFreeText(trimmed, offMachine);
+  const redacted = offMachine && outbound !== trimmed;
+
+  // Fail closed. If an identifier that was in the paste is still in the payload
+  // we are about to transmit, do not transmit it — a partial scrub on a whole
+  // house is the failure worth refusing rather than logging.
+  const leaked = findResidualIdentifiers(outbound, identifierRuns(trimmed), offMachine);
+  if (leaked.length > 0) {
+    console.error(`[ai] roster scrub left ${leaked.length} identifier(s); refusing to send`);
+    return {
+      error:
+        'That list still contained identifiers after redaction, so it was not sent. Use a CSV file, or switch the assistant to a local model.'
+    };
+  }
+
   const result = await provider.generateStructured<{ residents?: Array<Record<string, unknown>> }>(
     SYSTEM,
-    `Extract every resident from this text.\n\n<text>\n${trimmed}\n</text>`,
+    `Extract every resident from this text.\n\n<text>\n${outbound}\n</text>`,
     SCHEMA as unknown as Record<string, unknown>,
     'resident_roster'
   );
@@ -137,6 +192,11 @@ export async function aiParseRoster(text: string): Promise<AiParseResult | { err
 
     const dob = typeof row.dob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.dob) ? row.dob : null;
     if (row.dob && !dob) warnings.push(`Could not read the date of birth "${row.dob}".`);
+    if (redacted) {
+      warnings.push(
+        'Medicaid ID and date of birth were removed before this list was sent, so add them here.'
+      );
+    }
 
     residents.push({
       rowNumber,
@@ -152,12 +212,14 @@ export async function aiParseRoster(text: string): Promise<AiParseResult | { err
     });
   });
 
-  // gpt-4o-mini list pricing, for the receipt. Approximate by design — it is
-  // there to show the order of magnitude, not to bill anyone.
+  // Approximate by design — the receipt shows an order of magnitude, not a
+  // bill. A local model costs nothing, so there is nothing to show at all.
   const inTok = result.usage.inputTokens ?? 0;
   const outTok = result.usage.outputTokens ?? 0;
   const costCents =
-    inTok || outTok ? ((inTok / 1_000_000) * 0.15 + (outTok / 1_000_000) * 0.6) * 100 : null;
+    offMachine && (inTok || outTok)
+      ? ((inTok / 1_000_000) * 1 + (outTok / 1_000_000) * 5) * 100
+      : null;
 
-  return { residents, errors, unknownColumns: [], usedAi: true, costCents };
+  return { residents, errors, unknownColumns: [], usedAi: true, costCents, redacted };
 }

@@ -13,6 +13,7 @@
     "verify:ai": "tsx --tsconfig scripts/tsconfig.json scripts/verify-ai-grounding.ts",
     "verify:branding": "tsx --tsconfig scripts/tsconfig.json scripts/verify-branding.tsx",
     "verify:timezone": "tsx --tsconfig scripts/tsconfig.json scripts/verify-timezone.ts",
+    "verify:roster-privacy": "tsx --tsconfig scripts/tsconfig.json scripts/verify-roster-privacy.ts",
     "bootstrap:admin": "tsx --tsconfig scripts/tsconfig.json scripts/bootstrap-admin.ts",
     "db:bundle": "tsx --tsconfig scripts/tsconfig.json scripts/bundle-migrations.ts",
     "db:verify": "tsx --tsconfig scripts/tsconfig.json scripts/verify-db.ts",

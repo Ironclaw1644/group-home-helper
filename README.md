@@ -412,16 +412,24 @@ facts supplied. That is close to the cheapest thing you can ask a model to do,
 and the deterministic guards catch what a weaker one gets wrong — so the model
 is a cost dial rather than an architectural choice.
 
-Three providers, selected by `AI_PROVIDER`:
+Two providers, selected by `AI_PROVIDER`:
 
 | Value | What it uses |
 | --- | --- |
-| `local` | Ollama on this machine. Free, nothing leaves the building. |
-| `anthropic` | Claude API. `ANTHROPIC_MODEL` picks the tier. |
-| `openai` | **Current default.** `OPENAI_MODEL` picks the tier; `OPENAI_BASE_URL` also covers Azure OpenAI and compatible gateways. |
+| `local` | **Default.** Ollama on this machine (`OLLAMA_MODEL`, default `qwen3.5-9b-64k`). Free, nothing leaves the building, no BAA needed with anyone. |
+| `anthropic` | Claude API. `ANTHROPIC_MODEL` picks the tier. Sends note content off the machine, so it needs signed BAAs first. |
 
-All three return the same `NoteDraft` and go through the same guards, so
-switching vendors is one env var, not a rewrite.
+Both return the same `NoteDraft` and go through the same guards, so switching
+vendors is one env var, not a rewrite. Anything unrecognised falls back to
+`local`: an unreadable setting must fail towards the option that transmits no
+PHI.
+
+**There is no `openai` option.** The adapter was removed rather than left
+disabled. Production was running on it, which put resident names, Medicaid IDs
+and shift narratives in front of a vendor with no BAA in place — and an adapter
+that one environment variable can re-enable is an adapter that gets re-enabled.
+The measurements below were taken on it and are kept for the cost comparison
+they still support; they are not a configuration you can select.
 
 ### Measured: gpt-4o-mini
 
@@ -472,12 +480,12 @@ proving the exemption did not become a blanket amnesty.
 Only the first row has been measured here. The system prompt is byte-identical
 on every note and sits first, so most input bills at the cached rate.
 
-### Using the API is not the same as using ChatGPT
+### Using the API is not the same as using a chatbot
 
-Staff pasting a resident's information into chatgpt.com is a different thing
-from this app calling the OpenAI API: the consumer product is not covered by a
-BAA, and it would be an unlogged disclosure of PHI with no audit trail. The same
-goes for claude.ai, Gemini, or Copilot.
+Staff pasting a resident's information into a consumer chat product is a
+different thing from this app calling a vendor API under a BAA: the consumer
+product is not covered, and it would be an unlogged disclosure of PHI with no
+audit trail. That goes for ChatGPT, claude.ai, Gemini and Copilot alike.
 
 Wiring the API in is partly a control for that — it gives staff a sanctioned
 path that is logged in `ai_generations`, grounded to what they actually
