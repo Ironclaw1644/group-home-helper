@@ -7,6 +7,7 @@ import { Building2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 import { Alert, Button, Card } from '@/components/ui';
+import type { JurisdictionOption } from '@/lib/jurisdictions';
 import {
   brandingPayload,
   ColorFields,
@@ -15,7 +16,8 @@ import {
   LogoPicker,
   ResetColorsButton,
   uploadPendingLogo,
-  type BrandingValues
+  type BrandingValues,
+  type PreviewForm
 } from '@/components/branding/branding-editor';
 
 /**
@@ -31,10 +33,14 @@ import {
  * skipping it prints the agency's own name with no logo, which is correct
  * rather than merely acceptable.
  */
-export function SignupForm() {
+export function SignupForm({ jurisdictions }: { jurisdictions: JurisdictionOption[] }) {
   const router = useRouter();
 
   const [orgName, setOrgName] = useState('');
+  // No default. An agency has to say which state it files under, because the
+  // answer decides which legal form its notes print on — and a wrong guess
+  // here is another state's document filed with Medicaid.
+  const [jurisdiction, setJurisdiction] = useState('');
   const [homeName, setHomeName] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -47,6 +53,19 @@ export function SignupForm() {
 
   // The agency name is typed once, at the top, and flows into the preview.
   const brandingWithName: BrandingValues = { ...branding, orgName };
+
+  // What the chosen state's form is captioned. Null until a state is picked:
+  // the preview then shows no title and no form line rather than defaulting to
+  // Virginia's, because reading "Form #680" while signing up in Ohio is
+  // exactly the confusion this picker exists to end.
+  const chosen = jurisdictions.find((j) => j.code === jurisdiction);
+  const previewForm: PreviewForm | null = chosen
+    ? {
+        title: chosen.formTitle,
+        formLine: chosen.formLine,
+        identityLabels: chosen.identityLabels
+      }
+    : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,7 +84,8 @@ export function SignupForm() {
           password,
           // The org's timezone decides what "today" means on the roster, so
           // take it from the browser rather than defaulting everyone to ET.
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          jurisdiction
         })
       });
 
@@ -142,6 +162,33 @@ export function SignupForm() {
           />
           <p className="mt-1.5 text-xs text-brand-slate">
             You can rename it in Settings. Two 12-hour shifts are set up for you.
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="jurisdiction" className="field-label">
+            State you file under
+          </label>
+          <select
+            id="jurisdiction"
+            required
+            className="field-input"
+            value={jurisdiction}
+            onChange={(e) => setJurisdiction(e.target.value)}
+          >
+            <option value="" disabled>
+              Choose your state
+            </option>
+            {jurisdictions.map((j) => (
+              <option key={j.code} value={j.code}>
+                {j.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-brand-slate">
+            This decides which form your notes print on. You can change it in
+            Settings; notes you have already signed keep the form they were
+            signed on.
           </p>
         </div>
 
@@ -294,7 +341,7 @@ export function SignupForm() {
 
               <div>
                 <span className="field-label">How your form will print</span>
-                <FormPreview value={brandingWithName} />
+                <FormPreview value={brandingWithName} form={previewForm} />
               </div>
             </div>
           ) : null}

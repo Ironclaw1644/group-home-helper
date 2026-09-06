@@ -219,6 +219,8 @@ export async function createAgency(input: {
   password: string;
   fullName: string;
   timezone?: string;
+  /** Validated against the installed templates by the sign-up route. */
+  jurisdiction: string;
 }): Promise<ProvisionResult> {
   const pwProblem = passwordProblem(input.password);
   if (pwProblem) return { ok: false, error: pwProblem };
@@ -246,6 +248,7 @@ export async function createAgency(input: {
     .insert({
       name: input.orgName.trim(),
       timezone: input.timezone || 'America/New_York',
+      jurisdiction: input.jurisdiction,
       created_via: 'signup'
     })
     .select('id')
@@ -497,6 +500,11 @@ export async function createDemoSandbox(): Promise<
     .insert({
       name: 'Demo Agency',
       timezone: 'America/New_York',
+      // Stated rather than left to the column default. The demo is the public
+      // tour and it shows a real, named form; which one it shows should be a
+      // decision in this file, not a side effect of what 0030 happened to
+      // backfill existing rows to.
+      jurisdiction: 'US-VA',
       is_demo: true,
       expires_at: expiresAt,
       created_via: 'demo'
