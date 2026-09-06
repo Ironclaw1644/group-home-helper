@@ -75,7 +75,12 @@ const styles = StyleSheet.create({
 
   identityRow: { flexDirection: 'row', marginBottom: 14 },
   identityCell: { flexDirection: 'row', alignItems: 'flex-end' },
-  fieldLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
+  // flexShrink 0: a field label is the name of a regulatory element and must
+  // never be squeezed by the ruled blank beside it. Ohio's 'Signature of
+  // Person Delivering Service:' wrapped mid-phrase without this. Virginia's
+  // labels are short and never shrank, so its output is unaffected — the
+  // byte-level check in verify:jurisdictions is what proves that.
+  fieldLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold', flexShrink: 0 },
   // Underscored blanks reproduce the ruled fields on the paper form.
   fieldValue: {
     fontSize: 10,
@@ -246,7 +251,10 @@ function Field({ field, ctx }: { field: PrintField; ctx: PrintContext }) {
   return (
     <View style={field.grow ? [styles.identityCell, { flex: 1 }] : styles.identityCell}>
       <Text style={styles.fieldLabel}>{field.label}</Text>
-      <Blank value={readSource(ctx, field.source)} width={field.width ?? 120} />
+      <Blank
+        value={field.source ? readSource(ctx, field.source) : ''}
+        width={field.width ?? 120}
+      />
     </View>
   );
 }
@@ -263,7 +271,7 @@ function FieldRow({
   return (
     <View style={style}>
       {row.fields.map((field, i) => (
-        <Field key={`${field.source}-${i}`} field={field} ctx={ctx} />
+        <Field key={`${field.source ?? "blank"}-${i}`} field={field} ctx={ctx} />
       ))}
     </View>
   );
@@ -392,6 +400,14 @@ export function TemplatePdf({
   const identityRows = config.identity_rows ?? DEFAULT_IDENTITY_ROWS;
   const metaRows = config.meta_rows ?? DEFAULT_META_ROWS;
   const signatureLabel = config.signature_block?.label ?? DEFAULT_SIGNATURE_LABEL;
+  const signatureLabelWidth = config.signature_block?.label_width;
+  const signatureValueWidth = config.signature_block?.value_width ?? 200;
+  // #680 reserves 76pt. A template with a taller footer says so; see
+  // RenderConfig.page.padding_bottom.
+  const pageStyle =
+    config.page?.padding_bottom !== undefined
+      ? [styles.page, { paddingBottom: config.page.padding_bottom }]
+      : styles.page;
   const signatureFooterFields =
     config.signature_block?.footer_fields ?? DEFAULT_SIGNATURE_FOOTER_FIELDS;
 
@@ -417,7 +433,7 @@ export function TemplatePdf({
       author={orgLine}
       creator={orgLine}
     >
-      <Page size="LETTER" style={styles.page}>
+      <Page size="LETTER" style={pageStyle}>
         <Letterhead
           orgLine={orgLine}
           letterhead={letterhead}
@@ -449,11 +465,21 @@ export function TemplatePdf({
         </View>
 
         <View style={styles.signatureRow}>
-          <Text style={styles.fieldLabel}>{signatureLabel}</Text>
+          <Text
+            style={
+              signatureLabelWidth === undefined
+                ? styles.fieldLabel
+                : [styles.fieldLabel, { width: signatureLabelWidth }]
+            }
+          >
+            {signatureLabel}
+          </Text>
           {signatureSrc ? (
             <Image src={signatureSrc} style={styles.signatureImage} />
           ) : (
-            <Text style={[styles.fieldValue, { width: 200 }]}>{note.signatureName ?? ' '}</Text>
+            <Text style={[styles.fieldValue, { width: signatureValueWidth }]}>
+              {note.signatureName ?? ' '}
+            </Text>
           )}
         </View>
 
@@ -479,7 +505,7 @@ export function TemplatePdf({
           comparison they would otherwise do across two documents is already
           made on one sheet. */}
       {showOutcomePage ? (
-        <Page size="LETTER" style={styles.page}>
+        <Page size="LETTER" style={pageStyle}>
           <Letterhead
             orgLine={orgLine}
             letterhead={letterhead}
@@ -564,7 +590,7 @@ export function TemplatePdf({
       {/* Addenda live on their own page so the signed note above stays exactly
           as it was signed — nothing is reflowed by a later correction. */}
       {addenda.length > 0 ? (
-        <Page size="LETTER" style={styles.page}>
+        <Page size="LETTER" style={pageStyle}>
           <Letterhead
             orgLine={orgLine}
             letterhead={letterhead}

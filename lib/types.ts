@@ -364,7 +364,16 @@ export type PrintContext = Record<PrintSource, string>;
 
 /** One labelled blank on the printed form. */
 export type PrintField = {
-  source: PrintSource;
+  /**
+   * Where the value comes from. **Omit it to print an empty ruled line.**
+   *
+   * A jurisdiction sometimes requires a field this app does not hold — Ohio's
+   * rule asks for billing units, which live in the agency's billing system, not
+   * here. Printing the label with an empty blank is what a paper form does and
+   * is the honest answer: the required field is present and visibly unfilled.
+   * Inventing a value, or silently dropping the element, would both be worse.
+   */
+  source?: PrintSource;
   label: string;
   /** Width of the ruled blank in PDF points. Defaults to 120. */
   width?: number;
@@ -383,7 +392,20 @@ export type PrintRow = { fields: PrintField[] };
  * "unchanged" or the regression bar could not be met.
  */
 export type RenderConfig = {
-  page?: { size?: string; margin?: number };
+  page?: {
+    size?: string;
+    margin?: number;
+    /**
+     * Space reserved at the foot of every page for the fixed footer block.
+     *
+     * Defaults to 76, which is what Form #680 needs for its form line, agency
+     * line and Title/Date row. A template with a taller footer — Ohio adds a
+     * rule citation — must raise this, or the signature row is drawn on top of
+     * it. Content overlapping the footer of a signed Medicaid record is not a
+     * cosmetic problem.
+     */
+    padding_bottom?: number;
+  };
   header?: { logo?: string; org_line?: string; title?: string };
   footer?: {
     form_line?: string;
@@ -412,6 +434,17 @@ export type RenderConfig = {
   signature_block?: {
     /** Defaults to 'Staff Signature: '. */
     label?: string;
+    /**
+     * Fixed width for that label, in points.
+     *
+     * Leave it unset for a short label — #680's 'Staff Signature: ' sizes
+     * itself and must keep doing so, byte for byte. Set it for a long one:
+     * without an explicit width the text engine will wrap a long label into a
+     * narrow column rather than let it take the room it needs.
+     */
+    label_width?: number;
+    /** Width of the ruled signature line when there is no drawn mark. Defaults to 200. */
+    value_width?: number;
     /** Fields printed in the fixed page footer. Defaults to #680's Title + Date. */
     footer_fields?: PrintField[];
   };
