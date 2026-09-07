@@ -139,6 +139,53 @@ def rule_identifiers(citation: str) -> list:
     return sorted(set(found), key=lambda s: (-len(re.split(r"[.\-:]", s)), -len(s)))
 
 
+# Phrases a researcher writes when the rule they found turns out not to govern
+# what a shift note contains. Deliberately narrow and quoted from real output
+# rather than a general "sounds negative" pattern: a loose match here silently
+# throws away good citations, which is the failure this whole script keeps
+# making.
+NOT_ABOUT_NOTES = [
+    "do not print",
+    "delegates entirely",
+    "does not enumerate what a daily",
+    "does not enumerate note",
+    "not enumerate note fields",
+    "does not mandate a per-resident",
+    "not a service-note rule",
+]
+
+
+def relevance_warning(state: dict) -> str:
+    """Why this citation must not be printed, even though it is real.
+
+    Everything else here proves a citation EXISTS. Nothing proves it is ABOUT
+    anything. Those are different questions and the gap between them is exactly
+    where this shipped a wrong answer: Alabama's r. 580-5-30-.04 is a real,
+    current, correctly quoted rule about record management that says nothing
+    whatever about what a progress note contains -- its own researcher wrote
+    "DO NOT print an Alabama note-content rule number on a filed record" -- and
+    it went onto the printed page saying "Layout built to satisfy" it.
+    Connecticut was the same shape: nine required elements that turn out to be
+    the contents of an individual's file, not fields of a note.
+
+    A footer claiming a layout satisfies a rule the layout has nothing to do
+    with is a false claim to an auditor, which is the one reader who matters.
+
+    This is a backstop, not a substitute for reading. It catches the case where
+    the researcher noticed and said so. Nobody should sell into a state on the
+    strength of a citation they have not read themselves.
+    """
+    if not (state.get("required_elements") or []):
+        return "researcher recorded no note-content requirements from this rule"
+    blob = " ".join(
+        str(state.get(k) or "") for k in ("notes", "service_type", "signature_rule")
+    ).lower()
+    for phrase in NOT_ABOUT_NOTES:
+        if phrase in blob:
+            return f"researcher flagged the rule does not govern note content ({phrase!r})"
+    return ""
+
+
 def check(state: dict) -> tuple:
     """Return (ok, reason). ok=False means: ship this state without a citation."""
     cite, url = state.get("citation"), state.get("source_url")
@@ -146,6 +193,10 @@ def check(state: dict) -> tuple:
         return False, "not claimed as read"
     if not cite or not url:
         return False, "claims primary-source-read but has no citation/url"
+
+    irrelevant = relevance_warning(state)
+    if irrelevant:
+        return False, irrelevant
 
     host = urllib.parse.urlparse(url).hostname or ""
     allowlisted = any(host == d or host.endswith("." + d) for d in OFFICIAL_NON_GOV)

@@ -15,15 +15,13 @@
 --
 -- So the rows below come in two tiers, and the tier is visible on the page.
 --
--- TIER 1 — 27 state(s) whose citation was independently verified.
+-- TIER 1 — 25 state(s) whose citation was independently verified.
 --   scripts/verify-citations.py fetched the state's own code site, confirmed
 --   the rule number appears there, and confirmed a verbatim quotation from
 --   the rule appears there too. The footer cites the rule and says plainly
 --   that it is not a state-issued form.
 --     US-AK  Alaska                 7 AAC 105.230
 --            https://aws.state.ak.us/OnlinePublicNotices/Notices/Attachment.aspx?id=112295
---     US-AL  Alabama                Ala. Admin. Code r. 580-5-30-.04
---            https://admincode.legislature.state.al.us/api/chapter/580-5-30
 --     US-AR  Arkansas               Arkansas Medicaid Provider Manual, Section II — DDS Community and Employment Supports (CES) Waiver, § 202.100
 --            https://humanservices.arkansas.gov/wp-content/uploads/171108_DDSACS_II.doc
 --     US-AZ  Arizona                AHCCCS Medical Policy Manual (AMPM) Policy 1240-E
@@ -32,8 +30,6 @@
 --            https://www.dds.ca.gov/wp-content/uploads/2025/06/FinalRegulationText.pdf
 --     US-CO  Colorado               10 CCR 2505-10 § 8.130.2
 --            https://www.coloradosos.gov/CCR/GenerateRulePdf.do?ruleVersionId=12573&fileName=10+CCR+2505-10+8.100
---     US-CT  Connecticut            Conn. Agencies Regs. § 17a-227-16
---            https://portal.ct.gov/dds/searchable-archive/qualitymanagement/regulations/17a-227-16-individual-records
 --     US-HI  Hawaii                 Hawaiʻi 1915(c) HCBS Medicaid Waiver for Individuals with Intellectual and Developmental Disabilities, Waiver Provider Standards Manual § 3.10.A (Documentation Requirements for All Claims) and § 3.7.D (Maintenance of Participant Records)
 --            https://health.hawaii.gov/ddd/files/2026/06/Waiver-Provider-Standards-Manual-July2026.pdf
 --     US-IA  Iowa                   Iowa Admin. Code r. 441—24.4(4)
@@ -75,7 +71,7 @@
 --     US-SC  South Carolina         SC DDSN Residential Habilitation Standards, RH8.0-RH8.1 (Documentation)
 --            https://ddsn.sc.gov/sites/ddsn/files/PublicDocuments/Finance%20and%20Audit%20Resources/Residential%20Habilitation%20Standards%20-%20Revised%20(061820).pdf
 --
--- TIER 2 — 22 state(s) shipping with no citation at all.
+-- TIER 2 — 24 state(s) shipping with no citation at all.
 --   Either no rule was found, or what was found could not be verified against
 --   the state's own site. These print exactly what the GENERIC template
 --   prints: a complete, defensible progress note that names no state and
@@ -116,20 +112,17 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-AL Alabama (tier 1)
---   Ala. Admin. Code r. 580-5-30-.04 — https://admincode.legislature.state.al.us/api/chapter/580-5-30
---   effective 2022-05-15
-update ghh.form_templates set active = false, updated_at = now()
- where org_id is null and jurisdiction = 'US-AL' and active;
+-- US-AL Alabama (tier 2)
+--   no citation: researcher recorded no note-content requirements from this rule
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000302'::uuid, null, 'daily_progress_note_al_v2', 2,
+  '00000000-0000-0000-0000-000000000202'::uuid, null, 'daily_progress_note_al', 1,
   'Daily Progress Note', null, 'US-AL', 'Alabama',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Ala. Admin. Code r. 580-5-30-.04. Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
@@ -205,25 +198,23 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-CT Connecticut (tier 1)
---   Conn. Agencies Regs. § 17a-227-16 — https://portal.ct.gov/dds/searchable-archive/qualitymanagement/regulations/17a-227-16-individual-records
-update ghh.form_templates set active = false, updated_at = now()
- where org_id is null and jurisdiction = 'US-CT' and active;
+-- US-CT Connecticut (tier 2)
+--   no citation: researcher flagged the rule does not govern note content ('does not enumerate note')
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000307'::uuid, null, 'daily_progress_note_ct_v2', 2,
+  '00000000-0000-0000-0000-000000000207'::uuid, null, 'daily_progress_note_ct', 1,
   'Daily Progress Note', null, 'US-CT', 'Connecticut',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Community Living Arrangement (CLA) for persons with intellectual disability and/or autism spectrum disorder, licensed under Conn. Gen. Stat. § 17a-227; billed as Residential Habilitation under the DDS HCBS waiver"}, "footer": {"form_line": "Service documentation — community living arrangement (cla) for persons with intellectual disability and/or autism spectrum disorder, licensed under conn. gen. stat. § 17a-227; billed as residential habilitation under the dds hcbs waiver", "legal_citation": "Layout built to satisfy Conn. Agencies Regs. § 17a-227-16. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Community Living Arrangement (CLA) for persons with intellectual disability and/or autism spectrum disorder, licensed under Conn. Gen. Stat. § 17a-227; billed as Residential Habilitation under the DDS HCBS waiver"}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-DC District of Columbia (tier 2)
---   no citation: page contains none of the rule numbers 1909.2
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -253,7 +244,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-FL Florida (tier 2)
---   no citation: only 0/32 of the quoted phrases appear on the cited page
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -268,7 +259,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-GA Georgia (tier 2)
---   no citation: could not fetch source: timeout
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -319,7 +310,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-ID Idaho (tier 2)
---   no citation: page contains none of the rule numbers 16.03.21.301.04
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -403,7 +394,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-LA Louisiana (tier 2)
---   no citation: not a state-run domain: www.lamedicaid.com
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -418,7 +409,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MA Massachusetts (tier 2)
---   no citation: HTTP 302: source blocked the check, not verified either way
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -433,7 +424,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MD Maryland (tier 2)
---   no citation: page contains none of the rule numbers 10.22.02.13
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -448,7 +439,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-ME Maine (tier 2)
---   no citation: page contains none of the rule numbers 10-144, 21.09
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -463,7 +454,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MI Michigan (tier 2)
---   no citation: citation names no rule number to check: 'MDHHS Medicaid Provider Manual, General Information for Providers chapter, Section 14 - Record Keeping'
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -530,7 +521,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MT Montana (tier 2)
---   no citation: citation names no rule number to check: "Montana Developmental Disabilities Program Services Manual, 'Documentation' section (DPHHS, Behavioral Health and Developmental Disabilities Division)"
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -775,7 +766,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-SD South Dakota (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -790,7 +781,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-TN Tennessee (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -805,7 +796,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-TX Texas (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -820,7 +811,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-UT Utah (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -835,7 +826,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-VT Vermont (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -850,7 +841,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-WA Washington (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -865,7 +856,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-WI Wisconsin (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -880,7 +871,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-WV West Virginia (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -895,7 +886,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-WY Wyoming (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
