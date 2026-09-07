@@ -171,8 +171,16 @@ def main() -> None:
             # and activating v2 leaves every signed note printing exactly what
             # it printed the day it was signed, and sends only new notes to the
             # cited layout.
-            w(f"update ghh.form_templates set active = false, updated_at = now()")
-            w(f" where org_id is null and jurisdiction = {sql_str(code)} and active;")
+            # Insert first, then set activity by id.
+            #
+            # This used to deactivate every active row for the state and then
+            # insert v2. Correct once, wrong on the second run: the insert is
+            # "on conflict do nothing", so re-applying deactivated the v2 that
+            # already existed and then declined to recreate it, leaving the
+            # state with no active template at all. Twenty-one states lost
+            # their citation that way, silently, because a no-op insert reports
+            # success. Deciding activity by id afterwards converges no matter
+            # how many times it runs.
             w("insert into ghh.form_templates (")
             w("  id, org_id, key, version, name, form_number, jurisdiction,")
             w("  jurisdiction_name, schema, render_config")
@@ -185,6 +193,9 @@ def main() -> None:
             w("from ghh.form_templates g")
             w("where g.key = 'daily_progress_note_generic' and g.org_id is null")
             w("on conflict (id) do nothing;")
+            w("update ghh.form_templates set")
+            w(f"  active = (id = '{UUID_V2.format(i)}'::uuid), updated_at = now()")
+            w(f" where org_id is null and jurisdiction = {sql_str(code)};")
         else:
             w("insert into ghh.form_templates (")
             w("  id, org_id, key, version, name, form_number, jurisdiction,")

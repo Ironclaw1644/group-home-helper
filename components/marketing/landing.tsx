@@ -32,7 +32,7 @@ const FACTS = [
   { k: '$0', v: 'to get set up' },
   // Was "#680 — Virginia's DBHDS form", which stopped being the whole truth
   // the day a second state shipped and became actively wrong at fifty. Every
-  // state and DC now has a form; twenty-six of them cite the state's own
+  // state and DC now has a form; twenty-two of them cite the state's own
   // documentation rule on the printed page.
   { k: '50', v: 'states, plus DC' }
 ];
@@ -100,7 +100,7 @@ const NOT_YET = [
   // longer the limitation, but there is still a real one underneath it and it
   // belongs on this list rather than being quietly deleted: almost no state
   // issues a form at all, and for half of them nobody here has read the rule.
-  ['Only Virginia issues an actual form.', 'Virginia publishes DBHDS Form #680 and we print it. Almost nowhere else does — most states publish a rule about what a note must contain and leave the layout to you. For twenty-six states we have read that rule and cite it at the foot of the page; for the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets another state’s form number, which is the mistake that actually hurts you in an audit.'],
+  ['Only Virginia issues an actual form.', 'Virginia publishes DBHDS Form #680 and we print it. Almost nowhere else does — most states publish a rule about what a note must contain and leave the layout to you. For twenty-two states we have read that rule and cite it at the foot of the page; for the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets another state’s form number, which is the mistake that actually hurts you in an audit.'],
   ['No scheduling, no time clock, no family portal.', 'Small agencies do not buy those from the same place they buy documentation, and we would build them badly.'],
   ['And no customers yet.', 'FlipBrief has not been sold to anyone. You would be the first. There is no logo wall on this page because there is nothing honest to put on it.']
 ];

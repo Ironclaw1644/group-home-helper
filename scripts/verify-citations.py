@@ -139,20 +139,76 @@ def rule_identifiers(citation: str) -> list:
     return sorted(set(found), key=lambda s: (-len(re.split(r"[.\-:]", s)), -len(s)))
 
 
-# Phrases a researcher writes when the rule they found turns out not to govern
-# what a shift note contains. Deliberately narrow and quoted from real output
-# rather than a general "sounds negative" pattern: a loose match here silently
-# throws away good citations, which is the failure this whole script keeps
-# making.
-NOT_ABOUT_NOTES = [
-    "do not print",
-    "delegates entirely",
-    "does not enumerate what a daily",
-    "does not enumerate note",
-    "not enumerate note fields",
-    "does not mandate a per-resident",
-    "not a service-note rule",
-]
+# A researcher saying, in some phrasing or other, that the rule they found is
+# not about progress notes.
+#
+# The first version of this was a list of exact phrases lifted from Alabama and
+# Connecticut. South Dakota then arrived saying the same thing in different
+# words -- "describes the contents of the participant's record, not the
+# contents of a per-shift progress note" -- and sailed straight through. Phrase
+# matching is whack-a-mole against a writer who has infinite ways to say it.
+#
+# So this matches the shape instead: a negation within a short distance of the
+# word "note". That deliberately over-catches, because the two outcomes are not
+# symmetric. A false catch costs a footer that says nothing, which is a fine
+# document. A miss puts a false regulatory claim on a filed Medicaid record.
+# Aimed at one claim, because the footer only makes one: "Layout built to
+# satisfy <rule>". That is true when the rule says what documentation must
+# contain, and false otherwise.
+#
+# A first attempt matched any negation near "note" and caught twenty-six
+# states, but for three different reasons piled together: rules that genuinely
+# do not describe note content, rules that simply require no SIGNATURE, and
+# states that merely publish no numbered FORM. Only the first bears on whether
+# the footer's claim is true -- a rule can enumerate a note perfectly well and
+# demand nobody sign it. So this looks for a negated content verb: not
+# enumerating, not prescribing, not specifying what a note contains.
+NOT_ABOUT_NOTES = re.compile(
+    # not ... enumerate ... note        ("does not enumerate what a note contains")
+    r"\b(?:not|no|never)\b[^.;]{0,40}"
+    r"\b(?:enumerat|prescrib|specif|describ|mandat)\w*"
+    r"[^.;]{0,60}\b(?:notes?|content)"
+    # note/content ... not ... enumerate ("notes be kept but does NOT prescribe")
+    r"|\b(?:notes?|content)\w*[^.;]{0,40}\b(?:not|no)\b[^.;]{0,25}"
+    r"\b(?:enumerat|prescrib|specif|describ)\w*"
+    # describe ... not ... note          South Dakota puts the negation last:
+    # "describes the contents of the participant's record, not the contents of
+    # a per-shift progress note". Same claim, reversed, and it escaped a
+    # pattern that only looked for negation first.
+    r"|\b(?:enumerat|prescrib|specif|describ)\w*[^.;]{0,70}"
+    r"\bnot\b[^.;]{0,40}\bnotes?\b"
+    r"|\bdo not print\b|\bdelegates entirely\b",
+    re.I,
+)
+
+# A negation that turns out to be about who signs, or whether a numbered form
+# exists, rather than about what the note must contain.
+#
+# Both are extremely common in this material and neither bears on the footer's
+# claim: a rule can enumerate a note in exact detail and still require no
+# credential and publish no form. Left in, these produced false positives on
+# Indiana ("No credential is specified for the signer"), Georgia ("No DSP
+# credential is specified for routine progress notes"), Hawaii ("no specific
+# form is mandated - only required content") and New York ("No numbered OPWDD
+# form - the ADM prescribes format and content"), the last two of which say
+# outright that the content requirement exists.
+ABOUT_SIGNING_OR_FORMS = re.compile(
+    r"credential|signer|signature|licen|numbered|\bform\b", re.I
+)
+
+# States where a human read the flagged sentence and decided the citation is
+# still the right thing to print. Nothing gets in here without a reason
+# somebody wrote down, because the whole point of over-catching above is that
+# the override is where the thinking has to be visible.
+RELEVANCE_REVIEWED = {
+    # "a daily note is not required" is about FREQUENCY, not content. North
+    # Carolina requires a daily grid for Residential Supports under NC
+    # Innovations and a monthly note for the state-funded equivalent. The rule
+    # does enumerate what the note contains -- twelve elements, read and
+    # recorded -- so it is the right citation for the layout. Worth knowing in
+    # a sales conversation, not a reason to drop the citation.
+    "US-NC": "negation concerns note frequency by funding stream, not note content",
+}
 
 
 def relevance_warning(state: dict) -> str:
@@ -177,12 +233,20 @@ def relevance_warning(state: dict) -> str:
     """
     if not (state.get("required_elements") or []):
         return "researcher recorded no note-content requirements from this rule"
+
     blob = " ".join(
         str(state.get(k) or "") for k in ("notes", "service_type", "signature_rule")
-    ).lower()
-    for phrase in NOT_ABOUT_NOTES:
-        if phrase in blob:
-            return f"researcher flagged the rule does not govern note content ({phrase!r})"
+    )
+    for hit in NOT_ABOUT_NOTES.finditer(blob):
+        snippet = " ".join(hit.group(0).split())
+        if ABOUT_SIGNING_OR_FORMS.search(snippet):
+            continue  # about a credential or a form number, not about content
+        if RELEVANCE_REVIEWED.get(state.get("code")):
+            return ""  # a human read it and wrote down why it still stands
+        return (
+            "researcher wrote that this rule does not describe note content: "
+            f"{snippet[:90]!r}"
+        )
     return ""
 
 
