@@ -1,4 +1,4 @@
-import { Archivo } from 'next/font/google';
+import { Archivo, Allura } from 'next/font/google';
 
 /**
  * FlipBrief's typeface. There is one, and this is it.
@@ -26,4 +26,26 @@ export const appFont = Archivo({
   display: 'swap',
   variable: '--font-fb-text',
   axes: ['wdth']
+});
+
+/**
+ * The face a typed signature is drawn in.
+ *
+ * This has to be shipped rather than named. The typed signature was asking for
+ * "Snell Roundhand", "Segoe Script", "Bradley Hand" and finally generic
+ * `cursive` — a stack in which a Mac, a Windows machine and an Android phone
+ * each resolve to something different, and most Android devices have no script
+ * face at all. The same person signing the same name got a different mark
+ * depending on the device in their hand, which is not a defensible property for
+ * the thing standing in for their signature on a Medicaid record.
+ *
+ * Allura is a formal upright-ish script with connected letterforms, and it is
+ * legible at the size a signature block allows. Loaded here so every device
+ * renders one identical mark.
+ */
+export const signatureFont = Allura({
+  subsets: ['latin'],
+  weight: '400',
+  display: 'swap',
+  variable: '--font-fb-signature'
 });

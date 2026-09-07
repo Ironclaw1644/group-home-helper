@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { loadBrand } from '@/lib/branding/load';
 import { brandCssVariables } from '@/lib/branding/theme';
-import { appFont } from '@/lib/fonts';
+import { appFont, signatureFont } from '@/lib/fonts';
 import { ServiceWorkerBridge } from '@/components/service-worker';
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     // The typeface variable is set on <html>, not on a page wrapper, so one
     // font serves the public landing page and the signed-in app both.
-    <html lang="en" className={appFont.variable}>
+    <html lang="en" className={`${appFont.variable} ${signatureFont.variable}`}>
       <head>
         <style
           // Values are validated as hex literals in parseBranding, so they

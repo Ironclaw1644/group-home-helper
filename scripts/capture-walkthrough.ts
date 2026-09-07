@@ -164,12 +164,8 @@ async function main() {
   await settle(page);
   await shot(page, '03-draft-writes-itself');
 
-  console.log('· 04 sign on the glass');
-  const canvas = page.locator('canvas').first();
-  await canvas.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, -30));
-  await settle(page);
-  await sign(page, canvas);
+  console.log('· 04 sign');
+  await signTyped(page);
 
   await page.getByRole('checkbox').last().check();
   // Bring "Sign and lock note" into the frame — a signing screen that stops
@@ -211,6 +207,33 @@ async function main() {
  * Amplitudes and spacing vary, and the curve is walked in small steps so the
  * pad's smoothing has something to work with.
  */
+/**
+ * Sign by typing the name, the way the product's own "Type" mode works.
+ *
+ * Earlier revisions drove the drawing canvas with a synthesised stroke. Even
+ * done well that is a machine imitating handwriting, and it looked like one.
+ * The app already offers a typed signature rendered in a script face, which is
+ * both what e-signature products do and what a DSP on a phone would actually
+ * pick — so the honest capture is to use it.
+ */
+async function signTyped(page: Page) {
+  await page.getByRole('button', { name: /^type$/i }).click();
+
+  const field = page.getByPlaceholder(/type your full name/i);
+  await field.scrollIntoViewIfNeeded();
+  await field.fill('');
+  // Typed rather than filled, so the debounced canvas render runs as it would
+  // for a person.
+  await field.pressSequentially('Robin Vance', { delay: 45 });
+
+  // The canvas render waits on the webfont; give it the same chance.
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(600);
+
+  await page.evaluate(() => window.scrollBy(0, -40));
+  await settle(page);
+}
+
 async function sign(page: Page, canvas: ReturnType<Page['locator']>) {
   const box = await canvas.boundingBox();
   if (!box) throw new Error('no signature canvas');

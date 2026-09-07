@@ -150,30 +150,80 @@ export function SignaturePad({
       return;
     }
 
-    // Render on a fresh offscreen canvas rather than reusing the drawing one,
-    // so switching modes never mixes ink from both.
-    const canvas = document.createElement('canvas');
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = MAX_WIDTH * ratio;
-    canvas.height = MAX_HEIGHT * ratio;
+    let cancelled = false;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.scale(ratio, ratio);
-    ctx.fillStyle = '#0f2d45';
-    ctx.textBaseline = 'middle';
+    void (async () => {
+      // The shipped script face, resolved from the variable next/font sets on
+      // <html>. Canvas takes a font string, not a class, so the family has to
+      // be read out rather than applied.
+      const resolved = getComputedStyle(document.documentElement)
+        .getPropertyValue('--font-fb-signature')
+        .trim();
+      const family = resolved ? `${resolved}, ${SCRIPT_STACK}` : SCRIPT_STACK;
 
-    // Shrink to fit rather than clipping — a long name must not run off the
-    // edge of the signature block on the printed form.
-    let size = 54;
-    do {
-      ctx.font = `italic ${size}px ${SCRIPT_STACK}`;
-      if (ctx.measureText(value).width <= MAX_WIDTH - 32) break;
-      size -= 2;
-    } while (size > 18);
+      // Canvas does not wait for webfonts: draw before the face has loaded and
+      // it silently renders the fallback, with no error and no second attempt.
+      try {
+        await document.fonts.load(`54px ${family}`, value);
+        await document.fonts.ready;
+      } catch {
+        // Carry on with whatever is available rather than leaving them unable
+        // to sign.
+      }
+      if (cancelled) return;
 
-    ctx.fillText(value, 16, MAX_HEIGHT / 2);
-    onChange(canvas.toDataURL('image/png'), 'typed');
+      // Render on a fresh offscreen canvas rather than reusing the drawing one,
+      // so switching modes never mixes ink from both.
+      const canvas = document.createElement('canvas');
+      const ratio = window.devicePixelRatio || 1;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Shrink to fit rather than clipping — a long name must not run off the
+      // edge of the signature block on the printed form.
+      let size = 54;
+      do {
+        ctx.font = `${size}px ${family}`;
+        if (ctx.measureText(value).width <= MAX_WIDTH - 32) break;
+        size -= 2;
+      } while (size > 18);
+
+      /*
+       * Crop the image to the ink.
+       *
+       * This used to draw into the full 720x200 pad. A short name inks maybe
+       * 280x60 of that, and the PDF places the result with objectFit:'contain'
+       * inside a 150x42 box — so the scale was driven by the empty canvas, not
+       * the name. The signature came out around a third of its intended size
+       * and floated in the middle of its box, clear of the line it was meant to
+       * sit on. Fitting the bitmap to the glyphs fixes the size and the
+       * position together, because the box then contains nothing but signature.
+       */
+      const m = ctx.measureText(value);
+      const ascent = m.actualBoundingBoxAscent || size * 0.75;
+      const descent = m.actualBoundingBoxDescent || size * 0.3;
+      const padX = Math.round(size * 0.12);
+      const padY = Math.round(size * 0.08);
+
+      const w = Math.ceil(m.width + padX * 2);
+      const h = Math.ceil(ascent + descent + padY * 2);
+
+      canvas.width = w * ratio;
+      canvas.height = h * ratio;
+
+      // Sizing the canvas resets the context, so everything is set again here.
+      ctx.scale(ratio, ratio);
+      ctx.fillStyle = '#0f2d45';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = `${size}px ${family}`;
+      ctx.fillText(value, padX, padY + ascent);
+
+      onChange(canvas.toDataURL('image/png'), 'typed');
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // onChange identity changes on every parent render; depending on it would
     // re-render the signature in a loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -332,8 +382,8 @@ export function SignaturePad({
           <div className="relative mt-3 flex h-36 items-center rounded-xl border border-brand-navy/15 bg-white px-6">
             {typed.trim() ? (
               <span
-                className="truncate text-4xl text-brand-navy"
-                style={{ fontFamily: SCRIPT_STACK, fontStyle: 'italic' }}
+                className="truncate text-5xl leading-[1.4] text-brand-navy"
+                style={{ fontFamily: `var(--font-fb-signature), ${SCRIPT_STACK}` }}
               >
                 {typed}
               </span>
