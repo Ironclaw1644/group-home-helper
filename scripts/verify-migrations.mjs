@@ -85,6 +85,18 @@ function declaredObjects(sql) {
 
     m = s.match(/^drop\s+table\s+(?:if\s+exists\s+)?ghh\.([a-z0-9_]+)/i);
     if (m) dropped.push({ kind: 'table', name: m[1] });
+
+    /*
+     * Indexes count too. A migration that adds one is usually the fix for a
+     * query that was timing out, so an index silently failing to apply gives
+     * back exactly the bug the migration was written to kill — and unlike a
+     * missing column it throws no error, it just goes slow again.
+     */
+    m = s.match(/^create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?([a-z0-9_]+)\s+on\s/i);
+    if (m) created.push({ kind: 'index', name: m[1] });
+
+    m = s.match(/^drop\s+index\s+(?:if\s+exists\s+)?(?:ghh\.)?([a-z0-9_]+)/i);
+    if (m) dropped.push({ kind: 'index', name: m[1] });
   }
 
   return { created, dropped };
@@ -115,7 +127,11 @@ const functions = new Set(
   )
 );
 
-const present = { table: tables, column: columns, function: functions };
+const indexes = new Set(
+  query("select indexname from pg_indexes where schemaname='ghh'").map((r) => r.indexname)
+);
+
+const present = { table: tables, column: columns, function: functions, index: indexes };
 
 /*
  * Replay the migrations in order to work out what the schema is *supposed* to
@@ -150,7 +166,7 @@ for (const file of files) {
   if (declared.length === 0) {
     // Seed data, policy-only and grant-only migrations declare nothing this
     // check can see. Say so rather than implying they were verified.
-    console.log(`  --    ${file}  (no table/column/function to check)`);
+    console.log(`  --    ${file}  (no table/column/function/index to check)`);
     continue;
   }
 
