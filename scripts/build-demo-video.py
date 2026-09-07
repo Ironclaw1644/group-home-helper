@@ -43,10 +43,14 @@ FOREST = (20, 69, 47)
 PAPER = (251, 248, 243)
 SAND = (217, 179, 130)
 
+# The product's own face, not the system's. Archivo SemiBold is what the app
+# and the landing page set, and it is bundled by next/font as woff2; PIL cannot
+# read woff2, so scripts/extract-brand-fonts.py converts it once. A film in
+# Arial that sells software set in Archivo looks like somebody else made it.
 FONTS = [
+    os.path.join(ROOT, "tmp", "fonts", "Archivo-SemiBold.ttf"),
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "/Library/Fonts/Arial Bold.ttf",
 ]
 
 # beat -> caption. A beat absent from here shows nothing, which is how the
@@ -98,6 +102,73 @@ def render_caption(text: str, path: str) -> None:
         d.text(((W - w) // 2, y), ln, font=f, fill=PAPER + (255,))
         y += h + gap
     img.save(path)
+
+
+def render_card(lines, path: str, sub: str = "") -> None:
+    """A full-frame forest card with the brand mark above centred type.
+
+    The film had neither an opening nor a close: it started mid-scroll on a
+    stranger's phone and ended on a document, so a viewer never learned whose
+    software it was or where to get it. A demo that does not say its own name
+    is an odd thing to send to somebody.
+    """
+    img = Image.new("RGB", (W, H), FOREST)
+    d = ImageDraw.Draw(img)
+
+    # The mark on a paper badge, not straight onto the card.
+    #
+    # It is two flat colours and one of them is forest, so dropped onto a
+    # forest ground the F disappeared and only the sand tip of the turning page
+    # survived — a small beige comma floating above the wordmark.
+    # Centre the whole block, rather than starting it at a fixed height. The
+    # first version pinned the badge near the top and left the bottom two
+    # thirds of a 1920px frame empty, which reads as a mistake rather than as
+    # space.
+    mark_path = os.path.join(SRC, "mark.png")
+    block = 380 + len(lines) * 108 + (len(sub.split("\n")) * 62 + 30 if sub else 0)
+    y = (H - block) // 2 + 380
+    if os.path.exists(mark_path):
+        badge = 300
+        pad = 44
+        plate = Image.new("RGBA", (badge, badge), PAPER + (255,))
+        rounded = Image.new("L", (badge, badge), 0)
+        ImageDraw.Draw(rounded).rounded_rectangle([0, 0, badge - 1, badge - 1], radius=68, fill=255)
+        plate.putalpha(rounded)
+        mark = Image.open(mark_path).convert("RGBA").resize(
+            (badge - pad * 2, badge - pad * 2), Image.LANCZOS
+        )
+        plate.paste(mark, (pad, pad), mark)
+        img.paste(plate, ((W - badge) // 2, y - 380), plate)
+
+    f = font(84)
+    for line in lines:
+        w = d.textbbox((0, 0), line, font=f)[2]
+        d.text(((W - w) // 2, y), line, font=f, fill=PAPER)
+        y += 108
+
+    if sub:
+        fs = font(46)
+        y += 30
+        for line in sub.split("\n"):
+            w = d.textbbox((0, 0), line, font=fs)[2]
+            d.text(((W - w) // 2, y), line, font=fs, fill=SAND)
+            y += 62
+
+    img.save(path)
+
+
+def card_clip(lines, sub: str, seconds: float, name: str) -> str:
+    """Encode one still card as a clip, with a short fade at each end."""
+    png = os.path.join(SRC, f"card-{name}.png")
+    render_card(lines, png, sub)
+    out = os.path.join(SRC, f"card-{name}.mp4")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-t", str(seconds), "-i", png,
+         "-vf", f"fade=t=in:st=0:d=0.4,fade=t=out:st={seconds - 0.4:.2f}:d=0.4,format=yuv420p",
+         "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-r", "25", out],
+        check=True,
+    )
+    return out
 
 
 def main() -> None:
@@ -161,18 +232,26 @@ def main() -> None:
     print(f"encoding {len(timed)} captions")
     subprocess.run(cmd, check=True)
 
+    segments = [
+        card_clip(["FlipBrief"], "Shift notes for group homes", 2.6, "open"),
+        body,
+    ]
     tail = letterhead_tail(SRC)
     if tail:
-        listing = os.path.join(SRC, "concat.txt")
-        with open(listing, "w") as fh:
-            fh.write(f"file '{os.path.abspath(body)}'\nfile '{os.path.abspath(tail)}'\n")
-        subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
-             "-i", listing, "-c", "copy", "-movflags", "+faststart", OUT],
-            check=True,
-        )
-    else:
-        os.replace(body, OUT)
+        segments.append(tail)
+    segments.append(
+        card_clip(["flipbrief.com"], "$100 a month, flat\nAny number of beds", 3.4, "end")
+    )
+
+    listing = os.path.join(SRC, "concat.txt")
+    with open(listing, "w") as fh:
+        for seg in segments:
+            fh.write(f"file '{os.path.abspath(seg)}'\n")
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0",
+         "-i", listing, "-c", "copy", "-movflags", "+faststart", OUT],
+        check=True,
+    )
 
     probe = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries",
