@@ -107,8 +107,8 @@ const NOT_YET = [
 
 const FAQ = [
   {
-    q: 'Where does “twenty-seven taps” come from?',
-    a: 'Somebody counted, on a phone, on the demo everyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus a wait of about fifteen seconds while the draft is written. Two of those goals account for ten of the taps — a note with no service-plan work in it is closer to seventeen. Ten minutes is what the same note costs written out by hand or typed into a shared document. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
+    q: 'How much work is one note, really?',
+    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus about fifteen seconds while the draft is written. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Nobody writes a sentence unless they want to change one, and that is the part that takes ten minutes on paper. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
   },
   {
     q: 'Does resident information go to an AI company?',
@@ -316,17 +316,27 @@ function Hero() {
             Shift notes for group homes
           </p>
 
-          {/* A measured number, not a rounded one. This said "Forty seconds"
-              and the FAQ under it said "about twenty taps"; neither had been
-              measured, and when someone finally counted, the demo note took
-              twenty-seven. This is the single claim a buyer can check on their
-              first afternoon, so it is the last one that should be optimistic.
-              If the flow gets shorter, count it again and change the number. */}
+          {/* Lead with what the staff stop doing, not with a count of what
+              they still do.
+
+              This has now been wrong in both directions. It said "Forty
+              seconds", which nobody had timed. Correcting that, it said
+              "Twenty-seven taps", which was true — somebody counted — and was
+              a worse headline than the lie: it puts the effort in the largest
+              type on the page and invites a tired DSP to picture twenty-seven
+              of anything. A number that big does not read as fast, whatever it
+              measures.
+
+              What is actually being sold is that nobody composes prose at the
+              end of a twelve-hour shift. That is structurally true, needs no
+              stopwatch, and cannot rot. The tap count keeps its place in the
+              FAQ, where precision belongs and where anyone who wants to check
+              it can. */}
           <h1 className="fb-display mt-4 text-[2.7rem] font-medium leading-[0.98] text-flip-forest sm:text-[4rem] lg:text-[4.6rem]">
-            Twenty-seven taps
+            Tap what happened.
             <br />
             <span className="relative inline-block">
-              a note.
+              The note writes itself.
               <span
                 aria-hidden
                 className="absolute -bottom-1 left-0 h-[6px] w-full rounded-full bg-flip-sand/70"

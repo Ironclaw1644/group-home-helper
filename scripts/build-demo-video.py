@@ -56,12 +56,15 @@ FONTS = [
 # beat -> caption. A beat absent from here shows nothing, which is how the
 # quiet moments stay quiet.
 CAPTIONS = {
-    "demo-start": "Six notes a shift.\nTen minutes each, on paper.",
+    # Not "ten minutes each, on paper" — nobody timed that, and an opening
+    # frame is a poor place to guess. What is true and lands harder is that
+    # writing them is the part of the job nobody wants.
+    "demo-start": "Six notes a shift.\nNobody wants to write them.",
     "roster": "Your house. Your people. Tonight.",
     "open-note": "One tap starts the note.",
     "chips": "Tap what happened.",
     "plan": "Their plan is in the same list.",
-    "draft": "The note writes itself\nfrom what you tapped.",
+    "draft": "So nobody writes one.\nIt drafts from what you tapped.",
     "narrative": "Nothing invented.\nNothing you did not say.",
     "sign": "Sign it on the phone.",
     "lock": "Signed is locked.\nNobody can edit it. Including us.",
