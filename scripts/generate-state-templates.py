@@ -48,6 +48,8 @@ OUT = "supabase/migrations/0037_seed_remaining_state_templates.sql"
 
 # Existing rows occupy the ...01NN block; this takes ...02NN.
 UUID = "00000000-0000-0000-0000-0000000002{:02d}"
+# v2 rows for states promoted to a verified citation; v1 stays for signed notes.
+UUID_V2 = "00000000-0000-0000-0000-0000000003{:02d}"
 
 # Ohio ships a citation footer at padding_bottom 100. The default is 76, which
 # is sized for Form #680's footer -- a citation line added without raising this
@@ -87,7 +89,8 @@ def main() -> None:
     states = sorted(states, key=lambda s: s["code"])
 
     tier1 = [s for s in states if s.get("confidence") == "primary-source-read" and s.get("citation")]
-    tier2 = [s for s in states if s not in tier1]
+    t1codes = {s['code'] for s in tier1}
+    tier2 = [s for s in states if s['code'] not in t1codes]
 
     out = []
     w = out.append
@@ -149,7 +152,7 @@ def main() -> None:
         code = s["code"]
         key = f"daily_progress_note_{code.split('-')[1].lower()}"
         cfg = render_config(s)
-        tier = 1 if s in tier1 else 2
+        tier = 1 if s['code'] in t1codes else 2
         w(f"-- {code} {s['name']} (tier {tier})")
         if tier == 1:
             w(f"--   {s['citation']} — {s['source_url']}")
@@ -159,18 +162,42 @@ def main() -> None:
             w(f"--   no citation: {s['demoted_reason']}")
         else:
             w("--   no rule located; ships as the generic note")
-        w("insert into ghh.form_templates (")
-        w("  id, org_id, key, version, name, form_number, jurisdiction,")
-        w("  jurisdiction_name, schema, render_config")
-        w(")")
-        w("select")
-        w(f"  '{UUID.format(i)}'::uuid, null, {sql_str(key)}, 1,")
-        w(f"  'Daily Progress Note', null, {sql_str(code)}, {sql_str(s['name'])},")
-        w("  g.schema,")
-        w(f"  {sql_str(json.dumps(cfg, ensure_ascii=False))}::jsonb")
-        w("from ghh.form_templates g")
-        w("where g.key = 'daily_progress_note_generic' and g.org_id is null")
-        w("on conflict (id) do nothing;")
+        if tier == 1:
+            # Promote by adding a version, never by editing the row in place.
+            # A signed note is pinned to the exact template it was signed under
+            # (getTemplateForNote -> getTemplateById, which does not filter on
+            # active), so rewriting v1's footer would put a citation on records
+            # that were signed before anyone had read the rule. Deactivating v1
+            # and activating v2 leaves every signed note printing exactly what
+            # it printed the day it was signed, and sends only new notes to the
+            # cited layout.
+            w(f"update ghh.form_templates set active = false, updated_at = now()")
+            w(f" where org_id is null and jurisdiction = {sql_str(code)} and active;")
+            w("insert into ghh.form_templates (")
+            w("  id, org_id, key, version, name, form_number, jurisdiction,")
+            w("  jurisdiction_name, schema, render_config")
+            w(")")
+            w("select")
+            w(f"  '{UUID_V2.format(i)}'::uuid, null, {sql_str(key + '_v2')}, 2,")
+            w(f"  'Daily Progress Note', null, {sql_str(code)}, {sql_str(s['name'])},")
+            w("  g.schema,")
+            w(f"  {sql_str(json.dumps(cfg, ensure_ascii=False))}::jsonb")
+            w("from ghh.form_templates g")
+            w("where g.key = 'daily_progress_note_generic' and g.org_id is null")
+            w("on conflict (id) do nothing;")
+        else:
+            w("insert into ghh.form_templates (")
+            w("  id, org_id, key, version, name, form_number, jurisdiction,")
+            w("  jurisdiction_name, schema, render_config")
+            w(")")
+            w("select")
+            w(f"  '{UUID.format(i)}'::uuid, null, {sql_str(key)}, 1,")
+            w(f"  'Daily Progress Note', null, {sql_str(code)}, {sql_str(s['name'])},")
+            w("  g.schema,")
+            w(f"  {sql_str(json.dumps(cfg, ensure_ascii=False))}::jsonb")
+            w("from ghh.form_templates g")
+            w("where g.key = 'daily_progress_note_generic' and g.org_id is null")
+            w("on conflict (id) do nothing;")
         w("")
 
     open(OUT, "w").write("\n".join(out))

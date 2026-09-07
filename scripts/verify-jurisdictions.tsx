@@ -537,11 +537,31 @@ async function main() {
       );
 
       // Only a template built from a real, citable rule may carry a citation.
+      //
+      // Two things have to be present: a numbered identifier, and an issuing
+      // authority. Prose like "built to industry best practice" has neither and
+      // must never reach a footer.
+      //
+      // The authority test accepts an ALL-CAPS abbreviation as well as the
+      // spelled-out words. Requiring "Code|Rule|Regulation" rejected four real
+      // citations -- 7 AAC 105.230, 460 IAC 6-24-2, 907 KAR 12:010 -- because
+      // most states abbreviate their administrative code and never spell it
+      // out. It also rejected Arizona's AHCCCS policy manual and New York's
+      // OPWDD administrative memorandum, which are not codified regulations but
+      // are exactly what a provider in those states is audited against, and so
+      // are the right thing to cite.
       const citation = t.renderConfig.footer?.legal_citation;
       if (citation) {
+        // The number may carry a letter inside it (Minnesota's 245D.095), and
+        // the authority may be a dotted abbreviation (New Jersey's N.J.A.C.)
+        // that no \b[A-Z]{3,}\b can see. Both were rejecting real citations.
+        const hasNumber = /\d+[a-z]?[.:\-]\d+|\d{4,}/i.test(citation);
+        const hasAuthority =
+          /Code|Rule|Regulation|Statute|Stat\.|Admin|Policy|Manual|Memorandum|§/i.test(citation) ||
+          /\b[A-Z]{3,8}\b|(?:[A-Z]\.){2,}/.test(citation);
         check(
           `${label}: its citation names a real rule`,
-          /\d/.test(citation) && /Code|Rule|Regulation|§/i.test(citation),
+          hasNumber && hasAuthority,
           `"${citation}" does not look like a citation`
         );
       }

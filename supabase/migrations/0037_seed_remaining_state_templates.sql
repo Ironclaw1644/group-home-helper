@@ -15,14 +15,67 @@
 --
 -- So the rows below come in two tiers, and the tier is visible on the page.
 --
--- TIER 1 — 0 state(s) whose citation was independently verified.
+-- TIER 1 — 27 state(s) whose citation was independently verified.
 --   scripts/verify-citations.py fetched the state's own code site, confirmed
 --   the rule number appears there, and confirmed a verbatim quotation from
 --   the rule appears there too. The footer cites the rule and says plainly
 --   that it is not a state-issued form.
---     (none survived verification)
+--     US-AK  Alaska                 7 AAC 105.230
+--            https://aws.state.ak.us/OnlinePublicNotices/Notices/Attachment.aspx?id=112295
+--     US-AL  Alabama                Ala. Admin. Code r. 580-5-30-.04
+--            https://admincode.legislature.state.al.us/api/chapter/580-5-30
+--     US-AR  Arkansas               Arkansas Medicaid Provider Manual, Section II — DDS Community and Employment Supports (CES) Waiver, § 202.100
+--            https://humanservices.arkansas.gov/wp-content/uploads/171108_DDSACS_II.doc
+--     US-AZ  Arizona                AHCCCS Medical Policy Manual (AMPM) Policy 1240-E
+--            https://www.azahcccs.gov/shared/Downloads/MedicalPolicyManual/1200/1240-E.pdf
+--     US-CA  California             Cal. Code Regs. tit. 17, § 56026
+--            https://www.dds.ca.gov/wp-content/uploads/2025/06/FinalRegulationText.pdf
+--     US-CO  Colorado               10 CCR 2505-10 § 8.130.2
+--            https://www.coloradosos.gov/CCR/GenerateRulePdf.do?ruleVersionId=12573&fileName=10+CCR+2505-10+8.100
+--     US-CT  Connecticut            Conn. Agencies Regs. § 17a-227-16
+--            https://portal.ct.gov/dds/searchable-archive/qualitymanagement/regulations/17a-227-16-individual-records
+--     US-HI  Hawaii                 Hawaiʻi 1915(c) HCBS Medicaid Waiver for Individuals with Intellectual and Developmental Disabilities, Waiver Provider Standards Manual § 3.10.A (Documentation Requirements for All Claims) and § 3.7.D (Maintenance of Participant Records)
+--            https://health.hawaii.gov/ddd/files/2026/06/Waiver-Provider-Standards-Manual-July2026.pdf
+--     US-IA  Iowa                   Iowa Admin. Code r. 441—24.4(4)
+--            https://www.legis.iowa.gov/docs/iac/chapter/441.24.pdf
+--     US-IL  Illinois               59 Ill. Adm. Code 115.230(b)(4), (b)(5), (b)(8)
+--            https://www.ilga.gov/agencies/JCAR/EntirePart?titlepart=05900115
+--     US-IN  Indiana                460 IAC 6-24-2 (with 460 IAC 6-17-2, 6-17-3 and 6-17-4)
+--            https://www.in.gov/fssa/ddars/files/460-IAC-6.PDF
+--     US-KY  Kentucky               907 KAR 12:010, Section 4(15)(g)(2)(a)
+--            https://apps.legislature.ky.gov/law/kar/titles/907/012/010/
+--     US-MN  Minnesota              Minn. Stat. § 245D.095, subd. 3
+--            https://www.revisor.mn.gov/statutes/cite/245D.095
+--     US-MO  Missouri               13 CSR 70-3.030(2)(A)
+--            https://www.sos.mo.gov/cmsimages/adrules/csr/current/13csr/13c70-3.pdf
+--     US-MS  Mississippi            Miss. Admin. Code Title 23, Part 208, Rule 5.10
+--            https://medicaid.ms.gov/wp-content/uploads/2025/07/Title-23-Part-208-HCBS-LTC-eff.-7.1.2025.pdf
+--     US-NC  North Carolina         NC DHHS DMH/DD/SUS Record Management and Documentation Manual (APSM 45-2), Chapter 6 'Documentation and Service Notes'; underlying rule 10A NCAC 27G .0206
+--            https://www.ncdhhs.gov/rmdmjuly-2025/download
+--     US-ND  North Dakota           N.D. Admin. Code § 75-04-01-40
+--            https://ndlegis.gov/information/acdata/pdf/75-04-01.pdf
+--     US-NH  New Hampshire          N.H. Code Admin. R. He-M 1001.08
+--            https://gc.nh.gov/rules/state_agencies/he-m1000.html
+--     US-NJ  New Jersey             N.J.A.C. 10:44A-4.3(b); see also N.J.A.C. 10:44A-2.9
+--            https://nj.gov/humanservices/notices/documents/rules-and-regulations/NJAC%2010_44A%20STANDARDS%20FOR%20COMMUNITY%20RESIDENCES%20FOR%20INDIVIDUALS%20WITH%20DEVELOPMENTAL%20DISABILITIES.PDF
+--     US-NM  New Mexico             8.302.1.17 NMAC
+--            https://www.srca.nm.gov/parts/title08/08.302.0001.html
+--     US-NV  Nevada                 Nevada Medicaid Services Manual (MSM) Chapter 2100, § 2103.2A(5)
+--            https://www.nevadamedicaid.nv.gov/uploadedFiles/dhcfpnvgov/content/Resources/AdminSupport/Manuals/MSM/C2100/MSM_2100_25_04_01.pdf
+--     US-NY  New York               OPWDD Administrative Memorandum (ADM) #2014-01
+--            https://opwdd.ny.gov/system/files/documents/2020/01/admin_memo_2014-01.pdf
+--     US-OK  Oklahoma               Okla. Admin. Code § 317:30-3-15
+--            https://oklahoma.gov/ohca/policies-and-rules/xpolicy/medical-providers-fee-for-service/general-provider-policies/general-scope-and-administration/record-retention.html
+--     US-OR  Oregon                 Or. Admin. R. 411-323-0060(11); see also 411-323-0055(4)-(5)
+--            https://www.oregon.gov/odhs/rules-policy/oddsrulesdocs/411-323.pdf
+--     US-PA  Pennsylvania           55 Pa. Code § 6100.226; 55 Pa. Code § 6100.227
+--            https://www.pacodeandbulletin.gov/Display/pacode?file=/secure/pacode/data/055/chapter6100/s6100.226.html&d=reduce
+--     US-RI  Rhode Island           212-RICR-10-00-1, § 1.19
+--            https://rules.sos.ri.gov/regulations/part/212-10-00-1
+--     US-SC  South Carolina         SC DDSN Residential Habilitation Standards, RH8.0-RH8.1 (Documentation)
+--            https://ddsn.sc.gov/sites/ddsn/files/PublicDocuments/Finance%20and%20Audit%20Resources/Residential%20Habilitation%20Standards%20-%20Revised%20(061820).pdf
 --
--- TIER 2 — 49 state(s) shipping with no citation at all.
+-- TIER 2 — 22 state(s) shipping with no citation at all.
 --   Either no rule was found, or what was found could not be verified against
 --   the state's own site. These print exactly what the GENERIC template
 --   prints: a complete, defensible progress note that names no state and
@@ -45,113 +98,132 @@
 -- `schema` is selected from the GENERIC row rather than copied, so all of
 -- these share one body of prompts and grounding vocabulary.
 
--- US-AK Alaska (tier 2)
---   no rule located; ships as the generic note
+-- US-AK Alaska (tier 1)
+--   7 AAC 105.230 — https://aws.state.ak.us/OnlinePublicNotices/Notices/Attachment.aspx?id=112295
+--   effective 2018-06-07
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-AK' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000201'::uuid, null, 'daily_progress_note_ak', 1,
+  '00000000-0000-0000-0000-000000000301'::uuid, null, 'daily_progress_note_ak_v2', 2,
   'Daily Progress Note', null, 'US-AK', 'Alaska',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential habilitation services under the IDD waiver — rendered as family home habilitation, supported-living habilitation, group-home habilitation, or in-home support habilitation (7 AAC 130.265)"}, "footer": {"form_line": "Service documentation — residential habilitation services under the idd waiver — rendered as family home habilitation, supported-living habilitation, group-home habilitation, or in-home support habilitation (7 aac 130.265)", "legal_citation": "Layout built to satisfy 7 AAC 105.230. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential habilitation services under the IDD waiver — rendered as family home habilitation, supported-living habilitation, group-home habilitation, or in-home support habilitation (7 AAC 130.265)"}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-AL Alabama (tier 2)
---   no rule located; ships as the generic note
+-- US-AL Alabama (tier 1)
+--   Ala. Admin. Code r. 580-5-30-.04 — https://admincode.legislature.state.al.us/api/chapter/580-5-30
+--   effective 2022-05-15
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-AL' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000202'::uuid, null, 'daily_progress_note_al', 1,
+  '00000000-0000-0000-0000-000000000302'::uuid, null, 'daily_progress_note_al_v2', 2,
   'Daily Progress Note', null, 'US-AL', 'Alabama',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Ala. Admin. Code r. 580-5-30-.04. Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-AR Arkansas (tier 2)
---   no rule located; ships as the generic note
+-- US-AR Arkansas (tier 1)
+--   Arkansas Medicaid Provider Manual, Section II — DDS Community and Employment Supports (CES) Waiver, § 202.100 — https://humanservices.arkansas.gov/wp-content/uploads/171108_DDSACS_II.doc
+--   effective 2017-08-22
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-AR' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000203'::uuid, null, 'daily_progress_note_ar', 1,
+  '00000000-0000-0000-0000-000000000303'::uuid, null, 'daily_progress_note_ar_v2', 2,
   'Daily Progress Note', null, 'US-AR', 'Arkansas',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Supportive Living — ''an array of individually tailored services and activities provided to enable eligible beneficiaries to reside successfully in their own homes, with their family, or in an alternative living residence''; alternative living residences expressly include provider group homes (§ 213.000, § 213.100)"}, "footer": {"form_line": "Service documentation — supportive living — ''an array of individually tailored services and activities provided to enable eligible beneficiaries to reside successfully in their own homes, with their family, or in an alternative living residence''; alternative living residences expressly include provider group homes (§ 213.000, § 213.100)", "legal_citation": "Layout built to satisfy Arkansas Medicaid Provider Manual, Section II — DDS Community and Employment Supports (CES) Waiver, § 202.100. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Supportive Living — ''an array of individually tailored services and activities provided to enable eligible beneficiaries to reside successfully in their own homes, with their family, or in an alternative living residence''; alternative living residences expressly include provider group homes (§ 213.000, § 213.100)"}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-AZ Arizona (tier 2)
---   no rule located; ships as the generic note
+-- US-AZ Arizona (tier 1)
+--   AHCCCS Medical Policy Manual (AMPM) Policy 1240-E — https://www.azahcccs.gov/shared/Downloads/MedicalPolicyManual/1200/1240-E.pdf
+--   effective 2025-10-01
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-AZ' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000204'::uuid, null, 'daily_progress_note_az', 1,
+  '00000000-0000-0000-0000-000000000304'::uuid, null, 'daily_progress_note_az_v2', 2,
   'Daily Progress Note', null, 'US-AZ', 'Arizona',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Habilitation Services (HCBS under ALTCS / DES Division of Developmental Disabilities). Group homes are separately addressed in the DDD Provider Policy Manual Ch. 54, Group Home Requirements."}, "footer": {"form_line": "Service documentation — habilitation services (hcbs under altcs / des division of developmental disabilities). group homes are separately addressed in the ddd provider policy manual ch. 54, group home requirements.", "legal_citation": "Layout built to satisfy AHCCCS Medical Policy Manual (AMPM) Policy 1240-E. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Habilitation Services (HCBS under ALTCS / DES Division of Developmental Disabilities). Group homes are separately addressed in the DDD Provider Policy Manual Ch. 54, Group Home Requirements."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-CA California (tier 2)
---   no rule located; ships as the generic note
+-- US-CA California (tier 1)
+--   Cal. Code Regs. tit. 17, § 56026 — https://www.dds.ca.gov/wp-content/uploads/2025/06/FinalRegulationText.pdf
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-CA' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000205'::uuid, null, 'daily_progress_note_ca', 1,
+  '00000000-0000-0000-0000-000000000305'::uuid, null, 'daily_progress_note_ca_v2', 2,
   'Daily Progress Note', null, 'US-CA', 'California',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential facility service levels 2, 3 and 4 (Adult Residential Facilities vendored by a regional center under Title 17, Div. 2, Ch. 3). The individual record is governed by Cal. Code Regs. tit. 17, § 56059 (Residential Services Records)."}, "footer": {"form_line": "Service documentation — residential facility service levels 2, 3 and 4 (adult residential facilities vendored by a regional center under title 17, div. 2, ch. 3). the individual record is governed by cal. code regs. tit. 17, § 56059 (residential services records).", "legal_citation": "Layout built to satisfy Cal. Code Regs. tit. 17, § 56026. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential facility service levels 2, 3 and 4 (Adult Residential Facilities vendored by a regional center under Title 17, Div. 2, Ch. 3). The individual record is governed by Cal. Code Regs. tit. 17, § 56059 (Residential Services Records)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-CO Colorado (tier 2)
---   no rule located; ships as the generic note
+-- US-CO Colorado (tier 1)
+--   10 CCR 2505-10 § 8.130.2 — https://www.coloradosos.gov/CCR/GenerateRulePdf.do?ruleVersionId=12573&fileName=10+CCR+2505-10+8.100
+--   effective 2026-06-12
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-CO' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000206'::uuid, null, 'daily_progress_note_co', 1,
+  '00000000-0000-0000-0000-000000000306'::uuid, null, 'daily_progress_note_co_v2', 2,
   'Daily Progress Note', null, 'US-CO', 'Colorado',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Habilitation Services and Supports (RHSS) under the HCBS-DD waiver; Individual Residential Services and Supports (IRSS) is RHSS for three or fewer clients in a single residential or host-home setting (10 CCR 2505-10 § 8.500)"}, "footer": {"form_line": "Service documentation — residential habilitation services and supports (rhss) under the hcbs-dd waiver; individual residential services and supports (irss) is rhss for three or fewer clients in a single residential or host-home setting (10 ccr 2505-10 § 8.500)", "legal_citation": "Layout built to satisfy 10 CCR 2505-10 § 8.130.2. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Habilitation Services and Supports (RHSS) under the HCBS-DD waiver; Individual Residential Services and Supports (IRSS) is RHSS for three or fewer clients in a single residential or host-home setting (10 CCR 2505-10 § 8.500)"}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-CT Connecticut (tier 2)
---   no rule located; ships as the generic note
+-- US-CT Connecticut (tier 1)
+--   Conn. Agencies Regs. § 17a-227-16 — https://portal.ct.gov/dds/searchable-archive/qualitymanagement/regulations/17a-227-16-individual-records
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-CT' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000207'::uuid, null, 'daily_progress_note_ct', 1,
+  '00000000-0000-0000-0000-000000000307'::uuid, null, 'daily_progress_note_ct_v2', 2,
   'Daily Progress Note', null, 'US-CT', 'Connecticut',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Community Living Arrangement (CLA) for persons with intellectual disability and/or autism spectrum disorder, licensed under Conn. Gen. Stat. § 17a-227; billed as Residential Habilitation under the DDS HCBS waiver"}, "footer": {"form_line": "Service documentation — community living arrangement (cla) for persons with intellectual disability and/or autism spectrum disorder, licensed under conn. gen. stat. § 17a-227; billed as residential habilitation under the dds hcbs waiver", "legal_citation": "Layout built to satisfy Conn. Agencies Regs. § 17a-227-16. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Community Living Arrangement (CLA) for persons with intellectual disability and/or autism spectrum disorder, licensed under Conn. Gen. Stat. § 17a-227; billed as Residential Habilitation under the DDS HCBS waiver"}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-DC District of Columbia (tier 2)
---   no rule located; ships as the generic note
+--   no citation: page contains none of the rule numbers 1909.2
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -166,7 +238,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-DE Delaware (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -181,7 +253,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-FL Florida (tier 2)
---   no rule located; ships as the generic note
+--   no citation: only 0/32 of the quoted phrases appear on the cited page
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -196,7 +268,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-GA Georgia (tier 2)
---   no rule located; ships as the generic note
+--   no citation: could not fetch source: timeout
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -210,38 +282,44 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-HI Hawaii (tier 2)
---   no rule located; ships as the generic note
+-- US-HI Hawaii (tier 1)
+--   Hawaiʻi 1915(c) HCBS Medicaid Waiver for Individuals with Intellectual and Developmental Disabilities, Waiver Provider Standards Manual § 3.10.A (Documentation Requirements for All Claims) and § 3.7.D (Maintenance of Participant Records) — https://health.hawaii.gov/ddd/files/2026/06/Waiver-Provider-Standards-Manual-July2026.pdf
+--   effective 2026-07-01
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-HI' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000212'::uuid, null, 'daily_progress_note_hi', 1,
+  '00000000-0000-0000-0000-000000000312'::uuid, null, 'daily_progress_note_hi_v2', 2,
   'Daily Progress Note', null, 'US-HI', 'Hawaii',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Habilitation (ResHab), provided in a licensed/certified home and the surrounding community; four SIS-based tiers. Related in-home services are Personal Assistance/Habilitation (PAB) and Community Learning Service – Individual (CLS-Ind)."}, "footer": {"form_line": "Service documentation — residential habilitation (reshab), provided in a licensed/certified home and the surrounding community; four sis-based tiers. related in-home services are personal assistance/habilitation (pab) and community learning service – individual (cls-ind).", "legal_citation": "Layout built to satisfy Hawaiʻi 1915(c) HCBS Medicaid Waiver for Individuals with Intellectual and Developmental Disabilities, Waiver Provider Standards Manual § 3.10.A (Documentation Requirements for All Claims) and § 3.7.D (Maintenance of Participant Records). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Habilitation (ResHab), provided in a licensed/certified home and the surrounding community; four SIS-based tiers. Related in-home services are Personal Assistance/Habilitation (PAB) and Community Learning Service – Individual (CLS-Ind)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-IA Iowa (tier 2)
---   no rule located; ships as the generic note
+-- US-IA Iowa (tier 1)
+--   Iowa Admin. Code r. 441—24.4(4) — https://www.legis.iowa.gov/docs/iac/chapter/441.24.pdf
+--   effective Version stamped IAC 2/5/25
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-IA' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000213'::uuid, null, 'daily_progress_note_ia', 1,
+  '00000000-0000-0000-0000-000000000313'::uuid, null, 'daily_progress_note_ia_v2', 2,
   'Daily Progress Note', null, 'US-IA', 'Iowa',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Supported community living (SCL) services under the HCBS intellectual disability waiver, Iowa Admin. Code r. 441—78.41(1). Components include personal care, home skills training, individual advocacy, community skills training, personal environment support, transportation and treatment services."}, "footer": {"form_line": "Service documentation — supported community living (scl) services under the hcbs intellectual disability waiver, iowa admin. code r. 441—78.41(1). components include personal care, home skills training, individual advocacy, community skills training, personal environment support, transportation and treatment services.", "legal_citation": "Layout built to satisfy Iowa Admin. Code r. 441—24.4(4). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Supported community living (SCL) services under the HCBS intellectual disability waiver, Iowa Admin. Code r. 441—78.41(1). Components include personal care, home skills training, individual advocacy, community skills training, personal environment support, transportation and treatment services."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-ID Idaho (tier 2)
---   no rule located; ships as the generic note
+--   no citation: page contains none of the rule numbers 16.03.21.301.04
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -255,38 +333,44 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-IL Illinois (tier 2)
---   no rule located; ships as the generic note
+-- US-IL Illinois (tier 1)
+--   59 Ill. Adm. Code 115.230(b)(4), (b)(5), (b)(8) — https://www.ilga.gov/agencies/JCAR/EntirePart?titlepart=05900115
+--   effective 2023-05-31
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-IL' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000215'::uuid, null, 'daily_progress_note_il', 1,
+  '00000000-0000-0000-0000-000000000315'::uuid, null, 'daily_progress_note_il_v2', 2,
   'Daily Progress Note', null, 'US-IL', 'Illinois',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Community-Integrated Living Arrangement (CILA) — a residential setting where eight or fewer individuals with a developmental disability reside under agency supervision. Host Family Services is the family-home variant (Subpart E)."}, "footer": {"form_line": "Service documentation — community-integrated living arrangement (cila) — a residential setting where eight or fewer individuals with a developmental disability reside under agency supervision. host family services is the family-home variant (subpart e).", "legal_citation": "Layout built to satisfy 59 Ill. Adm. Code 115.230(b)(4), (b)(5), (b)(8). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Community-Integrated Living Arrangement (CILA) — a residential setting where eight or fewer individuals with a developmental disability reside under agency supervision. Host Family Services is the family-home variant (Subpart E)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-IN Indiana (tier 2)
---   no rule located; ships as the generic note
+-- US-IN Indiana (tier 1)
+--   460 IAC 6-24-2 (with 460 IAC 6-17-2, 6-17-3 and 6-17-4) — https://www.in.gov/fssa/ddars/files/460-IAC-6.PDF
+--   effective 460 IAC 6-24-2 filed Nov 4, 2002 (26 IR 779); amended filed Aug 29, 2003 (27 IR 114); readopted filed Aug 11, 2014 (20140910-IR-460140241RFA)
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-IN' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000216'::uuid, null, 'daily_progress_note_in', 1,
+  '00000000-0000-0000-0000-000000000316'::uuid, null, 'daily_progress_note_in_v2', 2,
   'Daily Progress Note', null, 'US-IN', 'Indiana',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential habilitation and support services, under ''supported living services and supports'' (Family Supports Waiver / Community Integration and Habilitation Waiver). Separately, larger licensed settings are ''supervised group living'' under 460 IAC 9."}, "footer": {"form_line": "Service documentation — residential habilitation and support services, under ''supported living services and supports'' (family supports waiver / community integration and habilitation waiver). separately, larger licensed settings are ''supervised group living'' under 460 iac 9.", "legal_citation": "Layout built to satisfy 460 IAC 6-24-2 (with 460 IAC 6-17-2, 6-17-3 and 6-17-4). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential habilitation and support services, under ''supported living services and supports'' (Family Supports Waiver / Community Integration and Habilitation Waiver). Separately, larger licensed settings are ''supervised group living'' under 460 IAC 9."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-KS Kansas (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -300,23 +384,26 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-KY Kentucky (tier 2)
---   no rule located; ships as the generic note
+-- US-KY Kentucky (tier 1)
+--   907 KAR 12:010, Section 4(15)(g)(2)(a) — https://apps.legislature.ky.gov/law/kar/titles/907/012/010/
+--   effective eff. 2-1-2013; amended eff. 6-3-2016; Cert. eff. 5-9-2023
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-KY' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000218'::uuid, null, 'daily_progress_note_ky', 1,
+  '00000000-0000-0000-0000-000000000318'::uuid, null, 'daily_progress_note_ky_v2', 2,
   'Daily Progress Note', null, 'US-KY', 'Kentucky',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential support services under the Supports for Community Living (SCL) waiver — Level I residential supports (24-hour intense support; a group home may have no more than eight (8) participants), technology assisted residential supports, or Level II residential supports (up to 24-hour support)."}, "footer": {"form_line": "Service documentation — residential support services under the supports for community living (scl) waiver — level i residential supports (24-hour intense support; a group home may have no more than eight (8) participants), technology assisted residential supports, or level ii residential supports (up to 24-hour support).", "legal_citation": "Layout built to satisfy 907 KAR 12:010, Section 4(15)(g)(2)(a). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential support services under the Supports for Community Living (SCL) waiver — Level I residential supports (24-hour intense support; a group home may have no more than eight (8) participants), technology assisted residential supports, or Level II residential supports (up to 24-hour support)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-LA Louisiana (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not a state-run domain: www.lamedicaid.com
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -331,7 +418,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MA Massachusetts (tier 2)
---   no rule located; ships as the generic note
+--   no citation: HTTP 302: source blocked the check, not verified either way
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -346,7 +433,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MD Maryland (tier 2)
---   no rule located; ships as the generic note
+--   no citation: page contains none of the rule numbers 10.22.02.13
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -361,7 +448,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-ME Maine (tier 2)
---   no rule located; ships as the generic note
+--   no citation: page contains none of the rule numbers 10-144, 21.09
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -376,7 +463,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MI Michigan (tier 2)
---   no rule located; ships as the generic note
+--   no citation: citation names no rule number to check: 'MDHHS Medicaid Provider Manual, General Information for Providers chapter, Section 14 - Record Keeping'
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -390,53 +477,60 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-MN Minnesota (tier 2)
---   no rule located; ships as the generic note
+-- US-MN Minnesota (tier 1)
+--   Minn. Stat. § 245D.095, subd. 3 — https://www.revisor.mn.gov/statutes/cite/245D.095
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-MN' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000224'::uuid, null, 'daily_progress_note_mn', 1,
+  '00000000-0000-0000-0000-000000000324'::uuid, null, 'daily_progress_note_mn_v2', 2,
   'Daily Progress Note', null, 'US-MN', 'Minnesota',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Home and community-based services licensed under Minn. Stat. ch. 245D. The statute itself does not name the billing service; the specific waiver service name for a small group home was NOT verified from a primary source in this pass."}, "footer": {"form_line": "Service documentation — home and community-based services licensed under minn. stat. ch. 245d. the statute itself does not name the billing service; the specific waiver service name for a small group home was not verified from a primary source in this pass.", "legal_citation": "Layout built to satisfy Minn. Stat. § 245D.095, subd. 3. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Home and community-based services licensed under Minn. Stat. ch. 245D. The statute itself does not name the billing service; the specific waiver service name for a small group home was NOT verified from a primary source in this pass."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-MO Missouri (tier 2)
---   no rule located; ships as the generic note
+-- US-MO Missouri (tier 1)
+--   13 CSR 70-3.030(2)(A) — https://www.sos.mo.gov/cmsimages/adrules/csr/current/13csr/13c70-3.pdf
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-MO' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000225'::uuid, null, 'daily_progress_note_mo', 1,
+  '00000000-0000-0000-0000-000000000325'::uuid, null, 'daily_progress_note_mo_v2', 2,
   'Daily Progress Note', null, 'US-MO', 'Missouri',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Group Home and Individualized Supported Living (ISL) under the Missouri DD waivers (Comprehensive, MOCDD/Sarah Jian Lopez, Community Support, and Partnership for Hope)."}, "footer": {"form_line": "Service documentation — group home and individualized supported living (isl) under the missouri dd waivers (comprehensive, mocdd/sarah jian lopez, community support, and partnership for hope).", "legal_citation": "Layout built to satisfy 13 CSR 70-3.030(2)(A). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Group Home and Individualized Supported Living (ISL) under the Missouri DD waivers (Comprehensive, MOCDD/Sarah Jian Lopez, Community Support, and Partnership for Hope)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-MS Mississippi (tier 2)
---   no rule located; ships as the generic note
+-- US-MS Mississippi (tier 1)
+--   Miss. Admin. Code Title 23, Part 208, Rule 5.10 — https://medicaid.ms.gov/wp-content/uploads/2025/07/Title-23-Part-208-HCBS-LTC-eff.-7.1.2025.pdf
+--   effective Part 208 published effective 7/1/2025; Rule 5.10 history: 'Revised to reflect changes with ID/DD Waiver renewal (eff. 07/01/2013) eff. 09/01/2015'
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-MS' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000226'::uuid, null, 'daily_progress_note_ms', 1,
+  '00000000-0000-0000-0000-000000000326'::uuid, null, 'daily_progress_note_ms_v2', 2,
   'Daily Progress Note', null, 'US-MS', 'Mississippi',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Supervised Living (the ID/DD Waiver residential service, available to persons at least 18 years of age); related services include Host Home services and Home and Community Supports."}, "footer": {"form_line": "Service documentation — supervised living (the id/dd waiver residential service, available to persons at least 18 years of age); related services include host home services and home and community supports.", "legal_citation": "Layout built to satisfy Miss. Admin. Code Title 23, Part 208, Rule 5.10. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Supervised Living (the ID/DD Waiver residential service, available to persons at least 18 years of age); related services include Host Home services and Home and Community Supports."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-MT Montana (tier 2)
---   no rule located; ships as the generic note
+--   no citation: citation names no rule number to check: "Montana Developmental Disabilities Program Services Manual, 'Documentation' section (DPHHS, Behavioral Health and Developmental Disabilities Division)"
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -450,38 +544,44 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NC North Carolina (tier 2)
---   no rule located; ships as the generic note
+-- US-NC North Carolina (tier 1)
+--   NC DHHS DMH/DD/SUS Record Management and Documentation Manual (APSM 45-2), Chapter 6 'Documentation and Service Notes'; underlying rule 10A NCAC 27G .0206 — https://www.ncdhhs.gov/rmdmjuly-2025/download
+--   effective Manual effective July 8, 2025. 10A NCAC 27G .0206 eff. May 1, 1996; recodified Jan. 3, 2001; readopted without substantive public interest eff. July 20, 2019.
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NC' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000228'::uuid, null, 'daily_progress_note_nc', 1,
+  '00000000-0000-0000-0000-000000000328'::uuid, null, 'daily_progress_note_nc_v2', 2,
   'Daily Progress Note', null, 'US-NC', 'North Carolina',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Supports (NC Innovations waiver) and Residential Supports (State-funded); also Group Living. Group homes are licensed facilities under 10A NCAC 27G."}, "footer": {"form_line": "Service documentation — residential supports (nc innovations waiver) and residential supports (state-funded); also group living. group homes are licensed facilities under 10a ncac 27g.", "legal_citation": "Layout built to satisfy NC DHHS DMH/DD/SUS Record Management and Documentation Manual (APSM 45-2), Chapter 6 ''Documentation and Service Notes''; underlying rule 10A NCAC 27G .0206. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Supports (NC Innovations waiver) and Residential Supports (State-funded); also Group Living. Group homes are licensed facilities under 10A NCAC 27G."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-ND North Dakota (tier 2)
---   no rule located; ships as the generic note
+-- US-ND North Dakota (tier 1)
+--   N.D. Admin. Code § 75-04-01-40 — https://ndlegis.gov/information/acdata/pdf/75-04-01.pdf
+--   effective Effective April 1, 2018; amended effective January 1, 2025
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-ND' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000229'::uuid, null, 'daily_progress_note_nd', 1,
+  '00000000-0000-0000-0000-000000000329'::uuid, null, 'daily_progress_note_nd_v2', 2,
   'Daily Progress Note', null, 'US-ND', 'North Dakota',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Licensed residential services are titled ''Residential habilitation'' or ''Independent habilitation'' (N.D. Admin. Code § 75-04-01-17(1)(a)). Group homes are regulated under the same chapter (§§ 75-04-01-27 through -33)."}, "footer": {"form_line": "Service documentation — licensed residential services are titled ''residential habilitation'' or ''independent habilitation'' (n.d. admin. code § 75-04-01-17(1)(a)). group homes are regulated under the same chapter (§§ 75-04-01-27 through -33).", "legal_citation": "Layout built to satisfy N.D. Admin. Code § 75-04-01-40. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Licensed residential services are titled ''Residential habilitation'' or ''Independent habilitation'' (N.D. Admin. Code § 75-04-01-17(1)(a)). Group homes are regulated under the same chapter (§§ 75-04-01-27 through -33)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-NE Nebraska (tier 2)
---   no rule located; ships as the generic note
+--   no citation: not claimed as read
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -495,152 +595,181 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NH New Hampshire (tier 2)
---   no rule located; ships as the generic note
+-- US-NH New Hampshire (tier 1)
+--   N.H. Code Admin. R. He-M 1001.08 — https://gc.nh.gov/rules/state_agencies/he-m1000.html
+--   effective Document #14255, eff. 5-23-25 (expires 5-23-35); prior #12775, eff. 5-7-19
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NH' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000231'::uuid, null, 'daily_progress_note_nh', 1,
+  '00000000-0000-0000-0000-000000000331'::uuid, null, 'daily_progress_note_nh_v2', 2,
   'Daily Progress Note', null, 'US-NH', 'New Hampshire',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential services in a certified ''community residence'' (an agency residence or family residence) for a person with a developmental disability under He-M 503, or an acquired brain disorder under He-M 522."}, "footer": {"form_line": "Service documentation — residential services in a certified ''community residence'' (an agency residence or family residence) for a person with a developmental disability under he-m 503, or an acquired brain disorder under he-m 522.", "legal_citation": "Layout built to satisfy N.H. Code Admin. R. He-M 1001.08. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential services in a certified ''community residence'' (an agency residence or family residence) for a person with a developmental disability under He-M 503, or an acquired brain disorder under He-M 522."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NJ New Jersey (tier 2)
---   no rule located; ships as the generic note
+-- US-NJ New Jersey (tier 1)
+--   N.J.A.C. 10:44A-4.3(b); see also N.J.A.C. 10:44A-2.9 — https://nj.gov/humanservices/notices/documents/rules-and-regulations/NJAC%2010_44A%20STANDARDS%20FOR%20COMMUNITY%20RESIDENCES%20FOR%20INDIVIDUALS%20WITH%20DEVELOPMENTAL%20DISABILITIES.PDF
+--   effective Chapter readopted effective March 29, 2019; 10:44A-2.9 amended by R.2023 d.021 effective February 6, 2023
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NJ' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000232'::uuid, null, 'daily_progress_note_nj', 1,
+  '00000000-0000-0000-0000-000000000332'::uuid, null, 'daily_progress_note_nj_v2', 2,
   'Daily Progress Note', null, 'US-NJ', 'New Jersey',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Group homes and supervised apartments are licensed as ''community residences for individuals with developmental disabilities'' (N.J.A.C. 10:44A). In the DDD fee-for-service system they bill ''Individual Supports'' at a tiered daily rate under the Community Care Program / Community Care Waiver."}, "footer": {"form_line": "Service documentation — group homes and supervised apartments are licensed as ''community residences for individuals with developmental disabilities'' (n.j.a.c. 10:44a). in the ddd fee-for-service system they bill ''individual supports'' at a tiered daily rate under the community care program / community care waiver.", "legal_citation": "Layout built to satisfy N.J.A.C. 10:44A-4.3(b); see also N.J.A.C. 10:44A-2.9. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Group homes and supervised apartments are licensed as ''community residences for individuals with developmental disabilities'' (N.J.A.C. 10:44A). In the DDD fee-for-service system they bill ''Individual Supports'' at a tiered daily rate under the Community Care Program / Community Care Waiver."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NM New Mexico (tier 2)
---   no rule located; ships as the generic note
+-- US-NM New Mexico (tier 1)
+--   8.302.1.17 NMAC — https://www.srca.nm.gov/parts/title08/08.302.0001.html
+--   effective 7/1/2024 (history note: 8.302.1.17 NMAC - Rp, 8.302.1.17 NMAC, 7/1/2024)
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NM' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000233'::uuid, null, 'daily_progress_note_nm', 1,
+  '00000000-0000-0000-0000-000000000333'::uuid, null, 'daily_progress_note_nm_v2', 2,
   'Daily Progress Note', null, 'US-NM', 'New Mexico',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Developmental Disabilities Waiver (DDW) living supports: Family Living (FL), Supported Living (SL), Intensive Medical Living Supports (IMLS), and Customized In-Home Supports (CIHS) - per 8.314.5 NMAC."}, "footer": {"form_line": "Service documentation — developmental disabilities waiver (ddw) living supports: family living (fl), supported living (sl), intensive medical living supports (imls), and customized in-home supports (cihs) - per 8.314.5 nmac.", "legal_citation": "Layout built to satisfy 8.302.1.17 NMAC. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Developmental Disabilities Waiver (DDW) living supports: Family Living (FL), Supported Living (SL), Intensive Medical Living Supports (IMLS), and Customized In-Home Supports (CIHS) - per 8.314.5 NMAC."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NV Nevada (tier 2)
---   no rule located; ships as the generic note
+-- US-NV Nevada (tier 1)
+--   Nevada Medicaid Services Manual (MSM) Chapter 2100, § 2103.2A(5) — https://www.nevadamedicaid.nv.gov/uploadedFiles/dhcfpnvgov/content/Resources/AdminSupport/Manuals/MSM/C2100/MSM_2100_25_04_01.pdf
+--   effective April 1, 2025 (MTL 09/25; transmittal letter dated March 25, 2025)
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NV' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000234'::uuid, null, 'daily_progress_note_nv', 1,
+  '00000000-0000-0000-0000-000000000334'::uuid, null, 'daily_progress_note_nv_v2', 2,
   'Daily Progress Note', null, 'US-NV', 'Nevada',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Support Services (§ 2103.4) and Residential Support Management (§ 2103.9) under Nevada''s HCBS Waiver for Individuals with Intellectual and Developmental Disabilities (ID Waiver), operated by ADSD with DHCFP."}, "footer": {"form_line": "Service documentation — residential support services (§ 2103.4) and residential support management (§ 2103.9) under nevada''s hcbs waiver for individuals with intellectual and developmental disabilities (id waiver), operated by adsd with dhcfp.", "legal_citation": "Layout built to satisfy Nevada Medicaid Services Manual (MSM) Chapter 2100, § 2103.2A(5). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Support Services (§ 2103.4) and Residential Support Management (§ 2103.9) under Nevada''s HCBS Waiver for Individuals with Intellectual and Developmental Disabilities (ID Waiver), operated by ADSD with DHCFP."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-NY New York (tier 2)
---   no rule located; ships as the generic note
+-- US-NY New York (tier 1)
+--   OPWDD Administrative Memorandum (ADM) #2014-01 — https://opwdd.ny.gov/system/files/documents/2020/01/admin_memo_2014-01.pdf
+--   effective July 1, 2014
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-NY' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000235'::uuid, null, 'daily_progress_note_ny', 1,
+  '00000000-0000-0000-0000-000000000335'::uuid, null, 'daily_progress_note_ny_v2', 2,
   'Daily Progress Note', null, 'US-NY', 'New York',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Habilitation delivered in a Supervised Individualized Residential Alternative (IRA) or Supervised Community Residence (CR), billed as a daily unit (''Supervised IRA-RH'')."}, "footer": {"form_line": "Service documentation — residential habilitation delivered in a supervised individualized residential alternative (ira) or supervised community residence (cr), billed as a daily unit (''supervised ira-rh'').", "legal_citation": "Layout built to satisfy OPWDD Administrative Memorandum (ADM) #2014-01. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Habilitation delivered in a Supervised Individualized Residential Alternative (IRA) or Supervised Community Residence (CR), billed as a daily unit (''Supervised IRA-RH'')."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-OK Oklahoma (tier 2)
---   no rule located; ships as the generic note
+-- US-OK Oklahoma (tier 1)
+--   Okla. Admin. Code § 317:30-3-15 — https://oklahoma.gov/ohca/policies-and-rules/xpolicy/medical-providers-fee-for-service/general-provider-policies/general-scope-and-administration/record-retention.html
+--   effective Revised 09-01-16
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-OK' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000236'::uuid, null, 'daily_progress_note_ok', 1,
+  '00000000-0000-0000-0000-000000000336'::uuid, null, 'daily_progress_note_ok_v2', 2,
   'Daily Progress Note', null, 'US-OK', 'Oklahoma',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Daily Living Supports (Okla. Admin. Code § 317:40-5-150) - the DDS waiver residential service delivered in a provider-operated home; also Community Residential Supports (Okla. Admin. Code § 340:100-5-22.1) and Group Home Services (§ 317:40-5-152)."}, "footer": {"form_line": "Service documentation — daily living supports (okla. admin. code § 317:40-5-150) - the dds waiver residential service delivered in a provider-operated home; also community residential supports (okla. admin. code § 340:100-5-22.1) and group home services (§ 317:40-5-152).", "legal_citation": "Layout built to satisfy Okla. Admin. Code § 317:30-3-15. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Daily Living Supports (Okla. Admin. Code § 317:40-5-150) - the DDS waiver residential service delivered in a provider-operated home; also Community Residential Supports (Okla. Admin. Code § 340:100-5-22.1) and Group Home Services (§ 317:40-5-152)."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-OR Oregon (tier 2)
---   no rule located; ships as the generic note
+-- US-OR Oregon (tier 1)
+--   Or. Admin. R. 411-323-0060(11); see also 411-323-0055(4)-(5) — https://www.oregon.gov/odhs/rules-policy/oddsrulesdocs/411-323.pdf
+--   effective Amended 01/15/2026 (APD 1-2026, filed 01/12/2026, effective 01/15/2026)
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-OR' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000237'::uuid, null, 'daily_progress_note_or', 1,
+  '00000000-0000-0000-0000-000000000337'::uuid, null, 'daily_progress_note_or_v2', 2,
   'Daily Progress Note', null, 'US-OR', 'Oregon',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — 24-hour residential programs (group homes) under OAR chapter 411, division 325; supported living programs under OAR chapter 411, division 328; community living supports under OAR 411-450. OAR 411-323-0060 is the cross-cutting documentation standard all of these incorporate by reference."}, "footer": {"form_line": "Service documentation — 24-hour residential programs (group homes) under oar chapter 411, division 325; supported living programs under oar chapter 411, division 328; community living supports under oar 411-450. oar 411-323-0060 is the cross-cutting documentation standard all of these incorporate by reference.", "legal_citation": "Layout built to satisfy Or. Admin. R. 411-323-0060(11); see also 411-323-0055(4)-(5). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "24-hour residential programs (group homes) under OAR chapter 411, division 325; supported living programs under OAR chapter 411, division 328; community living supports under OAR 411-450. OAR 411-323-0060 is the cross-cutting documentation standard all of these incorporate by reference."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-PA Pennsylvania (tier 2)
---   no rule located; ships as the generic note
+-- US-PA Pennsylvania (tier 1)
+--   55 Pa. Code § 6100.226; 55 Pa. Code § 6100.227 — https://www.pacodeandbulletin.gov/Display/pacode?file=/secure/pacode/data/055/chapter6100/s6100.226.html&d=reduce
+--   effective Text current through 56 Pa.B. 4026 (July 4, 2026) as published by the Pennsylvania Code and Bulletin
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-PA' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000238'::uuid, null, 'daily_progress_note_pa', 1,
+  '00000000-0000-0000-0000-000000000338'::uuid, null, 'daily_progress_note_pa_v2', 2,
   'Daily Progress Note', null, 'US-PA', 'Pennsylvania',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential habilitation delivered in a community home for individuals with an intellectual disability or autism (licensed under 55 Pa. Code Chapter 6400); billed under Chapter 6100."}, "footer": {"form_line": "Service documentation — residential habilitation delivered in a community home for individuals with an intellectual disability or autism (licensed under 55 pa. code chapter 6400); billed under chapter 6100.", "legal_citation": "Layout built to satisfy 55 Pa. Code § 6100.226; 55 Pa. Code § 6100.227. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential habilitation delivered in a community home for individuals with an intellectual disability or autism (licensed under 55 Pa. Code Chapter 6400); billed under Chapter 6100."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-RI Rhode Island (tier 2)
---   no rule located; ships as the generic note
+-- US-RI Rhode Island (tier 1)
+--   212-RICR-10-00-1, § 1.19 — https://rules.sos.ri.gov/regulations/part/212-10-00-1
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-RI' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000239'::uuid, null, 'daily_progress_note_ri', 1,
+  '00000000-0000-0000-0000-000000000339'::uuid, null, 'daily_progress_note_ri_v2', 2,
   'Daily Progress Note', null, 'US-RI', 'Rhode Island',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential and community supports delivered to adults by licensed Developmental Disability Organizations (DDOs). 212-RICR-10-00-1 applies to organizations licensed under ''Subchapter 05 Part 1 of this Chapter (Rules and Regulations for Developmental Disability Organizations)''."}, "footer": {"form_line": "Service documentation — residential and community supports delivered to adults by licensed developmental disability organizations (ddos). 212-ricr-10-00-1 applies to organizations licensed under ''subchapter 05 part 1 of this chapter (rules and regulations for developmental disability organizations)''.", "legal_citation": "Layout built to satisfy 212-RICR-10-00-1, § 1.19. Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential and community supports delivered to adults by licensed Developmental Disability Organizations (DDOs). 212-RICR-10-00-1 applies to organizations licensed under ''Subchapter 05 Part 1 of this Chapter (Rules and Regulations for Developmental Disability Organizations)''."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-SC South Carolina (tier 2)
---   no rule located; ships as the generic note
+-- US-SC South Carolina (tier 1)
+--   SC DDSN Residential Habilitation Standards, RH8.0-RH8.1 (Documentation) — https://ddsn.sc.gov/sites/ddsn/files/PublicDocuments/Finance%20and%20Audit%20Resources/Residential%20Habilitation%20Standards%20-%20Revised%20(061820).pdf
+--   effective Revised June 18, 2020
+update ghh.form_templates set active = false, updated_at = now()
+ where org_id is null and jurisdiction = 'US-SC' and active;
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000240'::uuid, null, 'daily_progress_note_sc', 1,
+  '00000000-0000-0000-0000-000000000340'::uuid, null, 'daily_progress_note_sc_v2', 2,
   'Daily Progress Note', null, 'US-SC', 'South Carolina',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Service Documentation — Residential Habilitation. One unit of service equals one day in models other than Supported Living I; in the Supported Living I model one unit equals one hour."}, "footer": {"form_line": "Service documentation — residential habilitation. one unit of service equals one day in models other than supported living i; in the supported living i model one unit equals one hour.", "legal_citation": "Layout built to satisfy SC DDSN Residential Habilitation Standards, RH8.0-RH8.1 (Documentation). Not a state-issued form."}, "narrative_min_height": 340, "service_type": "Residential Habilitation. One unit of service equals one day in models other than Supported Living I; in the Supported Living I model one unit equals one hour."}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
