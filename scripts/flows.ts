@@ -23,6 +23,7 @@
  */
 
 import { type Page } from 'playwright';
+import path from 'node:path';
 
 export type Ctx = {
   page: Page;
@@ -48,15 +49,19 @@ export type Flow = {
 
 const branding: Flow = {
   key: 'branding',
-  title: 'Your letterhead',
-  subtitle: 'Not ours',
+  title: 'Your own letterhead',
+  // Was "Not ours", which spent the subtitle denying something nobody had
+  // suspected. The buyer is not wondering whose logo it is; they are wondering
+  // whether they can make it theirs.
+  subtitle: 'Set up in a minute',
   captions: {
-    settings: 'Every agency prints its own name.',
+    settings: 'Make it yours.',
+    preview: 'The preview is the real document.',
     identity: 'Your legal name, your address,\nyour provider number.',
-    colour: 'Your colours.',
-    preview: 'The preview is the document.',
-    saved: 'Saved. Every note prints this way\nfrom now on.',
-    letterhead: 'Including the ones already signed —\non the letterhead they were signed under.'
+    logo: 'Upload your logo.',
+    colours: 'Pick your colours.',
+    applied: 'It is on the form before you save.',
+    saved: 'Saved. Every note prints this way now.'
   },
   async run({ page, tap, mark, inject, type }) {
     await page.goto(new URL('/settings', page.url()).toString(), { waitUntil: 'networkidle' });
@@ -97,17 +102,49 @@ const branding: Flow = {
     await page.waitForTimeout(900);
     mark('identity');
 
+    // The logo. The button opens a real file chooser, so the film uses
+    // Playwright's filechooser event rather than reaching for the hidden input
+    // behind it — the tap is visible, and the upload is the one the product
+    // actually performs.
+    const upload = page.getByRole('button', { name: /^(upload|replace)$/i }).first();
+    if (await upload.count()) {
+      await upload.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(700);
+      mark('logo');
+      const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser', { timeout: 20_000 }),
+        tap(upload)
+      ]);
+      await chooser.setFiles(path.join(process.cwd(), 'tmp', 'demo-video', 'agency-logo.png'));
+      await page.waitForTimeout(3200);
+    }
+
+    // The palette. Four presets, and tapping one repaints the preview — this
+    // is the "theme" half of making the product look like the agency rather
+    // than like us.
+    const palette = page.getByRole('button', { name: /harbor/i }).first();
+    if (await palette.count()) {
+      await palette.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(900);
+      mark('colours');
+      await tap(palette);
+      await page.waitForTimeout(2200);
+    }
+
+    // Back to the preview, which is the point: the logo and the colours are on
+    // the printed form before anything has been saved.
     await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2600);
+    mark('applied');
     await page.waitForTimeout(2000);
-    mark('colour');
 
     const save = page.getByRole('button', { name: /^save/i }).first();
     if (await save.count()) {
       await tap(save);
-      await page.waitForTimeout(2200);
+      await page.waitForTimeout(2400);
     }
     mark('saved');
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1800);
   }
 };
 

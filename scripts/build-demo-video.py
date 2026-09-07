@@ -189,7 +189,7 @@ def card_clip(lines, sub: str, seconds: float, name: str) -> str:
     out = os.path.join(SRC, f"card-{name}.mp4")
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-t", str(seconds), "-i", png,
-         "-vf", f"fade=t=in:st=0:d=0.4,fade=t=out:st={seconds - 0.4:.2f}:d=0.4,format=yuv420p",
+         "-vf", f"fade=t=in:st=0:d=0.5,fade=t=out:st={seconds - 0.5:.2f}:d=0.5,format=yuv420p",
          "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-r", "25", out],
         check=True,
     )
@@ -245,15 +245,30 @@ def main() -> None:
     # sides in forest rather than cropping. Cropping a phone screen removes the
     # top or bottom of the very UI the film is about.
     inputs = ["-i", raw]
-    for png, _, _ in timed:
-        inputs += ["-i", png]
+    for png, start, end in timed:
+        # Offset each caption onto the timeline it will be shown at, so a fade
+        # written at st=0 means "when this caption appears" rather than "when
+        # the film starts". Without itsoffset the fades all fired in the first
+        # half second and every caption simply popped.
+        inputs += ["-loop", "1", "-t", f"{max(0.1, end - start):.2f}",
+                   "-itsoffset", f"{start:.2f}", "-i", png]
 
     chain = [f"[0:v]scale=-2:{H},pad={W}:{H}:({W}-iw)/2:0:0x14452F,format=yuv420p[bg]"]
     last = "bg"
+    FADE = 0.28
     for idx, (_, start, end) in enumerate(timed, start=1):
+        hold = max(0.1, end - start)
+        # Fade the band in and out on its own alpha rather than snapping it.
+        # A hard cut on a full-width bar is the single most amateur thing a
+        # screen recording can do, and it is one filter away from not being.
+        chain.append(
+            f"[{idx}:v]format=rgba,"
+            f"fade=t=in:st=0:d={FADE}:alpha=1,"
+            f"fade=t=out:st={max(0.0, hold - FADE):.2f}:d={FADE}:alpha=1[c{idx}]"
+        )
         label = f"v{idx}"
         chain.append(
-            f"[{last}][{idx}:v]overlay=x=0:y={H - BAND_H}:"
+            f"[{last}][c{idx}]overlay=x=0:y={H - BAND_H}:"
             f"enable='between(t,{start:.2f},{end:.2f})'[{label}]"
         )
         last = label
