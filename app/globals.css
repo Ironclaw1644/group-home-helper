@@ -3,14 +3,20 @@
 @tailwind utilities;
 
 @layer base {
-  /* Default palette — At Home Family Services. A themed organization
-     overrides these at request time; see lib/branding/theme.ts. */
+  /* Default palette — FlipBrief's own, mirroring DEFAULT_BRAND in
+     lib/branding/theme.ts, which is built from lib/branding/palette.ts. Keep
+     the three in step.
+
+     A themed organization overrides all five at request time from
+     ghh.organizations.branding; these are the values an agency sees before
+     they have set anything, and the fallback if the head <style> never
+     renders. Forest #14452F, moss #1E6244, sand #D9B382, paper #FBF8F3. */
   :root {
-    --brand-navy: 15 45 69;
-    --brand-teal: 12 158 166;
-    --brand-aqua: 111 226 223;
-    --brand-sand: 245 241 234;
-    --brand-slate: 83 103 121;
+    --brand-navy: 20 69 47;
+    --brand-teal: 30 98 68;
+    --brand-aqua: 217 179 130;
+    --brand-sand: 251 248 243;
+    --brand-slate: 91 104 98;
   }
 
   html {
@@ -19,7 +25,11 @@
 
   body {
     @apply bg-brand-sand text-brand-navy antialiased;
-    font-family: var(--brand-font, ui-sans-serif), system-ui, sans-serif;
+    /* Nested fallback rather than a second declaration: an agency that has set
+       a font in Settings gets `--brand-font` and wins; everyone else falls
+       through to FlipBrief's own face, the one the landing page is set in.
+       Written this way the default cannot be beaten by stylesheet ordering. */
+    font-family: var(--brand-font, var(--font-fb-text)), system-ui, sans-serif;
   }
 
   /* Inputs must never shrink below 16px on iOS or Safari zooms on focus.
@@ -28,6 +38,53 @@
   textarea,
   select {
     font-size: 16px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * The brand's own type and mark.
+ *
+ * These rules used to live in components/marketing/marketing.css, which is
+ * loaded only by the landing page. They are here instead because they are not
+ * marketing: `.fb-display` is the display face of the product, and the mark
+ * now appears on sign-in and install too — pages every agency's staff see,
+ * and which until now carried one customer's logo.
+ *
+ * Unlike the tokens under @layer base above, these are deliberately NOT
+ * themeable. `--font-fb-text` is FlipBrief's face and the mark's colours are
+ * literals, so an agency that has themed their workspace cannot restyle the
+ * product's own identity. Their palette and logo apply to their letterhead
+ * and their workspace; this is the software's signature, not theirs.
+ * ------------------------------------------------------------------------ */
+
+.fb-display {
+  font-family: var(--font-fb-text), system-ui, sans-serif;
+  font-variation-settings: 'wdth' 108;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+}
+
+/* The middle arm of the F lifts on hover, like a page being turned. The
+   resting state is the finished mark, so switching motion off leaves it whole
+   rather than mid-flip. */
+.fb-mark-tip {
+  transform-origin: 38px 35px;
+  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.fb-mark:hover .fb-mark-tip,
+.fb-mark:focus-visible .fb-mark-tip {
+  transform: rotate(-13deg) translateX(1.5px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fb-mark-tip {
+    transition: none;
+  }
+
+  .fb-mark:hover .fb-mark-tip,
+  .fb-mark:focus-visible .fb-mark-tip {
+    transform: none;
   }
 }
 

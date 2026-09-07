@@ -14,14 +14,23 @@ import { Button } from '@/components/ui';
  * Everything shown here is a field the renderer actually reads.
  */
 
+/**
+ * The palettes offered as one tap.
+ *
+ * "FlipBrief" is first and is the product's own — the same five values
+ * `DEFAULT_BRAND` ships, so an agency that has wandered off can get back to
+ * what they saw on the day they signed up. "Harbor" is the navy and teal this
+ * app wore when it served one agency; it is kept because it is a good palette
+ * and because the agency using it should be able to find it again in one tap.
+ */
 export const COLOR_PRESETS: Array<{ name: string; colors: Record<string, string> }> = [
   {
-    name: 'Default',
-    colors: { navy: '#0f2d45', teal: '#0c9ea6', aqua: '#6fe2df', sand: '#f5f1ea', slate: '#536779' }
+    name: 'FlipBrief',
+    colors: { navy: '#14452f', teal: '#1e6244', aqua: '#d9b382', sand: '#fbf8f3', slate: '#5b6862' }
   },
   {
-    name: 'Forest',
-    colors: { navy: '#1b3a2f', teal: '#2f8f6b', aqua: '#96dcc0', sand: '#f2f1e8', slate: '#5d6b63' }
+    name: 'Harbor',
+    colors: { navy: '#0f2d45', teal: '#0c9ea6', aqua: '#6fe2df', sand: '#f5f1ea', slate: '#536779' }
   },
   {
     name: 'Plum',

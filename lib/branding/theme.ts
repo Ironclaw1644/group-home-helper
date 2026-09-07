@@ -6,6 +6,7 @@
  * to those variables, so every existing class in the UI re-themes for free —
  * onboarding a new agency is a database row, not a rebuild.
  */
+import { FLIP } from './palette';
 
 export type BrandTokens = {
   navy: string;
@@ -17,25 +18,38 @@ export type BrandTokens = {
   fontFamily: string | null;
 };
 
-/** At Home Family Services — the palette the app ships with. */
 /**
- * The palette an agency sees before setting their own.
+ * The palette an agency sees before setting their own: FlipBrief's.
+ *
+ * It used to be one agency's teal-and-navy, which meant the product a visitor
+ * met on the landing page and the product they were handed after signing up
+ * did not look like the same thing. The default is now the marketing palette
+ * from ./palette.ts, so an agency that never opens Settings gets FlipBrief's
+ * own brand rather than somebody else's.
+ *
+ * The token names are the original five slots and are deliberately unchanged —
+ * every `brand-navy` / `brand-teal` class in the app keeps working, and an
+ * agency that has already saved a palette still overrides all five. The names
+ * describe positions in the scale now, not hues:
+ *
+ *   navy  → darkest ground and primary text
+ *   teal  → the interactive accent
+ *   aqua  → a light wash behind callouts
+ *   sand  → the page background
+ *   slate → muted running text
  *
  * Deliberately carries NO logo. This started as one agency's app and the
  * fallback was their mark, which meant every other agency signing up saw
  * someone else's branding on their own residents' forms. A neutral default is
  * the only honest starting point for a product several agencies use; each one
  * uploads their own in Settings.
- *
- * The colours stay — they are a reasonable, accessible starting palette, and an
- * agency that never opens Settings still gets a coherent-looking form.
  */
 export const DEFAULT_BRAND: BrandTokens = {
-  navy: '#0f2d45',
-  teal: '#0c9ea6',
-  aqua: '#6fe2df',
-  sand: '#f5f1ea',
-  slate: '#536779',
+  navy: FLIP.forest,
+  teal: FLIP.moss,
+  aqua: FLIP.sand,
+  sand: FLIP.paper,
+  slate: FLIP.slate,
   logoUrl: null,
   fontFamily: null
 };
