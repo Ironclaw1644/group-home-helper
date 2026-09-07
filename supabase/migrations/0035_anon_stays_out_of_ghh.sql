@@ -1,0 +1,29 @@
+-- Sign-up was impossible: the state picker rendered empty, so the form could
+-- never be completed and no stranger could create an agency. QA found it on
+-- the first attempt at the stranger path.
+--
+-- The cause was that `lib/jurisdictions.ts` read the jurisdiction list with
+-- the *request's* Supabase client. The sign-up page is server-rendered for
+-- someone who by definition has no session, so that client acts as `anon`,
+-- and `anon` has no USAGE on this schema. The call errored, the code returned
+-- an empty array, and the picker rendered with no options and no message.
+--
+-- The obvious repair is to grant anon USAGE here. This migration deliberately
+-- does the opposite, and records why, because the obvious repair was tried
+-- first and is wrong:
+--
+--   Every function in ghh carries PostgreSQL's default EXECUTE-to-PUBLIC, and
+--   `anon` inherits PUBLIC. Sixteen of those functions have no explicit
+--   `authenticated` grant — RLS policies depend on the PUBLIC grant to call
+--   them. So the schema cannot be opened to anon without either publishing
+--   every function to anonymous callers, or revoking PUBLIC and risking
+--   row-level security breaking for signed-in users.
+--
+-- Neither is worth doing to populate a dropdown. The fix belongs in the
+-- application, which now reads that list with the admin client on the server:
+-- anonymous visitors never touch this schema at all.
+--
+-- This statement restores the closed state, so a future reader does not find
+-- the grant and assume it was intended.
+
+revoke usage on schema ghh from anon;

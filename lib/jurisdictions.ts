@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cache } from 'react';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { DEFAULT_IDENTITY_LABELS } from '@/lib/forms/layout-defaults';
 
 /**
@@ -50,10 +50,38 @@ type JurisdictionRow = {
   identity_labels: string[] | null;
 };
 
+/**
+ * The states an agency can sign up under.
+ *
+ * Read with the admin client, not the request's own. The sign-up page is
+ * server-rendered for someone who by definition has no session, so the request
+ * client acts as `anon` — and `anon` has no USAGE on the ghh schema, so the
+ * call failed and this function returned an empty list. The picker rendered
+ * with no options, the form could not be completed, and no stranger could
+ * create an agency at all.
+ *
+ * The tempting fix is to grant anon access to the schema. That is worse than
+ * it looks: every function in ghh carries the default EXECUTE-to-PUBLIC, and
+ * sixteen of them have no explicit `authenticated` grant because policies rely
+ * on the PUBLIC one — so the schema cannot be opened to anon without either
+ * publishing all of them or risking RLS breaking for signed-in users.
+ *
+ * Reading it here instead keeps anonymous visitors out of the database
+ * entirely. What is returned is jurisdiction codes, display names and form
+ * captions: template metadata with no organization, resident or note data in
+ * it, which is why it is safe to render before an account exists.
+ */
 export const listJurisdictions = cache(async (): Promise<JurisdictionOption[]> => {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.rpc('available_jurisdictions');
-  if (error || !data) return [];
+
+  if (error) {
+    // Never fail silently again. An empty list here is indistinguishable from
+    // "this product supports no states", and it took a QA pass to notice.
+    console.error('[jurisdictions] could not list jurisdictions:', error.message);
+    return [];
+  }
+  if (!data) return [];
   return forDisplay(
     (data as JurisdictionRow[]).map((r) => ({
       code: r.code,
