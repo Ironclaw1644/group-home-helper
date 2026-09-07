@@ -1,6 +1,6 @@
 {
-  "appliedThrough": "0018_purge_resident.sql",
-  "capturedAt": "2026-09-06T18:18:57.884Z",
+  "appliedThrough": "0021_staff_homes_read_org_scope.sql",
+  "capturedAt": "2026-09-06T23:59:13.272Z",
   "objects": {
     "tables": [
       {
@@ -1308,6 +1308,46 @@
         "character_maximum_length": null
       },
       {
+        "table_name": "notes",
+        "ordinal_position": 27,
+        "column_name": "prestaged_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "YES",
+        "column_default": null,
+        "character_maximum_length": null
+      },
+      {
+        "table_name": "notes",
+        "ordinal_position": 28,
+        "column_name": "prestaged_by",
+        "data_type": "uuid",
+        "udt_name": "uuid",
+        "is_nullable": "YES",
+        "column_default": null,
+        "character_maximum_length": null
+      },
+      {
+        "table_name": "notes",
+        "ordinal_position": 29,
+        "column_name": "prestage_confirmed_at",
+        "data_type": "timestamp with time zone",
+        "udt_name": "timestamptz",
+        "is_nullable": "YES",
+        "column_default": null,
+        "character_maximum_length": null
+      },
+      {
+        "table_name": "notes",
+        "ordinal_position": 30,
+        "column_name": "prestage_confirmed_by",
+        "data_type": "uuid",
+        "udt_name": "uuid",
+        "is_nullable": "YES",
+        "column_default": null,
+        "character_maximum_length": null
+      },
+      {
         "table_name": "organizations",
         "ordinal_position": 1,
         "column_name": "id",
@@ -2485,6 +2525,18 @@
       },
       {
         "table_name": "notes",
+        "name": "notes_prestage_confirmed_by_fkey",
+        "type": "f",
+        "definition": "FOREIGN KEY (prestage_confirmed_by) REFERENCES ghh.profiles(id) ON DELETE SET NULL"
+      },
+      {
+        "table_name": "notes",
+        "name": "notes_prestaged_by_fkey",
+        "type": "f",
+        "definition": "FOREIGN KEY (prestaged_by) REFERENCES ghh.profiles(id) ON DELETE SET NULL"
+      },
+      {
+        "table_name": "notes",
         "name": "notes_resident_id_fkey",
         "type": "f",
         "definition": "FOREIGN KEY (resident_id) REFERENCES ghh.residents(id) ON DELETE RESTRICT"
@@ -2782,6 +2834,11 @@
         "table_name": "notes",
         "name": "notes_pkey",
         "definition": "CREATE UNIQUE INDEX notes_pkey ON ghh.notes USING btree (id)"
+      },
+      {
+        "table_name": "notes",
+        "name": "notes_prestaged_unconfirmed",
+        "definition": "CREATE INDEX notes_prestaged_unconfirmed ON ghh.notes USING btree (home_id, service_date) WHERE ((prestaged_at IS NOT NULL) AND (prestage_confirmed_at IS NULL))"
       },
       {
         "table_name": "notes",
@@ -3171,7 +3228,7 @@
         "cmd": "SELECT",
         "permissive": "PERMISSIVE",
         "roles": "{authenticated}",
-        "qual": "((profile_id = auth.uid()) OR ghh.is_supervisor())",
+        "qual": "(ghh.home_in_my_org(home_id) AND ((profile_id = auth.uid()) OR ghh.is_supervisor()))",
         "with_check": null
       },
       {
@@ -3244,6 +3301,11 @@
         "table_name": "notes",
         "name": "notes_no_delete_when_signed",
         "definition": "CREATE TRIGGER notes_no_delete_when_signed BEFORE DELETE ON ghh.notes FOR EACH ROW EXECUTE FUNCTION ghh.enforce_note_undeletable()"
+      },
+      {
+        "table_name": "notes",
+        "name": "notes_no_signing_ahead_of_time",
+        "definition": "CREATE TRIGGER notes_no_signing_ahead_of_time BEFORE INSERT OR UPDATE ON ghh.notes FOR EACH ROW EXECUTE FUNCTION ghh.enforce_service_date_reached()"
       },
       {
         "table_name": "notes",

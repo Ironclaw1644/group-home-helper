@@ -29,7 +29,12 @@
     "compare:models": "tsx --tsconfig scripts/tsconfig.json scripts/compare-models.ts",
     "verify:import": "tsx --tsconfig scripts/tsconfig.json scripts/verify-import.ts",
     "demo:prune": "tsx --tsconfig scripts/tsconfig.json scripts/prune-demos.ts",
-    "billing:set-price": "tsx --tsconfig scripts/tsconfig.json scripts/set-org-price.ts"
+    "billing:set-price": "tsx --tsconfig scripts/tsconfig.json scripts/set-org-price.ts",
+    "shots:walkthrough": "tsx --tsconfig scripts/tsconfig.json scripts/capture-walkthrough.ts",
+    "db:apply": "tsx --tsconfig scripts/tsconfig.json scripts/apply-supabase-migration.ts",
+    "db:state": "tsx --tsconfig scripts/tsconfig.json scripts/check-supabase-state.ts",
+    "verify:brand-isolation": "tsx --tsconfig scripts/tsconfig.json scripts/verify-brand-isolation.ts",
+    "shots:review": "tsx --tsconfig scripts/tsconfig.json scripts/capture-review.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -54,6 +59,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.20",
+    "playwright": "^1.63.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.23.1",
