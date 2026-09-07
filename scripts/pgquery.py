@@ -49,6 +49,13 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--sql")
     ap.add_argument("--file")
+    ap.add_argument(
+        "--full",
+        action="store_true",
+        help="Print the whole result. The default truncates, which keeps a "
+        "stray SELECT * from filling a terminal but produces invalid JSON — "
+        "so anything parsing this output must pass --full.",
+    )
     args = ap.parse_args()
 
     if args.file:
@@ -59,4 +66,5 @@ if __name__ == "__main__":
     else:
         statement = sys.stdin.read()
 
-    print(json.dumps(run(statement), indent=2)[:4000])
+    rendered = json.dumps(run(statement), indent=2)
+    print(rendered if args.full else rendered[:4000])
