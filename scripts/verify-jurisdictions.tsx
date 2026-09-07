@@ -416,9 +416,17 @@ async function main() {
     );
 
     // An org in a state nobody has authored falls to GENERIC and no further.
+    //
+    // ZZ-QQ, not a real state. This used to use US-MT on the reasoning that
+    // Montana was unauthored, which stopped being true the day every state
+    // shipped a row — and then the check failed while testing nothing, because
+    // Montana resolving to Montana is correct. The fallback rule still needs
+    // proving, so it now uses a code that cannot ever be authored. Distinct
+    // from the ZZ-ZZ used further down so the two cannot interfere whatever
+    // order they run in.
     await db.exec(`
       insert into ghh.organizations (id, name, jurisdiction)
-      values ('33333333-3333-3333-3333-333333333333', 'ZZ Verify Montana', 'US-MT')
+      values ('33333333-3333-3333-3333-333333333333', 'ZZ Verify Unauthored', 'ZZ-QQ')
       on conflict (id) do nothing;
     `);
     const mtPick = await sqlPick('33333333-3333-3333-3333-333333333333');
@@ -426,6 +434,23 @@ async function main() {
       'an unauthored state falls to GENERIC in SQL too',
       mtPick?.jurisdiction === 'GENERIC',
       `got ${mtPick?.jurisdiction ?? 'nothing'}`
+    );
+
+    // The counterpart, which is new and only means anything now that fifty
+    // states ship: an org in a state that IS authored must get that state's
+    // template and not the GENERIC one. Before this, "falls back to GENERIC"
+    // was tested and "does not fall back unnecessarily" was not, so a bug that
+    // sent every agency to GENERIC would have passed.
+    await db.exec(`
+      insert into ghh.organizations (id, name, jurisdiction)
+      values ('33333333-3333-3333-3333-333333333334', 'ZZ Verify Authored', 'US-MT')
+      on conflict (id) do nothing;
+    `);
+    const authoredPick = await sqlPick('33333333-3333-3333-3333-333333333334');
+    check(
+      'an authored state gets its own row, not GENERIC',
+      authoredPick?.jurisdiction === 'US-MT',
+      `got ${authoredPick?.jurisdiction ?? 'nothing'}`
     );
 
     check(
@@ -797,22 +822,64 @@ async function main() {
 
     // A template belonging to one agency is that agency's business. Offering
     // it on a public sign-up page would tell a stranger it exists.
+    //
+    // The jurisdiction here is deliberately ZZ-ZZ and not a real state. This
+    // check used to use US-MT, which was unambiguous only while Montana had no
+    // template of its own: once every state shipped a global row, Montana
+    // appeared on the sign-up page for a perfectly good reason and the check
+    // failed without anything having leaked. A code no state will ever hold
+    // keeps the assertion sharp — if ZZ-ZZ is offered, the private row is the
+    // only thing that could have put it there.
     await db.exec(`
       insert into ghh.form_templates (org_id, key, version, name, form_number, jurisdiction,
                                       jurisdiction_name, schema, render_config, active)
-      select o.id, 'zz_private_only', 1, 'Private', null, 'US-MT', 'Montana',
+      select o.id, 'zz_private_only', 1, 'Private', null, 'ZZ-ZZ', 'Privateland',
              t.schema, t.render_config, true
         from ghh.organizations o, ghh.form_templates t
        where o.name = 'ZZ Verify Virginia' and t.jurisdiction = 'GENERIC'
        limit 1;
     `);
-    const afterPrivate = await db.query<{ code: string }>(
-      `select code from ghh.available_jurisdictions()`
+    const afterPrivate = await db.query<{ code: string; name: string; form_line: string }>(
+      `select code, name, form_line from ghh.available_jurisdictions()`
     );
     check(
       "one agency's private template is not offered to everyone else",
-      !afterPrivate.rows.some((r) => r.code === 'US-MT'),
+      !afterPrivate.rows.some((r) => r.code === 'ZZ-ZZ'),
       'a private template put its jurisdiction on the public sign-up page'
+    );
+
+    // The sharper version of the same worry, and the one that only became
+    // reachable once every state had a global row: an agency's private variant
+    // of a state that DOES ship must not change what the public page says about
+    // that state. Overriding is the whole point of a private row — but it
+    // overrides for that agency, not for the stranger reading the sign-up page.
+    const montanaBefore = offered.rows.find((r) => r.code === 'US-MT');
+    await db.exec(`
+      insert into ghh.form_templates (org_id, key, version, name, form_number, jurisdiction,
+                                      jurisdiction_name, schema, render_config, active)
+      select o.id, 'zz_private_montana', 2, 'Private Montana', null, 'US-MT', 'Montana',
+             t.schema,
+             jsonb_set(t.render_config, '{footer,form_line}', '"LEAKED PRIVATE CAPTION"'),
+             true
+        from ghh.organizations o, ghh.form_templates t
+       where o.name = 'ZZ Verify Virginia' and t.jurisdiction = 'GENERIC'
+       limit 1;
+    `);
+    const afterPrivateState = await db.query<{ code: string; form_line: string }>(
+      `select code, form_line from ghh.available_jurisdictions()`
+    );
+    const montanaAfter = afterPrivateState.rows.find((r) => r.code === 'US-MT');
+    check(
+      "an agency's private variant does not rewrite a shipped state's public caption",
+      montanaBefore !== undefined &&
+        montanaAfter !== undefined &&
+        montanaAfter.form_line === montanaBefore.form_line,
+      `public caption for US-MT went from "${montanaBefore?.form_line}" to "${montanaAfter?.form_line}"`
+    );
+    check(
+      'and the state is still offered exactly once',
+      afterPrivateState.rows.filter((r) => r.code === 'US-MT').length === 1,
+      `US-MT offered ${afterPrivateState.rows.filter((r) => r.code === 'US-MT').length} times`
     );
 
     // -----------------------------------------------------------------------
