@@ -223,60 +223,101 @@ async function sign(page: Page, canvas: ReturnType<Page['locator']>) {
   ];
 
   /**
-   * One stroke, as a run of letter-shaped humps sitting on the writing line.
+   * Cursive glyphs, as parametric curves.
    *
-   * Two earlier attempts got this wrong in instructive ways. A handful of
-   * corner points came out as a line chart, because the pad joins the
-   * positions it is given with straight segments. Sampling a sine fixed the
-   * corners and produced an EKG, because handwriting is not periodic.
+   * Two earlier attempts failed the same way for the same reason. Both built
+   * the stroke as a height for each horizontal position — corner points first,
+   * then a sum of Gaussians. Anything of that shape is a function y = f(x)
+   * with x strictly increasing, and a curve that can never travel leftwards
+   * cannot cross itself. Handwriting is mostly loops: the pen goes back over
+   * where it has been. That is why both attempts read as a chart.
    *
-   * What a signature actually is: mostly short humps returning to the line,
-   * one or two tall ascenders, an occasional descender through it, and uneven
-   * spacing throughout. So each hump is a Gaussian with its own centre,
-   * height and width, summed and sampled densely. Negative height dips below
-   * the line. A slight rightward lean is added at the end, the way a hand
-   * moving across the page leans.
+   * So each glyph is parametric in its own progress instead, free to move
+   * backwards. `advance` is how far along the line the glyph carries the pen;
+   * `w` is how far it swings either side of that while doing it. Where the
+   * swing outruns the advance, the path loops, which is the whole point.
+   *
+   * y is negative above the writing line.
    */
-  const stroke = (from: number, to: number, humps: Array<[number, number, number]>) => {
-    const points: Array<[number, number]> = [];
-    const SAMPLES = 110;
+  type Glyph = (t: number) => [number, number];
 
-    for (let i = 0; i <= SAMPLES; i++) {
-      const t = i / SAMPLES;
-      let y = 0;
-      for (const [centre, height, width] of humps) {
-        y -= height * Math.exp(-((t - centre) ** 2) / (2 * width * width));
+  // A closed loop: o, a, e. Up the left, over, down the right, back under.
+  const oval = (advance: number, h: number, w: number): Glyph => (t) => [
+    advance * t + w * Math.sin(2 * Math.PI * t),
+    (-h * (1 - Math.cos(2 * Math.PI * t))) / 2
+  ];
+
+  // A tall thin loop: l, h, b, k. Same construction, taller and narrower.
+  const ascender = (advance: number, h: number, w: number): Glyph => (t) => [
+    advance * t + w * Math.sin(2 * Math.PI * t),
+    (-h * (1 - Math.cos(2 * Math.PI * t))) / 2
+  ];
+
+  // A loop below the line: g, y, j, p.
+  const descender = (advance: number, d: number, w: number): Glyph => (t) => [
+    advance * t + w * Math.sin(2 * Math.PI * t),
+    (d * (1 - Math.cos(2 * Math.PI * t))) / 2
+  ];
+
+  // A plain hump with no loop: n, m, r. Real hands mix these in.
+  const arch = (advance: number, h: number): Glyph => (t) => [
+    advance * t,
+    -h * Math.sin(Math.PI * t)
+  ];
+
+  // The exit stroke: a long tail that runs out and lifts.
+  const flourish = (advance: number, h: number): Glyph => (t) => [
+    advance * t,
+    -h * Math.sin(Math.PI * t) * (1 - 0.55 * t)
+  ];
+
+  /**
+   * Walk a run of glyphs end to end, sampling each densely.
+   *
+   * The shear is what stops it looking like copperplate practice: a hand
+   * writing at speed leans, so anything above the line is pushed right in
+   * proportion to its height.
+   */
+  const SLANT = 0.3;
+
+  const stroke = (from: number, glyphs: Glyph[]) => {
+    const points: Array<[number, number]> = [];
+    const SAMPLES = 46;
+    let cursor = from;
+
+    for (const glyph of glyphs) {
+      for (let i = 0; i <= SAMPLES; i++) {
+        const [dx, dy] = glyph(i / SAMPLES);
+        points.push([cursor + dx - SLANT * dy * 0.35, dy]);
       }
-      // The lean, plus a little settling so the stroke does not start and end
-      // at exactly the same height.
-      y += 0.07 * t - 0.02;
-      points.push([from + (to - from) * t, y]);
+      // Advance by where the glyph actually left the pen, so the next one
+      // starts from there rather than from a nominal width.
+      cursor += glyph(1)[0];
     }
 
     return points;
   };
 
+  // No two letters the same size, and the two words given different rhythms —
+  // repetition is what made the earlier attempts read as a pattern.
   const strokes = [
-    // Given name: a tall capital, then five small letters, with one descender.
-    stroke(0.07, 0.42, [
-      [0.04, 0.62, 0.045],
-      [0.19, 0.19, 0.038],
-      [0.32, 0.25, 0.034],
-      [0.45, -0.16, 0.030],
-      [0.57, 0.21, 0.036],
-      [0.71, 0.14, 0.040],
-      [0.86, 0.23, 0.045]
+    // Given name: tall capital, then a descender dropping through the line.
+    stroke(0.04, [
+      ascender(0.085, 1.05, 0.062),
+      oval(0.055, 0.34, 0.04),
+      arch(0.05, 0.3),
+      descender(0.052, 0.4, 0.034),
+      oval(0.048, 0.24, 0.03),
+      arch(0.04, 0.22)
     ]),
-    // Surname: a second capital and a long flourish running out under the line.
-    stroke(0.47, 0.94, [
-      [0.05, 0.55, 0.042],
-      [0.2, 0.16, 0.036],
-      [0.31, 0.24, 0.032],
-      [0.43, 0.13, 0.038],
-      [0.55, -0.18, 0.034],
-      [0.66, 0.2, 0.036],
-      [0.8, 0.11, 0.05],
-      [0.95, 0.16, 0.07]
+    // Surname: capital, an arch before the first oval, and a long exit tail.
+    stroke(0.5, [
+      ascender(0.08, 0.92, 0.048),
+      arch(0.046, 0.26),
+      oval(0.06, 0.36, 0.044),
+      arch(0.04, 0.21),
+      oval(0.044, 0.25, 0.028),
+      flourish(0.185, 0.17)
     ])
   ];
 
@@ -300,13 +341,30 @@ async function sign(page: Page, canvas: ReturnType<Page['locator']>) {
  */
 async function scrollToRoster(page: Page) {
   await page.evaluate(() => {
-    const shift = Array.from(document.querySelectorAll('a')).find((a) =>
-      /\d(AM|PM)-\d/.test(a.textContent ?? '')
+    // Anchor on the section label, not the first shift card. Leading in from
+    // the card pulled the tail of the Documents panel above it into frame.
+    const label = Array.from(document.querySelectorAll('h1, h2, h3, p, span, div')).find(
+      (el) => /today'?s shifts/i.test(el.textContent ?? '') && el.children.length === 0
     );
-    if (!shift) return;
-    const card = shift.closest('section, div[class*="rounded"]') ?? shift;
-    const top = card.getBoundingClientRect().top + window.scrollY - 105;
-    window.scrollTo(0, Math.max(0, top));
+
+    const anchor =
+      label ??
+      Array.from(document.querySelectorAll('a')).find((a) =>
+        /\d(AM|PM)-\d/.test(a.textContent ?? '')
+      );
+    if (!anchor) return;
+
+    const wanted = anchor.getBoundingClientRect().top + window.scrollY - 78;
+    window.scrollTo(0, Math.max(0, wanted));
+
+    // With only three residents the roster is barely taller than the phone, so
+    // the page is already at its scroll limit here and no offset can push the
+    // panel above the list out of frame. Two attempts at a lead-in offset
+    // failed for that reason. When the scroll cannot reach the target, go to
+    // the top instead: a whole card reads as the app, a sliced one reads as a
+    // broken screenshot.
+    const reached = Math.abs(window.scrollY - Math.max(0, wanted)) < 4;
+    if (!reached) window.scrollTo(0, 0);
   });
 }
 

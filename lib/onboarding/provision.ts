@@ -466,7 +466,11 @@ export async function createDemoSandbox(): Promise<
   const { data: org, error: orgError } = await admin
     .from('organizations')
     .insert({
-      name: 'Demo Agency',
+      // A plausible agency name rather than "Demo Agency": the letterhead is
+      // the thing the sandbox is meant to demonstrate, and a placeholder there
+      // demonstrates nothing. The residents stay obviously fictional, so the
+      // sandbox is still unmistakably a sandbox.
+      name: 'Riverbend Group Home',
       timezone: 'America/New_York',
       is_demo: true,
       expires_at: expiresAt,
@@ -482,7 +486,7 @@ export async function createDemoSandbox(): Promise<
 
   const { data: home, error: homeError } = await admin
     .from('homes')
-    .insert({ org_id: org.id, name: 'Demo House' })
+    .insert({ org_id: org.id, name: 'Riverbend House' })
     .select('id')
     .single();
 
@@ -522,7 +526,7 @@ export async function createDemoSandbox(): Promise<
   const { error: profileError } = await admin.from('profiles').insert({
     id: created.user.id,
     org_id: org.id,
-    full_name: 'Demo User',
+    full_name: 'Robin Vance',
     // Admin so the visitor can see every screen, including the supervisor
     // dashboard and resident management.
     title: 'Administrator',

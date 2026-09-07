@@ -42,9 +42,9 @@ type Frame = {
 const FRAMES: Frame[] = [
   {
     src: '/walkthrough/01-pick-resident.png',
-    step: 'Pick a resident',
+    step: 'See what the day still owes',
     caption:
-      'The day opens on the people in the house and the shifts still to write. One tap starts the right note.',
+      'It opens on how many notes are still unwritten, and why that matters. One tap starts the right one.',
     kind: 'phone',
     width: 780,
     height: 1688
