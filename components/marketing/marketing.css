@@ -19,13 +19,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Headings: Fraunces set slightly soft and a touch wonky, so the display type
-   reads as printed matter rather than as a UI font scaled up. */
-.fb-display {
-  font-family: var(--font-fb-display), 'Iowan Old Style', Georgia, serif;
-  font-variation-settings: 'SOFT' 34, 'WONK' 1, 'opsz' 40;
-  letter-spacing: -0.014em;
-}
+/* `.fb-display` — the heading face — now lives in app/globals.css, because the
+   signed-in app sets its brand in it too. It is the same face as the body
+   text: one typeface, pushed along Archivo's width axis and tightened, so a
+   headline reads as printed matter rather than as a UI font scaled up. */
 
 /* The margin label used down the page — a form's field caption. */
 .fb-label {
@@ -187,19 +184,8 @@
   animation: fb-sheet-lift 900ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-/* ------------------------------------------------------------------------ */
-/* The mark's own page-turn, on hover and on focus                           */
-/* ------------------------------------------------------------------------ */
-
-.fb-mark-tip {
-  transform-origin: 38px 35px;
-  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-
-.fb-mark:hover .fb-mark-tip,
-.fb-mark:focus-visible .fb-mark-tip {
-  transform: rotate(-13deg) translateX(1.5px);
-}
+/* The mark's page-turn on hover and focus moved to app/globals.css with the
+   mark itself, which is now on the sign-in and install pages as well. */
 
 /* ------------------------------------------------------------------------ */
 /* Details/summary FAQ                                                        */
@@ -223,6 +209,31 @@
 }
 
 /* ------------------------------------------------------------------------ */
+/* The product walkthrough                                                    */
+/* ------------------------------------------------------------------------ */
+
+/* A fixed stage, so the caption and controls underneath do not jump when the
+   frame changes shape — four of the five frames are a phone and the fifth is
+   a sheet of letter paper, which is shorter and wider. Both are contained
+   inside this box rather than sized to it. */
+.fb-walk-stage {
+  height: 30rem;
+}
+
+@media (min-width: 640px) {
+  .fb-walk-stage {
+    height: 34rem;
+  }
+}
+
+/* Which of the two presentations is live is decided in CSS, not JavaScript.
+   Rendering both and hiding one means first paint is already correct and the
+   server and the browser cannot disagree about which to show. */
+.fb-walk-static {
+  display: none;
+}
+
+/* ------------------------------------------------------------------------ */
 /* Nobody's phone has to move if they have asked it not to.                  */
 /* Base styles are the finished state, so this leaves the page complete.     */
 /* ------------------------------------------------------------------------ */
@@ -239,5 +250,15 @@
   .fb [data-fb-draw][data-fb-armed='true'] {
     opacity: 1;
     transform: none;
+  }
+
+  /* No carousel at all — the five frames become a captioned strip that holds
+     still and can be read at whatever pace the visitor wants. */
+  .fb-walk-motion {
+    display: none;
+  }
+
+  .fb-walk-static {
+    display: block;
   }
 }

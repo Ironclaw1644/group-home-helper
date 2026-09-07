@@ -8,6 +8,15 @@ import { cn } from '@/lib/utils';
  * loaded as an <img> for one reason: the lifting tip is a separate element, so
  * it can actually lift. The file on disk stays the canonical flat version for
  * favicons and one-colour letterheads.
+ *
+ * This lives outside components/marketing because it is not marketing: the
+ * product's own mark belongs on the sign-in and install pages too, which are
+ * seen by every agency and used to carry one customer's logo instead.
+ *
+ * It is deliberately painted in fixed `flip-*` hex rather than the themeable
+ * `--brand-*` variables. This is FlipBrief's mark on FlipBrief's pages; an
+ * agency's own logo appears on their letterhead and in their workspace, and
+ * the two must not be able to overwrite each other.
  */
 export function FlipMark({ className, tone = 'forest' }: { className?: string; tone?: 'forest' | 'paper' }) {
   const body = tone === 'paper' ? '#FBF8F3' : '#14452F';

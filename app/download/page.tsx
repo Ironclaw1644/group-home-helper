@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { Apple, Download, Share, Smartphone } from 'lucide-react';
 import { APK_CHANGELOG, APK_PATH, APK_VERSION } from '@/lib/apk';
+import { FlipLogo } from '@/components/brand/mark';
 
 export const metadata: Metadata = {
-  title: 'Install Daily Notes',
-  description: 'Install the At Home Family Services daily notes app.',
+  title: 'Install FlipBrief',
+  description: 'Install the FlipBrief daily notes app on a phone.',
   // Public page, but there is no reason for it to be indexed.
   robots: { index: false, follow: false }
 };
@@ -21,12 +22,10 @@ export default function DownloadPage() {
     <main className="min-h-dvh px-4 py-10">
       <div className="mx-auto w-full max-w-lg">
         <header className="mb-8 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/AHFS_logo.png"
-            alt="At Home Family Services"
-            className="mx-auto h-16 w-auto object-contain"
-          />
+          {/* The product's mark. A DSP reaching this page has no account yet,
+              so there is no organization to theme it with — and it used to
+              show one agency's logo to every other agency's staff. */}
+          <FlipLogo className="justify-center" />
           <h1 className="mt-4 text-xl font-semibold text-brand-navy">Daily Progress Notes</h1>
           <p className="mt-1 text-sm text-brand-slate">
             Install the app on your phone to write notes on shift.

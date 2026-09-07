@@ -70,7 +70,7 @@ export function DemoCta({ className, tone = 'forest' }: { className?: string; to
             : 'bg-flip-forest text-flip-paper hover:bg-flip-moss focus-visible:ring-flip-forest'
         )}
       >
-        {busy ? 'Setting up a sandbox…' : 'Try it now — no sign-up'}
+        {busy ? 'Setting up a sandbox…' : 'Try it yourself — no signup'}
         <span aria-hidden className={cn('transition-transform', busy ? 'opacity-0' : 'translate-x-0')}>
           →
         </span>

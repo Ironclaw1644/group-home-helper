@@ -2,9 +2,8 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { FREE_ALLOWANCE } from '@/lib/billing/plan';
-import { archivo, fraunces } from './fonts';
-import { FlipLogo, FlipMark } from './mark';
-import { NoteDemo } from './note-demo';
+import { FlipLogo, FlipMark } from '@/components/brand/mark';
+import { Walkthrough } from './walkthrough';
 import { DemoCta } from './demo-cta';
 import { Reveal } from './reveal';
 import './marketing.css';
@@ -31,32 +30,41 @@ const FACTS = [
   { k: '$100', v: 'a month, flat' },
   { k: 'Any', v: 'number of beds' },
   { k: '$0', v: 'to get set up' },
-  { k: '#680', v: 'the Virginia form' }
+  { k: '#680', v: 'Virginia’s DBHDS form' }
 ];
 
+/**
+ * What the walkthrough does not show.
+ *
+ * These used to be four cards restating the four steps a visitor has just
+ * watched happen in real screenshots at the top of the page — the same words
+ * as the captions, one scroll further down. What survived the cut is only the
+ * part a screenshot cannot carry: what the software does that is not visible
+ * in a picture of it.
+ */
 const STEPS = [
   {
     n: '01',
-    head: 'Tap what happened',
-    body: 'Meals, sleep, ADLs, where they chose to go, how staff supported them, mood, incidents. The chips are the form — the same wording that is on the paper. Questions carry the resident’s own name and pronouns, so nobody is reading “the individual” at the end of a twelve-hour shift.',
+    head: 'The chips are the form',
+    body: 'The same wording that is on the paper, and questions that carry the resident’s own name and pronouns — so nobody is reading “the individual” at the end of a twelve-hour shift.',
     aside: 'Their service-plan goals sit in the same list. Documenting the plan is not a second job.'
   },
   {
     n: '02',
-    head: 'The draft writes itself',
-    body: 'One tap turns the taps into a paragraph in the agency’s documentation voice. It writes from what was recorded and nothing else — then the text is checked back against the record, and an invented clock time, a quoted sentence, or a topic nobody touched is flagged to the DSP before they can sign.',
+    head: 'The draft is checked before you see it',
+    body: 'It writes from what was recorded and nothing else. An invented clock time, a quoted sentence, or a topic nobody touched is flagged to the DSP before they can sign.',
     aside: 'The first ' + FREE_ALLOWANCE + ' drafts are free. Writing notes by hand never costs anything.'
   },
   {
     n: '03',
-    head: 'Sign on the glass',
-    body: 'A finger on the screen, or a typed name. The attestation is the one already on the form. Signing locks the note in the database rather than in the app — no route, no script, and no console session can edit it afterwards, including ours.',
+    head: 'Signing locks it in the database',
+    body: 'Not in the app. No route, no script and no console session can edit a signed note afterwards, including ours.',
     aside: 'A correction goes on as a dated addendum, the way a paper chart works.'
   },
   {
     n: '04',
-    head: 'It prints as Form #680',
-    body: 'Your legal name, your logo, your address, your footer — pulled from your settings at the moment the document is rendered. What the preview shows is what comes out of the printer. For a review, export a whole date range as one merged PDF and print it in a single pass.',
+    head: 'The letterhead is yours',
+    body: 'Legal name, logo, address and footer, pulled from your settings as the document renders. For a review, export a whole date range as one merged PDF and print it in a single pass.',
     aside: 'Quarterly progress against each resident’s plan builds itself from the notes already signed.'
   }
 ];
@@ -83,7 +91,7 @@ const TRUST = [
 const NOT_YET = [
   ['No eMAR.', 'Medication administration stays wherever you keep it today. If your staff open Therap every shift for the MAR, they will still open it.'],
   ['No incident reporting yet.', 'The note asks whether there was an incident and records the answer. Filing the report with DBHDS is still yours to do.'],
-  ['One form today.', 'Virginia’s DBHDS Form #680. The form is stored as data rather than written into the software, so another state’s form is a new record and not a rewrite — but today there is one.'],
+  ['One form: Virginia’s DBHDS #680.', 'If your state documents on a different form, this is not built for you yet. Forms are stored as data rather than written into the software, so the engine does not care which state it is — but the form in it is Virginia’s.'],
   ['No scheduling, no time clock, no family portal.', 'Small agencies do not buy those from the same place they buy documentation, and we would build them badly.'],
   ['And no customers yet.', 'FlipBrief has not been sold to anyone. You would be the first. There is no logo wall on this page because there is nothing honest to put on it.']
 ];
@@ -121,13 +129,7 @@ const FAQ = [
 
 export function Landing() {
   return (
-    <div
-      className={cn(
-        'fb min-h-dvh bg-flip-paper font-flip text-flip-ink',
-        fraunces.variable,
-        archivo.variable
-      )}
-    >
+    <div className="fb min-h-dvh bg-flip-paper font-flip text-flip-ink">
       <SiteHeader />
 
       <main>
@@ -293,13 +295,19 @@ function Hero() {
         }}
       />
 
-      <Shell className="relative grid gap-12 pb-16 pt-12 sm:pt-16 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-center lg:gap-16 lg:pb-24 lg:pt-20">
+      {/* Everything above the walkthrough has to fit an 844px phone screen with
+          room to spare, because an administrator who cannot answer *what is
+          this*, *what would I do with it* and *what does it cost* before their
+          first scroll leaves. That budget is why there is one sentence here
+          and not a paragraph, and why the price is in the hero rather than
+          four sections down. */}
+      <Shell className="relative grid gap-10 pb-14 pt-10 sm:pt-14 lg:grid-cols-[minmax(0,1fr)_28rem] lg:items-center lg:gap-16 lg:pb-24 lg:pt-20">
         <div>
           <p className="fb-label text-flip-amber">
-            Daily progress notes · DBHDS Form #680
+            Shift notes for group homes
           </p>
 
-          <h1 className="fb-display mt-5 text-[2.9rem] font-medium leading-[0.98] text-flip-forest sm:text-[4rem] lg:text-[4.6rem]">
+          <h1 className="fb-display mt-4 text-[2.7rem] font-medium leading-[0.98] text-flip-forest sm:text-[4rem] lg:text-[4.6rem]">
             Forty seconds
             <br />
             <span className="relative inline-block">
@@ -311,30 +319,39 @@ function Hero() {
             </span>
           </h1>
 
-          <p className="mt-7 max-w-[48ch] text-[1.06rem] leading-[1.62] text-flip-slate sm:text-[1.15rem]">
-            On paper a shift note takes about ten minutes — for every resident, every shift, every
-            day. In FlipBrief your DSP taps what happened, the draft writes itself from those taps,
-            they sign it on their phone, and it prints on your letterhead as Virginia’s Form #680.
-            Once it is signed, nobody can change it. Including us.
+          <p className="mt-5 max-w-[42ch] text-[1.04rem] leading-[1.55] text-flip-slate sm:text-[1.15rem]">
+            Your staff tap what happened, the draft writes itself, and they sign on their phone. It
+            prints on your letterhead. Once signed, nobody can change it — including us.
           </p>
 
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          {/* The price, on the first screen. It is the question this buyer asks
+              first and the one every competitor makes them book a call for. */}
+          <p className="mt-5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className="fb-display text-[1.75rem] font-medium leading-none text-flip-forest">
+              $100 a month
+            </span>
+            <span className="text-[0.95rem] text-flip-slate">
+              flat — any number of beds, any number of staff
+            </span>
+          </p>
+
+          <div className="mt-6">
             <DemoCta />
-            <Link
-              href="/signup"
-              className="inline-flex items-center justify-center rounded-lg border border-flip-forest/25 px-6 py-4 text-[0.95rem] font-semibold text-flip-forest transition hover:border-flip-forest hover:bg-flip-forest/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flip-forest"
-            >
-              Set up a workspace
-            </Link>
+            <p className="mt-3 max-w-[42ch] text-[0.84rem] leading-relaxed text-flip-slate">
+              Opens a sandbox with three fictional residents. Nothing in it is real and it asks you
+              for nothing —{' '}
+              <Link
+                href="/signup"
+                className="font-semibold text-flip-forest underline underline-offset-[3px] hover:text-flip-moss"
+              >
+                or set up a workspace
+              </Link>
+              .
+            </p>
           </div>
-
-          <p className="mt-4 max-w-[44ch] text-[0.84rem] leading-relaxed text-flip-slate">
-            The demo builds you a sandbox with three fictional residents and real service plans.
-            Nothing you write in it is real, and it asks you for nothing.
-          </p>
         </div>
 
-        <NoteDemo className="mx-auto w-full max-w-[26rem] lg:max-w-none" />
+        <Walkthrough className="mx-auto w-full max-w-[26rem] lg:max-w-none" />
       </Shell>
     </section>
   );
@@ -374,8 +391,8 @@ function HowItWorks() {
       id="how"
       n="01"
       label="The shift"
-      title="Four taps, a read, and a signature."
-      lede="This is the whole product. There is no implementation phase, no configuration project, and no week of training, because there is not enough here to need one."
+      title="What the screenshots do not show."
+      lede="You have just watched the whole product. There is no implementation phase, no configuration project and no week of training, because there is not enough here to need one — so this is the part that does not photograph."
     >
       <TimeCompare />
 
@@ -527,8 +544,7 @@ function Pricing() {
               'Every resident, every staff member, every house you run. There is no per-bed line.',
               'No setup fee, no implementation, no training package, no annual commitment.',
               `The first ${FREE_ALLOWANCE} assistant drafts are free, before you have decided anything.`,
-              'Writing, signing, printing and exporting notes never require a subscription — a lapsed card stops the assistant, not your records.',
-              'Virginia’s Form #680 today. Another state’s form is built into the same engine on request.'
+              'Writing, signing, printing and exporting notes never require a subscription — a lapsed card stops the assistant, not your records.'
             ].map((line) => (
               <li key={line} className="flex gap-3.5 text-[0.97rem] leading-[1.55] text-flip-ink">
                 <span aria-hidden className="mt-[0.42em] h-[7px] w-[7px] shrink-0 rotate-45 bg-flip-sand" />
@@ -687,8 +703,8 @@ function SiteFooter() {
 
         <p className="mt-8 max-w-[62ch] text-[0.8rem] leading-relaxed text-flip-paper/55">
           Documentation software for small group homes and behavioural and elder care agencies.
-          FlipBrief currently ships Virginia’s DBHDS Form #680. Staff joining an agency need an
-          invitation from their supervisor.
+          FlipBrief prints Virginia’s DBHDS Form #680. Staff joining an agency need an invitation
+          from their supervisor.
         </p>
       </Shell>
     </footer>
