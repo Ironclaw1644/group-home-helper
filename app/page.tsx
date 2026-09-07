@@ -38,9 +38,14 @@ export async function generateMetadata(): Promise<Metadata> {
   // noindex. The roster is not a public document.
   if (session) return {};
 
-  const title = 'FlipBrief — the shift note, in about forty seconds';
+  // Both of these were wrong and both were quotable: "forty seconds" had never
+  // been timed, and the description promised every visitor Virginia's form
+  // regardless of where they were. This is the text that ends up in a search
+  // result and a link preview, so it is the worst place to be approximately
+  // right.
+  const title = 'FlipBrief — the shift note, in twenty-seven taps';
   const description =
-    'Documentation for small group homes. Staff tap what happened, the progress note drafts itself, they sign on their phone, and it prints on your letterhead as Virginia’s DBHDS Form #680. $100 a month, flat.';
+    'Documentation for small group homes. Staff tap what happened, the progress note drafts itself, they sign on their phone, and it prints on your own letterhead. Every state and DC. $100 a month, flat.';
 
   return {
     title,

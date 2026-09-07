@@ -30,7 +30,11 @@ const FACTS = [
   { k: '$100', v: 'a month, flat' },
   { k: 'Any', v: 'number of beds' },
   { k: '$0', v: 'to get set up' },
-  { k: '#680', v: 'Virginia’s DBHDS form' }
+  // Was "#680 — Virginia's DBHDS form", which stopped being the whole truth
+  // the day a second state shipped and became actively wrong at fifty. Every
+  // state and DC now has a form; twenty-seven of them cite the state's own
+  // documentation rule on the printed page.
+  { k: '50', v: 'states, plus DC' }
 ];
 
 /**
@@ -90,16 +94,21 @@ const TRUST = [
 
 const NOT_YET = [
   ['No eMAR.', 'Medication administration stays wherever you keep it today. If your staff open Therap every shift for the MAR, they will still open it.'],
-  ['No incident reporting yet.', 'The note asks whether there was an incident and records the answer. Filing the report with DBHDS is still yours to do.'],
-  ['One form: Virginia’s DBHDS #680.', 'If your state documents on a different form, this is not built for you yet. Forms are stored as data rather than written into the software, so the engine does not care which state it is — but the form in it is Virginia’s.'],
+  ['No incident reporting yet.', 'The note asks whether there was an incident and records the answer. Filing the report with your state is still yours to do.'],
+  // This used to read "One form: Virginia's DBHDS #680 — if your state
+  // documents on a different form, this is not built for you yet." That is no
+  // longer the limitation, but there is still a real one underneath it and it
+  // belongs on this list rather than being quietly deleted: almost no state
+  // issues a form at all, and for half of them nobody here has read the rule.
+  ['Only Virginia issues an actual form.', 'Virginia publishes DBHDS Form #680 and we print it. Almost nowhere else does — most states publish a rule about what a note must contain and leave the layout to you. For twenty-seven states we have read that rule and cite it at the foot of the page; for the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets another state’s form number, which is the mistake that actually hurts you in an audit.'],
   ['No scheduling, no time clock, no family portal.', 'Small agencies do not buy those from the same place they buy documentation, and we would build them badly.'],
   ['And no customers yet.', 'FlipBrief has not been sold to anyone. You would be the first. There is no logo wall on this page because there is nothing honest to put on it.']
 ];
 
 const FAQ = [
   {
-    q: 'Where does “forty seconds” come from?',
-    a: 'A tap count, not a stopwatch held over your staff. On the demo — one resident, one shift, two service-plan goals — the path from the roster to a signed PDF is about twenty taps, plus two short waits while the draft and the document render. Ten minutes is what the same note costs written out by hand or typed into a shared document. Your first week will be slower than that while people learn where things are, and a shift with an incident in it will always take longer, because it should.'
+    q: 'Where does “twenty-seven taps” come from?',
+    a: 'Somebody counted, on a phone, on the demo everyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus a wait of about fifteen seconds while the draft is written. Two of those goals account for ten of the taps — a note with no service-plan work in it is closer to seventeen. Ten minutes is what the same note costs written out by hand or typed into a shared document. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
   },
   {
     q: 'Does resident information go to an AI company?',
@@ -307,8 +316,14 @@ function Hero() {
             Shift notes for group homes
           </p>
 
+          {/* A measured number, not a rounded one. This said "Forty seconds"
+              and the FAQ under it said "about twenty taps"; neither had been
+              measured, and when someone finally counted, the demo note took
+              twenty-seven. This is the single claim a buyer can check on their
+              first afternoon, so it is the last one that should be optimistic.
+              If the flow gets shorter, count it again and change the number. */}
           <h1 className="fb-display mt-4 text-[2.7rem] font-medium leading-[0.98] text-flip-forest sm:text-[4rem] lg:text-[4.6rem]">
-            Forty seconds
+            Twenty-seven taps
             <br />
             <span className="relative inline-block">
               a note.
@@ -703,8 +718,8 @@ function SiteFooter() {
 
         <p className="mt-8 max-w-[62ch] text-[0.8rem] leading-relaxed text-flip-paper/55">
           Documentation software for small group homes and behavioural and elder care agencies.
-          FlipBrief prints Virginia’s DBHDS Form #680. Staff joining an agency need an invitation
-          from their supervisor.
+          FlipBrief prints Virginia’s DBHDS Form #680, and a progress note for every other state
+          and DC. Staff joining an agency need an invitation from their supervisor.
         </p>
       </Shell>
     </footer>
