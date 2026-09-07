@@ -34,8 +34,18 @@ import sys
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "tmp", "demo-video")
-OUT = os.path.join(ROOT, "public", "demo", "flipbrief-demo.mp4")
+
+# The note film lives at tmp/demo-video; every other flow gets a subdirectory
+# named after it, with its own captions and cards in flow.json. Passing no
+# argument builds the note film, which is the one this script started as.
+FLOW = sys.argv[1] if len(sys.argv) > 1 else None
+SRC = os.path.join(ROOT, "tmp", "demo-video", FLOW) if FLOW else os.path.join(ROOT, "tmp", "demo-video")
+OUT = os.path.join(
+    ROOT, "public", "demo", f"flipbrief-{FLOW}.mp4" if FLOW else "flipbrief-demo.mp4"
+)
+
+TITLE = ["FlipBrief"]
+SUBTITLE = "Shift notes for group homes"
 
 W, H = 1080, 1920
 BAND_H = 300
@@ -74,6 +84,18 @@ CAPTIONS = {
 # Held over the closing shot of the real printed page.
 LETTERHEAD_CAPTION = "It prints on your letterhead."
 LETTERHEAD_SECONDS = 4.5
+
+
+def load_flow() -> None:
+    """Captions and cards for a named flow, if there is one."""
+    global CAPTIONS, TITLE, SUBTITLE
+    meta_path = os.path.join(SRC, "flow.json")
+    if not os.path.exists(meta_path):
+        return
+    meta = json.load(open(meta_path))
+    CAPTIONS = meta.get("captions", {})
+    TITLE = [meta.get("title", "FlipBrief")]
+    SUBTITLE = meta.get("subtitle", "")
 
 
 def font(size: int):
@@ -175,6 +197,8 @@ def card_clip(lines, sub: str, seconds: float, name: str) -> str:
 
 
 def main() -> None:
+    load_flow()
+
     # Largest, not first. Downloading the PDF opens a second page context and
     # Playwright writes a video file for it too — a fraction of a second long.
     # Sorted-first picked that one and produced a film that was over before it
@@ -186,6 +210,21 @@ def main() -> None:
         raise SystemExit("No footage. Run: npm run video:capture")
 
     beats = json.load(open(beats_path))
+
+    # Trim the provisioning lead-in and rebase the beats onto the trimmed
+    # footage. The capture clock runs in video time so captions stay aligned;
+    # the cost is however long the sandbox took to build sitting at the front,
+    # which is dead air nobody should watch.
+    lead_in = next((b["at"] for b in beats if b["name"] == "open"), 0.0)
+    if lead_in > 0.5:
+        trimmed = os.path.join(SRC, "trimmed.mp4")
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{lead_in:.2f}", "-i", raw,
+             "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-r", "25", "-an", trimmed],
+            check=True,
+        )
+        raw = trimmed
+        beats = [{"name": b["name"], "at": max(0.0, b["at"] - lead_in)} for b in beats]
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     caption_dir = os.path.join(SRC, "captions")
     os.makedirs(caption_dir, exist_ok=True)
@@ -236,10 +275,12 @@ def main() -> None:
     subprocess.run(cmd, check=True)
 
     segments = [
-        card_clip(["FlipBrief"], "Shift notes for group homes", 2.6, "open"),
+        card_clip(TITLE, SUBTITLE, 2.6, "open"),
         body,
     ]
-    tail = letterhead_tail(SRC)
+    # Only the note film ends on the printed page; the others end on their own
+    # last frame and then the card.
+    tail = letterhead_tail(SRC) if not FLOW else ""
     if tail:
         segments.append(tail)
     segments.append(

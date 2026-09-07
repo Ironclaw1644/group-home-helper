@@ -1,0 +1,241 @@
+/**
+ * The demo films, one per thing a buyer needs to believe.
+ *
+ *   npm run video:capture -- branding
+ *   npm run video:build   -- branding
+ *
+ * Each flow drives the real product against the real demo sandbox and writes
+ * tmp/demo-video/<flow>/. Nothing is staged: if a flow cannot be performed by
+ * using the software, there is no film of it.
+ *
+ * WHY THESE FLOWS
+ *
+ * A care-agency owner buying documentation software is afraid of three
+ * different things, and one film cannot answer all three:
+ *
+ *   "will my staff actually use it"      -> note
+ *   "will it look like OUR agency"       -> branding
+ *   "do I have to retype everything"     -> roster
+ *   "can somebody fake a record"         -> oversight
+ *
+ * The last is the one that closes an audit-frightened buyer and the one most
+ * competitors cannot show, because their notes are editable.
+ */
+
+import { type Page } from 'playwright';
+
+export type Ctx = {
+  page: Page;
+  tap: (locator: ReturnType<Page['locator']>) => Promise<void>;
+  mark: (name: string) => void;
+  inject: () => Promise<void>;
+  type: (locator: ReturnType<Page['locator']>, text: string) => Promise<void>;
+};
+
+export type Flow = {
+  /** Where the film goes and what the build script names it. */
+  key: string;
+  /** Shown on the title card. */
+  title: string;
+  /** Under the title. */
+  subtitle: string;
+  /** beat name -> caption. A beat with no entry shows nothing. */
+  captions: Record<string, string>;
+  run: (ctx: Ctx) => Promise<void>;
+};
+
+/* ------------------------------------------------------------------ */
+
+const branding: Flow = {
+  key: 'branding',
+  title: 'Your letterhead',
+  subtitle: 'Not ours',
+  captions: {
+    settings: 'Every agency prints its own name.',
+    identity: 'Your legal name, your address,\nyour provider number.',
+    colour: 'Your colours.',
+    preview: 'The preview is the document.',
+    saved: 'Saved. Every note prints this way\nfrom now on.',
+    letterhead: 'Including the ones already signed —\non the letterhead they were signed under.'
+  },
+  async run({ page, tap, mark, inject, type }) {
+    await page.goto(new URL('/settings', page.url()).toString(), { waitUntil: 'networkidle' });
+    await inject();
+    await page.waitForTimeout(1200);
+    mark('settings');
+
+    // The preview sits at the top of the agency section now, so a viewer sees
+    // the document change as the fields change. That is the whole point of the
+    // screen and it is why this film exists.
+    await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1400);
+    mark('preview');
+
+    const legal = page.locator('#b-legal');
+    if (await legal.count()) {
+      await legal.scrollIntoViewIfNeeded();
+      await legal.fill('');
+      await type(legal, 'Riverbend Residential Services, LLC');
+      await page.waitForTimeout(500);
+    }
+    const letterhead = page.locator('#b-letterhead');
+    if (await letterhead.count()) {
+      await letterhead.fill('');
+      await type(letterhead, 'Residential Support Program');
+      await page.waitForTimeout(500);
+    }
+    const address = page.locator('#b-address');
+    if (await address.count()) {
+      await address.fill('');
+      await type(address, '19 Example Road, Richmond, VA 23220');
+    }
+    const footer = page.locator('#b-footer');
+    if (await footer.count()) {
+      await footer.fill('');
+      await type(footer, 'Provider #123456');
+    }
+    await page.waitForTimeout(900);
+    mark('identity');
+
+    await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2000);
+    mark('colour');
+
+    const save = page.getByRole('button', { name: /^save/i }).first();
+    if (await save.count()) {
+      await tap(save);
+      await page.waitForTimeout(2200);
+    }
+    mark('saved');
+    await page.waitForTimeout(1500);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+
+const roster: Flow = {
+  key: 'roster',
+  title: 'Your people',
+  subtitle: 'Without retyping them',
+  captions: {
+    residents: 'Everyone you support, in one list.',
+    importing: 'Moving in from a spreadsheet?',
+    paste: 'Paste it. Any shape.\nA table, a list, whatever you have.',
+    'asks-first': 'It asks before sending anything\nabout a resident anywhere.',
+    parsed: 'It reads names, rooms,\npronouns and dates of birth.',
+    review: 'You check it before anything is added.',
+    added: 'Added. Nobody retyped a roster.'
+  },
+  async run({ page, tap, mark, inject, type }) {
+    await page.goto(new URL('/residents', page.url()).toString(), { waitUntil: 'networkidle' });
+    await inject();
+    await page.waitForTimeout(1400);
+    mark('residents');
+
+    await page.goto(new URL('/residents/import', page.url()).toString(), {
+      waitUntil: 'networkidle'
+    });
+    await inject();
+    await page.waitForTimeout(1200);
+    mark('importing');
+
+    // Deliberately ragged: three different shapes in one paste, which is what
+    // a real handover list looks like and what the panel claims to accept.
+    const messy = [
+      'Alexander Rivera (Alex), room 2B, he/him, DOB 4/12/85',
+      'Maria Ochoa — 3A — she/her',
+      'Jordan Pike, they/them, North Hall'
+    ].join('\n');
+
+    const box = page.locator('textarea').first();
+    await box.scrollIntoViewIfNeeded();
+    await box.click();
+    await type(box, messy);
+    await page.waitForTimeout(1600);
+    mark('paste');
+
+    const read = page.getByRole('button', { name: /read this list/i }).first();
+    await read.waitFor({ timeout: 20_000 });
+    await tap(read);
+    await page.waitForTimeout(2400);
+
+    // A ragged paste is not laid out like a spreadsheet, so the app stops and
+    // says so: the text, names and dates of birth included, would go to the
+    // assistant's provider to be read, and that needs the same agreement the
+    // note assistant needs. It asks before it sends.
+    //
+    // That pause is the most saleable second in this film. A buyer who has
+    // been sold to before is waiting to catch somebody being casual with
+    // resident data, and here the software volunteers it unprompted.
+    const consent = page.getByRole('button', { name: /let the assistant read it/i }).first();
+    if (await consent.count()) {
+      // Scroll to it before the caption claims it. The alert renders below the
+      // paste card, so the first cut captioned "it asks before sending
+      // anything about a resident anywhere" over a screen where the asking was
+      // off the bottom of the phone — the same mistake as captioning "signed
+      // is locked" over a disabled button.
+      await consent.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(2400);
+      mark('asks-first');
+      await page.waitForTimeout(1800);
+      await tap(consent);
+      await page.waitForTimeout(3000);
+    }
+    mark('parsed');
+    await page.waitForTimeout(2000);
+    mark('review');
+
+    const add = page.getByRole('button', { name: /add \d+ residents?/i }).first();
+    await add.waitFor({ timeout: 30_000 });
+    await tap(add);
+    await page.waitForTimeout(3000);
+    mark('added');
+    await page.waitForTimeout(1800);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+
+const oversight: Flow = {
+  key: 'oversight',
+  title: 'What an auditor sees',
+  subtitle: 'And what nobody can change',
+  captions: {
+    supervisor: 'Every house, every shift,\nwho has written and who has not.',
+    missing: 'Missing notes are the ones\nthat do not get paid.',
+    signed: 'A signed note says who signed it,\nand when, to the second.',
+    locked: 'It cannot be edited.\nNot by a supervisor. Not by us.',
+    addendum: 'A correction is an addendum.\nBoth versions survive, like a paper chart.'
+  },
+  async run({ page, mark, inject }) {
+    await page.goto(new URL('/supervisor', page.url()).toString(), { waitUntil: 'networkidle' });
+    await inject();
+    await page.waitForTimeout(1600);
+    mark('supervisor');
+
+    await page.evaluate(() => window.scrollBy({ top: 300, behavior: 'smooth' }));
+    await page.waitForTimeout(1800);
+    mark('missing');
+
+    // Open a signed note, which is where the lock and the timestamp live.
+    const signed = page.getByRole('link', { name: /view|open/i }).first();
+    if (await signed.count()) {
+      await signed.click().catch(() => {});
+      await page.waitForTimeout(2400);
+      await inject();
+    }
+    mark('signed');
+    await page.waitForTimeout(1600);
+    mark('locked');
+    await page.evaluate(() => window.scrollBy({ top: 420, behavior: 'smooth' }));
+    await page.waitForTimeout(2200);
+    mark('addendum');
+    await page.waitForTimeout(1400);
+  }
+};
+
+export const FLOWS: Record<string, Flow> = {
+  branding: branding,
+  roster: roster,
+  oversight: oversight
+};

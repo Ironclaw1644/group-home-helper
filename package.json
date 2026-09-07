@@ -39,7 +39,8 @@
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "verify:contrast": "node --experimental-strip-types scripts/verify-contrast.mjs",
     "video:capture": "tsx --tsconfig scripts/tsconfig.json scripts/capture-demo-video.ts",
-    "video:build": "python3 scripts/build-demo-video.py"
+    "video:build": "python3 scripts/build-demo-video.py",
+    "video:flow": "tsx --tsconfig scripts/tsconfig.json scripts/capture-flow.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
