@@ -36,7 +36,8 @@
     "db:state": "tsx --tsconfig scripts/tsconfig.json scripts/check-supabase-state.ts",
     "verify:brand-isolation": "tsx --tsconfig scripts/tsconfig.json scripts/verify-brand-isolation.ts",
     "shots:review": "tsx --tsconfig scripts/tsconfig.json scripts/capture-review.ts",
-    "verify:migrations": "node scripts/verify-migrations.mjs"
+    "verify:migrations": "node scripts/verify-migrations.mjs",
+    "verify:contrast": "node --experimental-strip-types scripts/verify-contrast.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

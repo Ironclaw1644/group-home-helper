@@ -89,11 +89,18 @@ export default async function SupervisorPage({
       </div>
 
       <div className="mb-6 grid grid-cols-3 gap-3">
+        {/* "Unbillable" is a statement about a day that is over. Said about
+            today it contradicts the roster directly underneath it, which
+            correctly shows those same shifts as still open — a supervisor
+            opening this at ten in the morning was told six notes were
+            unbillable for work their staff were in the middle of doing. On
+            today's date the only true statement is that the note is not
+            written yet. */}
         <StatTile
           tone="missing"
           value={missing}
           label={missing === 1 ? 'note missing' : 'notes missing'}
-          note="unbillable"
+          note={serviceDate < today ? 'unbillable' : 'not written yet'}
         />
         <StatTile tone="draft" value={drafts} label={drafts === 1 ? 'draft' : 'drafts'} note="unsigned" />
         <StatTile tone="signed" value={signed} label="signed" note="complete" />

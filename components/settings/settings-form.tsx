@@ -155,6 +155,25 @@ export function SettingsForm({
 
       {canEditAgency ? (
         <>
+          {/* The whole point of this screen: see it before an auditor does.
+              It used to be the last card, roughly 2,600px down, which on a
+              phone is eight screens of scrolling past the fields that change
+              it. An owner deciding whether this software is worth a hundred a
+              month is deciding on whether their agency's name prints properly
+              on a Medicaid record — so that goes first, and the controls that
+              change it follow underneath. */}
+          <Card>
+            <h2 className="mb-1 text-sm font-semibold text-brand-navy">
+              How the printed form will look
+            </h2>
+            <p className="mb-4 text-xs text-brand-slate">
+              {previewForm
+                ? `The top of ${previewForm.formLine}, with your name, logo and colours.`
+                : 'The top of your form, with your name, logo and colours.'}
+            </p>
+            <FormPreview value={branding} form={previewForm} />
+          </Card>
+
           <Card>
             <h2 className="mb-4 text-sm font-semibold text-brand-navy">Your agency</h2>
             <IdentityFields value={branding} onChange={setBranding} />
@@ -235,18 +254,6 @@ export function SettingsForm({
             <ColorFields value={branding} onChange={setBranding} />
           </Card>
 
-          {/* The whole point of this screen: see it before an auditor does. */}
-          <Card>
-            <h2 className="mb-1 text-sm font-semibold text-brand-navy">
-              How the printed form will look
-            </h2>
-            <p className="mb-4 text-xs text-brand-slate">
-              {previewForm
-                ? `The top of ${previewForm.formLine}, with your name, logo and colours.`
-                : 'The top of your form, with your name, logo and colours.'}
-            </p>
-            <FormPreview value={branding} form={previewForm} />
-          </Card>
         </>
       ) : (
         <Alert tone="info" title="Agency settings are not on this account">
