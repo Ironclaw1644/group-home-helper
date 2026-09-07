@@ -37,7 +37,9 @@
     "verify:brand-isolation": "tsx --tsconfig scripts/tsconfig.json scripts/verify-brand-isolation.ts",
     "shots:review": "tsx --tsconfig scripts/tsconfig.json scripts/capture-review.ts",
     "verify:migrations": "node scripts/verify-migrations.mjs",
-    "verify:contrast": "node --experimental-strip-types scripts/verify-contrast.mjs"
+    "verify:contrast": "node --experimental-strip-types scripts/verify-contrast.mjs",
+    "video:capture": "tsx --tsconfig scripts/tsconfig.json scripts/capture-demo-video.ts",
+    "video:build": "python3 scripts/build-demo-video.py"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
