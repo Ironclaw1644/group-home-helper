@@ -13,34 +13,177 @@ import type {
   Shift,
   StructuredData
 } from '@/lib/types';
+import { GENERIC_JURISDICTION } from '@/lib/types';
 
-const TEMPLATE_KEY = 'daily_progress_note_680';
+const TEMPLATE_COLUMNS = 'id, org_id, key, version, name, form_number, jurisdiction, schema, render_config';
 
-/** The active Form #680 template (highest version). */
-export async function getActiveTemplate(): Promise<FormTemplate> {
+/**
+ * One candidate template row, before precedence is applied.
+ *
+ * Split out from the query so the precedence rule below is a pure function that
+ * can be tested directly — and asserted to agree with `ghh.template_for_org()`,
+ * which implements the same rule in SQL for anyone working in the database.
+ */
+export type TemplateCandidate = {
+  orgId: string | null;
+  jurisdiction: string;
+  version: number;
+};
+
+/**
+ * Which template an organization files under.
+ *
+ * Precedence, highest first:
+ *
+ *   1. a template owned by this org, in this org's jurisdiction
+ *   2. a global template in this org's jurisdiction
+ *   3. a global GENERIC template
+ *
+ * **There is no rule 4.** An org is never handed another state's form. A
+ * Virginia provider printing Ohio's layout is worse than printing nothing,
+ * because the result looks official, gets signed, and is filed with Medicaid.
+ * When no template matches, callers get an error and no document.
+ */
+export function pickTemplate<T extends TemplateCandidate>(
+  candidates: T[],
+  orgId: string,
+  jurisdiction: string
+): T | null {
+  const eligible = candidates.filter(
+    (t) =>
+      (t.orgId === null || t.orgId === orgId) &&
+      (t.jurisdiction === jurisdiction || t.jurisdiction === GENERIC_JURISDICTION)
+  );
+
+  const rank = (t: T) =>
+    (t.orgId !== null ? 4 : 0) + (t.jurisdiction === jurisdiction ? 2 : 0);
+
+  return (
+    [...eligible].sort((a, b) => rank(b) - rank(a) || b.version - a.version)[0] ?? null
+  );
+}
+
+/**
+ * One specific template, by id, whether or not it is still active.
+ *
+ * A signed note must keep printing the form it was signed under. `active` is
+ * deliberately not filtered: retiring a template version, or an agency moving
+ * to another jurisdiction, must not silently restyle records that are already
+ * signed, locked, and filed.
+ */
+export async function getTemplateById(templateId: string): Promise<FormTemplate | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('form_templates')
-    .select('id, key, version, name, form_number, schema, render_config')
-    .eq('key', TEMPLATE_KEY)
-    .eq('active', true)
-    .order('version', { ascending: false })
-    .limit(1)
-    .single();
+    .select(TEMPLATE_COLUMNS)
+    .eq('id', templateId)
+    .maybeSingle();
 
-  if (error || !data) {
-    throw new Error(`Form template "${TEMPLATE_KEY}" is not installed. Run the seed migration.`);
-  }
+  if (error || !data) return null;
 
   return {
-    id: data.id,
-    key: data.key,
-    version: data.version,
-    name: data.name,
-    formNumber: data.form_number,
+    id: data.id as string,
+    key: data.key as string,
+    version: data.version as number,
+    name: data.name as string,
+    formNumber: (data.form_number as string | null) ?? null,
+    jurisdiction: data.jurisdiction as string,
     schema: data.schema as FormTemplateSchema,
     renderConfig: (data.render_config ?? {}) as RenderConfig
   };
+}
+
+/**
+ * The template a note should be PRINTED against.
+ *
+ * A signed note renders on the form it was signed under, always. A draft
+ * renders on the agency's current form, so that correcting a jurisdiction — or
+ * publishing a new version of one — takes effect on work not yet filed.
+ *
+ * Without this rule, an agency that fixed its jurisdiction in Settings would
+ * have every previously signed note re-render on the new state's layout the
+ * next time anyone opened or exported it. The record would not have changed;
+ * the document representing it would have, which is the same problem wearing a
+ * different hat.
+ *
+ * Falls back to the org's current template only if the stored one has been
+ * deleted outright — printing something is better than a supervisor being
+ * unable to produce a record at all, and a deletion is loud enough to notice.
+ */
+export async function getTemplateForNote(
+  note: Pick<Note, 'templateId' | 'status'>,
+  orgId: string
+): Promise<FormTemplate> {
+  if (note.status === 'signed') {
+    const pinned = await getTemplateById(note.templateId);
+    if (pinned) return pinned;
+  }
+  return getTemplateForOrg(orgId);
+}
+
+/** The jurisdiction an organization files under. */
+export async function getOrgJurisdiction(orgId: string): Promise<string> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('jurisdiction')
+    .eq('id', orgId)
+    .maybeSingle();
+
+  if (error || !data?.jurisdiction) {
+    // Not defaulted to a state. Guessing here is how an agency ends up filing
+    // another jurisdiction's form, which is the exact failure this branch
+    // exists to make impossible.
+    throw new Error(`Organization ${orgId} has no jurisdiction set.`);
+  }
+  return data.jurisdiction as string;
+}
+
+/**
+ * The active form template for an organization.
+ *
+ * Replaces the old `getActiveTemplate()`, which took no arguments and resolved
+ * one hardcoded key — `daily_progress_note_680` — for every customer on the
+ * install, so a customer outside Virginia printed Virginia's form.
+ */
+export async function getTemplateForOrg(orgId: string): Promise<FormTemplate> {
+  const supabase = await createSupabaseServerClient();
+  const jurisdiction = await getOrgJurisdiction(orgId);
+
+  const { data, error } = await supabase
+    .from('form_templates')
+    .select(TEMPLATE_COLUMNS)
+    .eq('active', true)
+    // Parameterised by the client. RLS already limits this to global rows and
+    // the caller's own org; the filter is here so a service-role caller, which
+    // bypasses RLS, gets the same answer.
+    .in('jurisdiction', [jurisdiction, GENERIC_JURISDICTION]);
+
+  if (error) throw error;
+
+  const rows = (data ?? []).map((r) => ({
+    id: r.id as string,
+    orgId: (r.org_id as string | null) ?? null,
+    key: r.key as string,
+    version: r.version as number,
+    name: r.name as string,
+    formNumber: (r.form_number as string | null) ?? null,
+    jurisdiction: r.jurisdiction as string,
+    schema: r.schema as FormTemplateSchema,
+    renderConfig: (r.render_config ?? {}) as RenderConfig
+  }));
+
+  const picked = pickTemplate(rows, orgId, jurisdiction);
+
+  if (!picked) {
+    throw new Error(
+      `No form template is installed for jurisdiction "${jurisdiction}". ` +
+        `Add one, or install the ${GENERIC_JURISDICTION} template — see docs/adding-a-state.md.`
+    );
+  }
+
+  const { orgId: _ownedBy, ...template } = picked;
+  return template;
 }
 
 /** Roster for one home on one date: every resident × every active shift. */
@@ -72,7 +215,7 @@ export async function getShifts(homeId: string): Promise<Shift[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('shifts')
-    .select('id, label, sort_order, crosses_midnight')
+    .select('id, label, sort_order, crosses_midnight, start_time, end_time')
     .eq('home_id', homeId)
     .eq('active', true)
     .order('sort_order');
@@ -81,8 +224,52 @@ export async function getShifts(homeId: string): Promise<Shift[]> {
     id: s.id,
     label: s.label,
     sortOrder: s.sort_order,
-    crossesMidnight: s.crosses_midnight
+    crossesMidnight: s.crosses_midnight,
+    startTime: s.start_time ?? null,
+    endTime: s.end_time ?? null
   }));
+}
+
+/**
+ * Where the service was delivered.
+ *
+ * Ohio's rule asks for "place of service" by name (OAC 5123-9-30(E)(3)).
+ * Returns null rather than a guess when the home cannot be read — a blank on
+ * the form is honest, an invented address is not.
+ */
+export async function getHomeName(homeId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from('homes').select('name').eq('id', homeId).maybeSingle();
+  return (data?.name as string | undefined) ?? null;
+}
+
+/**
+ * How many people were documented as served at this site on this shift.
+ *
+ * Ohio asks for "group size in which the service was provided"
+ * (OAC 5123-9-30(E)(9)) because the daily billing unit differs when residents
+ * share a provider at one site (OAC 5123-9-31). It is counted from the notes
+ * that exist for the same home, shift and service date — that is the set of
+ * people someone actually documented, which is the only defensible answer.
+ *
+ * Returns null when the count cannot be taken, so the field prints blank rather
+ * than asserting a number nobody measured.
+ */
+export async function countServedOnShift(
+  homeId: string,
+  shiftId: string,
+  serviceDate: string
+): Promise<number | null> {
+  const supabase = await createSupabaseServerClient();
+  const { count, error } = await supabase
+    .from('notes')
+    .select('id', { count: 'exact', head: true })
+    .eq('home_id', homeId)
+    .eq('shift_id', shiftId)
+    .eq('service_date', serviceDate);
+
+  if (error || typeof count !== 'number') return null;
+  return count;
 }
 
 // Columns are selected via a runtime string, so PostgREST cannot infer a row
@@ -219,7 +406,7 @@ export async function getOrCreateNote(params: {
 
   if (existing) return mapNote(existing);
 
-  const template = await getActiveTemplate();
+  const template = await getTemplateForOrg(params.orgId);
   const isDemo = (await getResident(params.residentId))?.isDemo ?? false;
 
   const { data: created, error } = await supabase

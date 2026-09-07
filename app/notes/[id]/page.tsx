@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, FileDown } from 'lucide-react';
 import { requireSession, orgTimeZoneFor } from '@/lib/auth/session';
-import { getActiveTemplate, getAddenda, getNote, getResident, getRoster, getShifts } from '@/lib/notes/repo';
+import { getTemplateForNote, getAddenda, getNote, getResident, getRoster, getShifts } from '@/lib/notes/repo';
 import { AppShell } from '@/components/app-shell';
 import { Badge } from '@/components/ui';
 import { ResidentSwitcher } from '@/components/note/resident-switcher';
@@ -31,7 +31,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   const [resident, template, shifts, addenda, roster, outcomes, savedOutcomes] =
     await Promise.all([
       getResident(note.residentId, true),
-      getActiveTemplate(),
+      // A signed note is shown on the form it was signed under, the same one
+      // its PDF prints. A draft follows the agency's current form, so a
+      // corrected jurisdiction takes effect on work not yet filed.
+      getTemplateForNote(note, session.profile.orgId),
       getShifts(note.homeId),
       note.status === 'signed' ? getAddenda(note.id) : Promise.resolve([]),
       // Powers the resident switcher: everyone on this shift, this date.

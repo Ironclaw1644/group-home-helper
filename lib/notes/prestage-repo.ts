@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getActiveTemplate, getShifts } from '@/lib/notes/repo';
+import { getTemplateForOrg, getShifts } from '@/lib/notes/repo';
 import {
   recentHistory,
   routineSelections,
@@ -50,7 +50,10 @@ export async function prestageWeek(params: {
   const dates = weekDates(params.from);
   const to = dates[dates.length - 1];
 
-  const [template, shifts] = await Promise.all([getActiveTemplate(), getShifts(params.homeId)]);
+  const [template, shifts] = await Promise.all([
+    getTemplateForOrg(params.orgId),
+    getShifts(params.homeId)
+  ]);
 
   if (shifts.length === 0) {
     return { error: 'This house has no shifts set up yet, so there is nothing to prepare.' };

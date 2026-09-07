@@ -21,7 +21,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Form680 } from '../lib/pdf/Form680';
+import { TemplatePdf } from '../lib/pdf/TemplatePdf';
+import { buildPrintContext } from '../lib/pdf/print-context';
 import { answeredOutcomes, outcomeStatus, unansweredOutcomes } from '../lib/outcomes/answered';
 import { createAutosave } from '../lib/notes/autosave';
 import {
@@ -299,6 +300,7 @@ const template: FormTemplate = {
   version: 1,
   name: 'Daily Progress Note',
   formNumber: '680',
+  jurisdiction: 'US-VA',
   schema: {
     prompts: [],
     sections: [],
@@ -544,10 +546,16 @@ async function main() {
     // is all the database has. The unanswered outcome is on the plan and has no
     // row — exactly the case that used to print as "Not addressed this shift".
     const buffer = await renderToBuffer(
-      <Form680
+      <TemplatePdf
         note={note}
         resident={resident}
         template={template}
+        ctx={buildPrintContext({
+          note,
+          resident,
+          shiftLabel: '7AM-7PM',
+          orgLine: 'ZZ Demo Agency, LLC'
+        })}
         shiftLabel="7AM-7PM"
         addenda={[]}
         orgLine="ZZ Demo Agency, LLC"

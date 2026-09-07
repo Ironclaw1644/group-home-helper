@@ -3,11 +3,21 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { PDFDocument } from 'pdf-lib';
 import { getSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getActiveTemplate, getAddenda, getNote, getResident, getShifts } from '@/lib/notes/repo';
-import { Form680 } from '@/lib/pdf/Form680';
+import {
+  countServedOnShift,
+  getAddenda,
+  getHomeName,
+  getNote,
+  getResident,
+  getShifts,
+  getTemplateForNote
+} from '@/lib/notes/repo';
+import { TemplatePdf } from '@/lib/pdf/TemplatePdf';
+import { buildPrintContext } from '@/lib/pdf/print-context';
 import { loadSignatureDataUrl } from '@/lib/pdf/assets';
 import { loadPrintIdentity } from '@/lib/branding/print';
 import { logAccess } from '@/lib/audit';
+import type { FormTemplate, Note } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -67,11 +77,40 @@ export async function GET(req: Request) {
 
   // Looked up once for the whole packet — every note in it belongs to the
   // supervisor's own agency, and prints that agency's letterhead.
-  const [template, shifts, identity] = await Promise.all([
-    getActiveTemplate(),
+  const [shifts, identity, placeOfService] = await Promise.all([
     getShifts(homeId),
-    loadPrintIdentity(session.profile.orgId)
+    loadPrintIdentity(session.profile.orgId),
+    getHomeName(homeId)
   ]);
+
+  // Every note in the packet prints the form IT was signed under, not the
+  // agency's current one — a packet spanning a jurisdiction correction must
+  // reproduce each record as it was filed. Looked up once per template id,
+  // because in practice a packet is one form repeated a few hundred times.
+  const templates = new Map<string, FormTemplate>();
+  // Captured before the closure: TypeScript loses the null-narrowing on
+  // `session` across a nested function boundary.
+  const orgId = session.profile.orgId;
+  async function templateFor(note: Note) {
+    const key = note.status === 'signed' ? note.templateId : 'current';
+    const cached = templates.get(key);
+    if (cached) return cached;
+    const resolved = await getTemplateForNote(note, orgId);
+    templates.set(key, resolved);
+    return resolved;
+  }
+
+  // Ohio's group size is per (home, shift, date). A month of notes for a full
+  // house repeats those combinations constantly, so count each one once rather
+  // than issuing a query per note.
+  const groupSizes = new Map<string, number | null>();
+  async function groupSizeFor(shiftId: string, serviceDate: string) {
+    const key = `${shiftId}|${serviceDate}`;
+    if (!groupSizes.has(key)) {
+      groupSizes.set(key, await countServedOnShift(homeId, shiftId, serviceDate));
+    }
+    return groupSizes.get(key) ?? null;
+  }
 
   const merged = await PDFDocument.create();
   let included = 0;
@@ -87,12 +126,26 @@ export async function GET(req: Request) {
     ]);
     if (!resident) continue;
 
+    const shift = shifts.find((s) => s.id === note.shiftId);
+    const template = await templateFor(note);
+
     const buffer = await renderToBuffer(
-      <Form680
+      <TemplatePdf
         note={note}
         resident={resident}
         template={template}
-        shiftLabel={shifts.find((s) => s.id === note.shiftId)?.label ?? ''}
+        ctx={buildPrintContext({
+          note,
+          resident,
+          shift,
+          shiftLabel: shift?.label ?? '',
+          orgLine: identity.orgLine,
+          providerId: identity.providerId,
+          placeOfService,
+          serviceType: template.renderConfig.service_type,
+          groupSize: await groupSizeFor(note.shiftId, note.serviceDate)
+        })}
+        shiftLabel={shift?.label ?? ''}
         addenda={addenda}
         orgLine={identity.orgLine}
         letterhead={identity.letterhead}

@@ -2,7 +2,8 @@ import 'server-only';
 
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '@/lib/outcomes/virginia-library';
+import { personalize } from '@/lib/outcomes/library';
+import type { LibraryOutcome } from '@/lib/types';
 import { seedDemoHistory } from './demo-history';
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/auth/password';
 
@@ -218,6 +219,8 @@ export async function createAgency(input: {
   password: string;
   fullName: string;
   timezone?: string;
+  /** Validated against the installed templates by the sign-up route. */
+  jurisdiction: string;
 }): Promise<ProvisionResult> {
   const pwProblem = passwordProblem(input.password);
   if (pwProblem) return { ok: false, error: pwProblem };
@@ -245,6 +248,7 @@ export async function createAgency(input: {
     .insert({
       name: input.orgName.trim(),
       timezone: input.timezone || 'America/New_York',
+      jurisdiction: input.jurisdiction,
       created_via: 'signup'
     })
     .select('id')
@@ -337,10 +341,30 @@ const DEMO_RESIDENTS = [
 ];
 
 /**
+ * The starter outcome library for an organization's jurisdiction.
+ *
+ * Provisioning runs before anyone is signed in, so it cannot use the
+ * session-scoped resolver in lib/notes/repo.ts. It applies the same precedence
+ * — the org's own template, else a global one for its jurisdiction, else
+ * GENERIC — through the SQL function that defines that rule once.
+ */
+async function libraryForOrg(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  orgId: string
+): Promise<LibraryOutcome[]> {
+  const { data } = await admin.rpc('template_for_org', { p_org_id: orgId });
+  const row = Array.isArray(data) ? data[0] : data;
+  const schema = (row?.schema ?? {}) as { outcome_library?: LibraryOutcome[] };
+  return schema.outcome_library ?? [];
+}
+
+/**
  * Install service plans on the demo residents.
  *
  * Two or three outcomes each, taken from different parts of the library so the
- * demo shows the range rather than the same plan three times.
+ * demo shows the range rather than the same plan three times. Which library
+ * that is depends on the demo org's jurisdiction, exactly as it would for a
+ * paying customer.
  */
 async function seedDemoPlans(
   admin: ReturnType<typeof createSupabaseAdminClient>,
@@ -354,15 +378,23 @@ async function seedDemoPlans(
     pronoun_possessive: string;
   }>
 ): Promise<void> {
-  // Different slices per resident so the three plans do not read identically.
-  const slices = [
-    ['meal_preparation', 'community_outing', 'money'],
-    ['friendships', 'personal_care'],
-    ['health_routine', 'community_outing']
-  ];
+  const library = await libraryForOrg(admin, orgId);
+  if (library.length === 0) return;
+
+  // Different slices per resident so the plans do not read identically.
+  // Built from whatever keys this jurisdiction's library actually has rather
+  // than from a hardcoded list of Virginia's, so a demo in another state still
+  // gets plans instead of three empty residents.
+  const keys = library.map((o) => o.key);
+  const slices = [0, 1, 2].map((offset) =>
+    [0, 1, 2]
+      .map((i) => keys[(offset + i * 2) % keys.length])
+      .filter((k, i, all) => all.indexOf(k) === i)
+      .slice(0, offset === 1 ? 2 : 3)
+  );
 
   for (const [index, resident] of residents.entries()) {
-    const keys = slices[index % slices.length];
+    const chosen = slices[index % slices.length];
     const name = resident.preferred_name?.trim() || resident.first_name;
     const pronouns = {
       subject: resident.pronoun_subject,
@@ -371,8 +403,8 @@ async function seedDemoPlans(
     };
     const fill = (t: string) => personalize(t, name, pronouns);
 
-    for (const [order, key] of keys.entries()) {
-      const template = VIRGINIA_OUTCOME_LIBRARY.find((o) => o.key === key);
+    for (const [order, key] of chosen.entries()) {
+      const template = library.find((o) => o.key === key);
       if (!template) continue;
 
       const { data: outcome } = await admin
@@ -472,6 +504,11 @@ export async function createDemoSandbox(): Promise<
       // sandbox is still unmistakably a sandbox.
       name: 'Riverbend Group Home',
       timezone: 'America/New_York',
+      // Stated rather than left to the column default. The demo is the public
+      // tour and it shows a real, named form; which one it shows should be a
+      // decision in this file, not a side effect of what 0030 happened to
+      // backfill existing rows to.
+      jurisdiction: 'US-VA',
       is_demo: true,
       expires_at: expiresAt,
       created_via: 'demo'

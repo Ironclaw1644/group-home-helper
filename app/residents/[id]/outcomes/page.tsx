@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { requireSupervisor } from '@/lib/auth/session';
 import { getResident } from '@/lib/residents/repo';
 import { listActivities, listOutcomes } from '@/lib/outcomes/repo';
+import { libraryFor } from '@/lib/outcomes/library';
+import { getTemplateForOrg } from '@/lib/notes/repo';
 import { AppShell } from '@/components/app-shell';
 import { OutcomeManager } from '@/components/outcomes/outcome-manager';
 import { LibraryPicker } from '@/components/outcomes/library-picker';
@@ -24,6 +26,9 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
   const outcomes = await listOutcomes(id, true);
   const activities = await listActivities(outcomes.map((o) => o.id));
   const known = displayName(resident);
+
+  // The starter plans this agency's own jurisdiction offers — never another's.
+  const library = libraryFor(await getTemplateForOrg(session.profile.orgId));
 
   return (
     <AppShell session={session}>
@@ -66,9 +71,9 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
         </div>
       </Card>
 
-      {outcomes.length === 0 ? (
+      {outcomes.length === 0 && library.length > 0 ? (
         <div className="mb-4">
-          <LibraryPicker residentId={id} residentName={known} />
+          <LibraryPicker residentId={id} residentName={known} library={library} />
         </div>
       ) : null}
 

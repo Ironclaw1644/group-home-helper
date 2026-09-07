@@ -15,6 +15,7 @@
     "verify:timezone": "tsx --tsconfig scripts/tsconfig.json scripts/verify-timezone.ts",
     "verify:roster-privacy": "tsx --tsconfig scripts/tsconfig.json scripts/verify-roster-privacy.ts",
     "verify:records": "tsx --tsconfig scripts/tsconfig.json scripts/verify-records.tsx",
+    "verify:jurisdictions": "tsx --tsconfig scripts/tsconfig.json scripts/verify-jurisdictions.tsx",
     "verify:schema": "tsx --tsconfig scripts/tsconfig.json scripts/verify-schema.ts",
     "bootstrap:admin": "tsx --tsconfig scripts/tsconfig.json scripts/bootstrap-admin.ts",
     "db:bundle": "tsx --tsconfig scripts/tsconfig.json scripts/bundle-migrations.ts",

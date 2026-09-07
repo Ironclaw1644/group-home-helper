@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
 import { Alert, Button, Card } from '@/components/ui';
-import { VIRGINIA_OUTCOME_LIBRARY } from '@/lib/outcomes/virginia-library';
+import type { LibraryOutcome } from '@/lib/types';
 
 const LENS_LABEL: Record<string, string> = {
   independence: 'Independence',
@@ -13,14 +13,26 @@ const LENS_LABEL: Record<string, string> = {
 };
 
 /**
- * Start a plan from the Virginia-shaped starter library.
+ * Start a plan from the starter library for this agency's own jurisdiction.
  *
- * Framed throughout as a draft to rewrite, not a plan to adopt. Virginia's
+ * Framed throughout as a draft to rewrite, not a plan to adopt. Person-centred
  * guidance is explicit that outcomes come from what is important to the person;
- * a template that goes into a chart unedited is the exact failure the state has
- * been citing providers for.
+ * a template that goes into a chart unedited is the exact failure states cite
+ * providers for.
+ *
+ * The library arrives as a prop, from the server, out of the org's template.
+ * It used to be imported here — which shipped Virginia's vocabulary in every
+ * customer's browser bundle whatever state they were in.
  */
-export function LibraryPicker({ residentId, residentName }: { residentId: string; residentName: string }) {
+export function LibraryPicker({
+  residentId,
+  residentName,
+  library
+}: {
+  residentId: string;
+  residentName: string;
+  library: LibraryOutcome[];
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -67,8 +79,11 @@ export function LibraryPicker({ residentId, residentName }: { residentId: string
   return (
     <Card>
       <h2 className="mb-1 text-sm font-semibold text-brand-navy">Starter outcomes</h2>
+      {/* The library comes from this agency's own jurisdiction's template, so
+          the structure it follows is that state's — naming Virginia here would
+          have been wrong for every other one. */}
       <p className="mb-4 text-xs text-brand-slate">
-        Written to Virginia DBHDS&apos;s formula so the structure is right. <strong>Rewrite every
+        Written to your state&apos;s formula so the structure is right. <strong>Rewrite every
         one in {residentName}&apos;s own words</strong> — a template outcome is not
         person-centered, which is what the state actually checks for.
       </p>
@@ -80,7 +95,7 @@ export function LibraryPicker({ residentId, residentName }: { residentId: string
       ) : null}
 
       <ul className="space-y-2">
-        {VIRGINIA_OUTCOME_LIBRARY.map((o) => (
+        {library.map((o) => (
           <li key={o.key}>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-navy/10 p-3 hover:bg-brand-sand/50">
               <input

@@ -20,7 +20,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { Form680 } from '../lib/pdf/Form680';
+import { TemplatePdf } from '../lib/pdf/TemplatePdf';
+import { buildPrintContext } from '../lib/pdf/print-context';
 import { QuarterlyReport } from '../lib/pdf/QuarterlyReport';
 import type { FormTemplate, Note, Resident } from '../lib/types';
 
@@ -63,6 +64,7 @@ const poisonedTemplate: FormTemplate = {
   version: 1,
   name: 'Daily Progress Note',
   formNumber: '680',
+  jurisdiction: 'US-VA',
   schema: {
     prompts: ['Where did {name} choose to go?', 'How did staff support {name}?'],
     sections: [],
@@ -125,10 +127,16 @@ async function main() {
 
   try {
     const form = await renderToBuffer(
-      <Form680
+      <TemplatePdf
         note={note}
         resident={resident}
         template={poisonedTemplate}
+        ctx={buildPrintContext({
+          note,
+          resident,
+          shiftLabel: '7AM-7PM',
+          orgLine: DEMO_ORG_LINE
+        })}
         shiftLabel="7AM-7PM"
         addenda={[]}
         orgLine={DEMO_ORG_LINE}
@@ -204,7 +212,8 @@ async function main() {
       'app/notes/[id]/pdf/route.tsx',
       'app/residents/[id]/progress/pdf/route.tsx',
       'app/supervisor/export/route.tsx',
-      'lib/pdf/Form680.tsx',
+      'lib/pdf/TemplatePdf.tsx',
+      'lib/pdf/print-context.ts',
       'lib/pdf/QuarterlyReport.tsx',
       'lib/pdf/assets.ts'
     ];

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getSession, orgTimeZoneFor } from '@/lib/auth/session';
-import { getActiveTemplate, getPreviousSignedNarrative } from '@/lib/notes/repo';
+import { getTemplateForOrg, getPreviousSignedNarrative } from '@/lib/notes/repo';
 import { DUPLICATE_WARN_THRESHOLD, narrativeSimilarity } from '@/lib/notes/similarity';
 import { logAccess } from '@/lib/audit';
 import { formatServiceDate, todayInTimeZone } from '@/lib/utils';
@@ -128,7 +128,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-  const template = await getActiveTemplate();
+  const template = await getTemplateForOrg(session.profile.orgId);
 
   const { error } = await supabase
     .from('notes')

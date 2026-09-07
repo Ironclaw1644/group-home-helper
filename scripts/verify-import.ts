@@ -7,9 +7,13 @@
  * them wrong means residents imported under the wrong name or with the wrong
  * date of birth, and notes then filed against that record — so this runs
  * without a database or a network and should stay that way.
+ *
+ * The starter-outcome pronoun checks used to live here. They moved to
+ * verify:jurisdictions when the outcome library moved out of TypeScript and
+ * into the template rows — which is where the libraries now are, and which
+ * covers every jurisdiction rather than only Virginia.
  */
 import { parseCsv, parseRoster } from '../lib/residents/import';
-import { VIRGINIA_OUTCOME_LIBRARY, personalize } from '../lib/outcomes/virginia-library';
 
 let passed = 0;
 let failed = 0;
@@ -112,61 +116,6 @@ check(
   result.errors.length === 1 && result.residents.length === 1,
   `errors=${result.errors.length} residents=${result.residents.length}`
 );
-
-console.log('\nOutcome library reads correctly for every pronoun set');
-
-// Someone whose pronouns are they/them must not get "they feels good". Any
-// present-tense verb straight after {subject} breaks for exactly one of the
-// three sets, which is the one least likely to be caught by eye.
-{
-  const sets = [
-    { subject: 'he', object: 'him', possessive: 'his' },
-    { subject: 'she', object: 'her', possessive: 'her' },
-    { subject: 'they', object: 'them', possessive: 'their' }
-  ];
-
-  // Third-person singular verbs that would follow a subject pronoun.
-  const BAD = /\bthey (feels|wants|likes|looks|chooses|prepares|goes|does|has|is|needs|makes|takes|puts|greets|meets|spends|completes|picks)\b/i;
-
-  let clean = true;
-  const offenders: string[] = [];
-
-  for (const outcome of VIRGINIA_OUTCOME_LIBRARY) {
-    for (const set of sets) {
-      const texts = [
-        personalize(outcome.statement, 'Jordan', set),
-        ...outcome.activities.flatMap((a) => [
-          personalize(a.description, 'Jordan', set),
-          personalize(a.measure, 'Jordan', set),
-          personalize(a.supportInstructions, 'Jordan', set),
-          personalize(a.dailyQuestion, 'Jordan', set)
-        ])
-      ];
-      for (const t of texts) {
-        if (BAD.test(t)) {
-          clean = false;
-          offenders.push(t);
-        }
-      }
-    }
-  }
-
-  check(
-    'no template produces "they <verb>s"',
-    clean,
-    offenders.slice(0, 3).join(' | ')
-  );
-
-  check(
-    'every outcome still has at least one activity',
-    VIRGINIA_OUTCOME_LIBRARY.every((o) => o.activities.length > 0)
-  );
-
-  check(
-    'every activity carries a daily question',
-    VIRGINIA_OUTCOME_LIBRARY.every((o) => o.activities.every((a) => a.dailyQuestion.trim().length > 0))
-  );
-}
 
 console.log(`\n${'='.repeat(50)}`);
 console.log(`${passed} passed, ${failed} failed`);

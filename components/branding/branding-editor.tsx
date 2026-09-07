@@ -382,8 +382,8 @@ export function IdentityFields({
           className={inputClass}
         />
         <p className="mt-1.5 text-xs text-brand-slate">
-          Printed beneath the form number. The form number itself stays — it identifies the
-          Virginia document.
+          Printed beneath your form&apos;s own footer line. That line stays — it identifies the
+          document your state expects.
         </p>
       </div>
     </div>
@@ -461,13 +461,36 @@ export function ResetColorsButton({
 }
 
 /**
- * The top of Form #680 as it will actually print.
+ * The top of the agency's own form as it will actually print.
  *
  * Every field here is one the PDF renderer reads, and nothing here is a
  * constant. Branding is chosen by someone who will not see a real PDF until an
  * auditor is holding one, so this is the only chance to catch a wrong name.
+ *
+ * `form` carries the chosen jurisdiction's title, footer line and identity
+ * labels. It used to be Virginia's, written into the markup — which meant an
+ * Ohio administrator checking their letterhead was shown "Form #680" and could
+ * reasonably conclude that was what they had bought. When no state has been
+ * picked yet the captions are omitted rather than guessed: a blank says
+ * "not chosen", and Virginia's form line would say something false.
  */
-export function FormPreview({ value }: { value: BrandingValues }) {
+export type PreviewForm = {
+  /** The heading, e.g. 'Daily Progress Note'. */
+  title: string;
+  /** The footer line, e.g. 'Daily Progress Notes Form #680'. */
+  formLine: string;
+  /** Identity blanks, e.g. ["Individual's Name:", 'Medicaid:']. */
+  identityLabels: string[];
+};
+
+export function FormPreview({
+  value,
+  form = null
+}: {
+  value: BrandingValues;
+  /** Omitted or null prints the layout with no captions, never Virginia's. */
+  form?: PreviewForm | null;
+}) {
   const { colors } = value;
 
   return (
@@ -498,19 +521,19 @@ export function FormPreview({ value }: { value: BrandingValues }) {
       </div>
 
       <p className="mb-3 text-center text-base font-bold" style={{ color: colors.navy }}>
-        Daily Progress Note
+        {form ? form.title : 'Daily Progress Note'}
       </p>
 
       <div
         className="mb-3 grid grid-cols-2 gap-2 border-y py-2 text-xs"
         style={{ borderColor: `${colors.slate}30`, color: colors.slate }}
       >
-        <span>
-          Individual&apos;s Name: <span style={{ color: colors.navy }}>Alexander Rivera</span>
-        </span>
-        <span>
-          Medicaid: <span style={{ color: colors.navy }}>••••••••</span>
-        </span>
+        {(form?.identityLabels ?? []).slice(0, 2).map((label, i) => (
+          <span key={label}>
+            {label}{' '}
+            <span style={{ color: colors.navy }}>{i === 0 ? 'Alexander Rivera' : '••••••••'}</span>
+          </span>
+        ))}
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: colors.navy }}>
@@ -523,7 +546,7 @@ export function FormPreview({ value }: { value: BrandingValues }) {
         className="mt-4 border-t pt-2 text-[10px]"
         style={{ borderColor: `${colors.slate}30`, color: colors.slate }}
       >
-        <div>Daily Progress Notes Form #680</div>
+        {form ? <div>{form.formLine}</div> : null}
         {value.footerLine ? <div>{value.footerLine}</div> : null}
       </div>
     </div>

@@ -6,7 +6,7 @@ import { fieldKey, isFieldRequired, isFieldVisible } from '@/lib/forms/interpola
 
 /**
  * Maps a template field type to an input. Adding a field type to the template
- * schema means adding a branch here and a matching one in lib/pdf/Form680.tsx.
+ * schema means adding a branch here and a matching one in lib/pdf/TemplatePdf.tsx.
  */
 export function FieldRenderer({
   field,

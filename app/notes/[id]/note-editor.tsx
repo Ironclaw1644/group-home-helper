@@ -434,10 +434,12 @@ export default function NoteEditor({
         </Alert>
       ) : null}
 
-      {/* The five prompt questions, printed exactly as they appear on the form. */}
+      {/* The prompt questions, printed exactly as they appear on the form. */}
       <Card>
+        {/* Named from the template rather than from a literal: an Ohio DSP is
+            not filling in Form #680 and should not be told that they are. */}
         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-slate">
-          Form #680 prompts
+          {template.formNumber ? `Form #${template.formNumber} prompts` : 'Form prompts'}
         </p>
         <ol className="list-decimal space-y-1 pl-5 text-sm text-brand-navy">
           {template.schema.prompts.map((prompt, i) => (

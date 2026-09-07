@@ -1,0 +1,460 @@
+/* eslint-disable */
+/**
+ * FROZEN REFERENCE — the Form #680 renderer exactly as it shipped at 7d06e00,
+ * before the template system existed.
+ *
+ * This file is the Virginia regression bar and nothing imports it except
+ * scripts/verify-jurisdictions.tsx. Do not "fix" it, do not refactor it, do not
+ * let it drift toward the live renderer: the whole point is that it cannot
+ * move. If a change to the real renderer makes this file's output differ, that
+ * is the finding, not a reason to edit this copy.
+ *
+ * Only the four import specifiers were rewritten from '@/lib/*' to relative
+ * paths so it can be loaded from scripts/ without the Next.js path alias.
+ */
+import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import { interpolate } from '../../lib/forms/interpolate';
+import { outcomeStatus } from '../../lib/outcomes/answered';
+import { formatServiceDate } from '../../lib/utils';
+import type { FormTemplate, Note, NoteAddendum, Resident } from '../../lib/types';
+import { displayName, PROGRESS_LEVELS, SUPPORT_LEVELS } from '../../lib/types';
+import type {
+  NoteActivity,
+  NoteOutcome,
+  Outcome,
+  OutcomeActivity
+} from '../../lib/types';
+
+/**
+ * Form #680 — Daily Progress Note.
+ *
+ * This is a deliberate recreation of the paper form in EE/detail.jpg: the same
+ * header, the same five numbered prompts, the same narrative block, and the
+ * same "Daily Progress Notes Form #680" / "Title: ___ Date: ___" footer. An
+ * auditor comparing a printout against the binder should see one form.
+ *
+ * Training examples render through this same component with no watermark and
+ * no distinguishing mark — a stamped-up sample teaches nothing, so trainees
+ * see exactly what their own finished note should look like.
+ */
+
+const styles = StyleSheet.create({
+  page: {
+    paddingTop: 36,
+    // Clears the fixed footer block (form line + Title/Date row).
+    paddingBottom: 76,
+    paddingHorizontal: 42,
+    fontSize: 10,
+    fontFamily: 'Helvetica',
+    color: '#111111',
+    lineHeight: 1.4,
+    display: 'flex',
+    flexDirection: 'column'
+  },
+
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  logo: { width: 54, height: 54, objectFit: 'contain', marginRight: 12 },
+  orgName: { fontSize: 13, fontFamily: 'Helvetica-Bold' },
+  orgLetterhead: { fontSize: 9.5, marginTop: 2 },
+  orgAddress: { fontSize: 8.5, color: '#444444', marginTop: 2 },
+
+  identityRow: { flexDirection: 'row', marginBottom: 14 },
+  identityCell: { flexDirection: 'row', alignItems: 'flex-end' },
+  fieldLabel: { fontSize: 10, fontFamily: 'Helvetica-Bold' },
+  // Underscored blanks reproduce the ruled fields on the paper form.
+  fieldValue: {
+    fontSize: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#111111',
+    paddingHorizontal: 4,
+    paddingBottom: 1
+  },
+
+  title: {
+    fontSize: 13,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'center',
+    marginBottom: 12
+  },
+
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+
+  prompts: { marginBottom: 10 },
+  promptText: { fontSize: 9, lineHeight: 1.5 },
+
+  narrativeBox: {
+    borderWidth: 1,
+    borderColor: '#111111',
+    padding: 10,
+    marginBottom: 16,
+    // Fill the page the way the ruled area does on the paper form, so the
+    // signature line lands just above the footer instead of floating mid-page.
+    flexGrow: 1
+  },
+  narrativeText: { fontSize: 10, lineHeight: 1.65, textAlign: 'justify' },
+
+  outcomeBlock: {
+    marginBottom: 14,
+    paddingBottom: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#c9d2da'
+  },
+  outcomeTitle: { fontSize: 10, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
+  outcomeStatement: { fontSize: 9, lineHeight: 1.5, marginBottom: 3 },
+  outcomeMeta: { fontSize: 8.5, color: '#536779', marginBottom: 4 },
+  outcomeComment: { fontSize: 9, lineHeight: 1.5, marginTop: 4 },
+  activityRow: { flexDirection: 'row', marginBottom: 3 },
+  activityAnswer: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    width: 62
+  },
+  activityText: { fontSize: 9, lineHeight: 1.45, flex: 1 },
+  signatureRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 6 },
+  signatureImage: { width: 150, height: 42, objectFit: 'contain' },
+  signatureLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#111111',
+    width: 200,
+    marginLeft: 4
+  },
+
+  footer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 42,
+    right: 42
+  },
+  footerFormLine: { fontSize: 9, marginBottom: 4 },
+  footerAgencyLine: { fontSize: 8, color: '#444444', marginBottom: 4 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
+
+  addendaHeading: {
+    fontSize: 11,
+    fontFamily: 'Helvetica-Bold',
+    marginTop: 4,
+    marginBottom: 8
+  },
+  addendum: { marginBottom: 12 },
+  addendumMeta: { fontSize: 8, color: '#444444', marginTop: 3 }
+});
+
+function Blank({ value, width }: { value: string; width: number }) {
+  return (
+    <Text style={[styles.fieldValue, { width }]}>{value || ' '}</Text>
+  );
+}
+
+/**
+ * The agency identity block at the top of every page.
+ *
+ * `template.renderConfig.header.org_line` is deliberately NOT consulted here.
+ * The shipped Form #680 template is global (`org_id` null) and carries one
+ * agency's legal name and logo path, so honouring it printed that agency's
+ * letterhead on every other agency's forms — which is the whole bug the
+ * org-scoped props exist to fix. The template describes the *form*; the org
+ * describes *who filed it*, and only the org may say that.
+ */
+function Letterhead({
+  orgLine,
+  letterhead,
+  address,
+  logoSrc
+}: {
+  orgLine: string;
+  letterhead?: string | null;
+  address?: string | null;
+  logoSrc?: string | null;
+}) {
+  return (
+    <View style={styles.headerRow}>
+      {logoSrc ? <Image src={logoSrc} style={styles.logo} /> : null}
+      <View>
+        <Text style={styles.orgName}>{orgLine}</Text>
+        {letterhead ? <Text style={styles.orgLetterhead}>{letterhead}</Text> : null}
+        {address ? <Text style={styles.orgAddress}>{address}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The form line, plus the agency's own footer when it has set one.
+ *
+ * The form number stays whatever the template says. It identifies the Virginia
+ * document a reviewer is holding, so it is not the agency's to overwrite — an
+ * agency footer is added as a second line rather than replacing it.
+ */
+function FormFooter({
+  formLine,
+  footerLine
+}: {
+  formLine: string;
+  footerLine?: string | null;
+}) {
+  return (
+    <>
+      <Text style={styles.footerFormLine}>{formLine}</Text>
+      {footerLine ? <Text style={styles.footerAgencyLine}>{footerLine}</Text> : null}
+    </>
+  );
+}
+
+export type ShippedForm680Props = {
+  note: Note;
+  resident: Resident;
+  template: FormTemplate;
+  shiftLabel: string;
+  addenda: NoteAddendum[];
+  /**
+   * The agency this document belongs to. Always supplied by the caller from
+   * the requesting user's own organization — there is no default, because a
+   * default here is another agency's letterhead on someone's Medicaid record.
+   */
+  orgLine: string;
+  /** Optional second identity line: a division, program, or DBA. */
+  letterhead?: string | null;
+  /** Optional address block under the agency name. */
+  address?: string | null;
+  /** Optional agency footer, printed under the form line rather than over it. */
+  footerLine?: string | null;
+  /** Data URL or absolute path react-pdf can resolve. */
+  logoSrc?: string | null;
+  signatureSrc?: string | null;
+  /** This resident's ISP outcomes and what was documented against them. */
+  outcomes?: Outcome[];
+  noteOutcomes?: NoteOutcome[];
+  activities?: OutcomeActivity[];
+  noteActivities?: NoteActivity[];
+};
+
+export function ShippedForm680({
+  note,
+  resident,
+  template,
+  shiftLabel,
+  addenda,
+  orgLine,
+  letterhead,
+  address,
+  footerLine,
+  logoSrc,
+  signatureSrc,
+  outcomes = [],
+  noteOutcomes = [],
+  activities = [],
+  noteActivities = []
+}: ShippedForm680Props) {
+  // The five printed questions read naturally with the preferred name...
+  const ctx = { name: displayName(resident), pronouns: resident.pronouns };
+  // ...but "Individual's Name" is the identity field on a Medicaid document
+  // and must carry the legal name, whatever the house calls them.
+  const residentName = `${resident.firstName} ${resident.lastName}`;
+  const serviceDate = formatServiceDate(note.serviceDate);
+  const config = template.renderConfig;
+  // The form number identifies the Virginia document and comes from the
+  // template. The agency identity does not — see Letterhead above.
+  const formLine =
+    config.footer?.form_line ?? `Daily Progress Notes Form #${template.formNumber ?? ''}`;
+
+  return (
+    <Document
+      title={`Daily Progress Note — ${residentName} — ${serviceDate}`}
+      author={orgLine}
+      creator={orgLine}
+    >
+      <Page size="LETTER" style={styles.page}>
+        <Letterhead
+          orgLine={orgLine}
+          letterhead={letterhead}
+          address={address}
+          logoSrc={logoSrc}
+        />
+
+        <View style={styles.identityRow}>
+          <View style={[styles.identityCell, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>Individual&apos;s Name: </Text>
+            <Blank value={residentName} width={190} />
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.fieldLabel}>Medicaid: </Text>
+            <Blank value={resident.medicaidId ?? ''} width={120} />
+          </View>
+        </View>
+
+        <Text style={styles.title}>{config.header?.title ?? template.name}</Text>
+
+        <View style={styles.metaRow}>
+          <View style={styles.identityCell}>
+            <Text style={styles.fieldLabel}>Date: </Text>
+            <Blank value={serviceDate} width={110} />
+          </View>
+          <View style={styles.identityCell}>
+            <Text style={styles.fieldLabel}>Shift/Time: </Text>
+            <Blank value={shiftLabel} width={110} />
+          </View>
+        </View>
+
+        {/* The five prompts, run together on one line exactly as printed. */}
+        <View style={styles.prompts}>
+          <Text style={styles.promptText}>
+            {template.schema.prompts
+              .map((p, i) => `${i + 1}. ${interpolate(p, ctx)}`)
+              .join('  ')}
+          </Text>
+        </View>
+
+        <View style={[styles.narrativeBox, { minHeight: config.narrative_min_height ?? 340 }]}>
+          <Text style={styles.narrativeText}>{note.narrative}</Text>
+        </View>
+
+        <View style={styles.signatureRow}>
+          <Text style={styles.fieldLabel}>Staff Signature: </Text>
+          {signatureSrc ? (
+            <Image src={signatureSrc} style={styles.signatureImage} />
+          ) : (
+            <Text style={[styles.fieldValue, { width: 200 }]}>{note.signatureName ?? ' '}</Text>
+          )}
+        </View>
+
+        {signatureSrc && note.signatureName ? (
+          <Text style={{ fontSize: 8, color: '#444444', marginBottom: 6 }}>
+            {note.signatureName}
+          </Text>
+        ) : null}
+
+        <View style={styles.footer} fixed>
+          <FormFooter formLine={formLine} footerLine={footerLine} />
+          <View style={styles.footerRow}>
+            <View style={styles.identityCell}>
+              <Text style={styles.fieldLabel}>Title: </Text>
+              <Blank value={note.signatureTitle ?? ''} width={90} />
+            </View>
+            <View style={styles.identityCell}>
+              <Text style={styles.fieldLabel}>Date: </Text>
+              <Blank value={serviceDate} width={90} />
+            </View>
+          </View>
+        </View>
+      </Page>
+
+      {/* Service-plan documentation on its own page.
+          This is the page a Virginia reviewer actually checks: it puts the
+          outcome statement from the ISP next to what was documented against it,
+          so the comparison they would otherwise do across two documents is
+          already made on one sheet. */}
+      {outcomes.length > 0 ? (
+        <Page size="LETTER" style={styles.page}>
+          <Letterhead
+            orgLine={orgLine}
+            letterhead={letterhead}
+            address={address}
+            logoSrc={logoSrc}
+          />
+
+          <Text style={styles.addendaHeading}>
+            Service Plan Documentation — {residentName}, {serviceDate}, {shiftLabel}
+          </Text>
+
+          {outcomes.map((outcome) => {
+            const entry = noteOutcomes.find((n) => n.outcomeId === outcome.id);
+            const mine = activities.filter((a) => a.outcomeId === outcome.id);
+            const support = SUPPORT_LEVELS.find((s) => s.value === entry?.supportLevel)?.label;
+            const progress = PROGRESS_LEVELS.find((p) => p.value === entry?.progress)?.label;
+
+            // Three states, not two. "Not addressed this shift" is a statement
+            // someone made about this person's service plan; an outcome with no
+            // entry is a gap in the record and has to read as one, exactly like
+            // an unanswered activity below. Printing a blank as a negative
+            // would put an unmade clinical claim on a Medicaid document.
+            const status = {
+              addressed: 'Addressed this shift',
+              not_addressed: 'Not addressed this shift',
+              unanswered: 'Not recorded — no answer documented'
+            }[outcomeStatus(entry)];
+
+            return (
+              <View key={outcome.id} style={styles.outcomeBlock} wrap={false}>
+                <Text style={styles.outcomeTitle}>
+                  {outcome.title} — {status}
+                </Text>
+
+                {outcome.statement ? (
+                  <Text style={styles.outcomeStatement}>{outcome.statement}</Text>
+                ) : null}
+
+                {entry?.addressed === true && (support || progress) ? (
+                  <Text style={styles.outcomeMeta}>
+                    {[support, progress].filter(Boolean).join(' · ')}
+                  </Text>
+                ) : null}
+
+                {mine.map((activity) => {
+                  const answer = noteActivities.find((n) => n.activityId === activity.id);
+                  // An unanswered activity prints as "Not recorded" rather than
+                  // being omitted. A reviewer needs to see the gap, not have it
+                  // hidden by the layout.
+                  const label =
+                    answer?.completed === true
+                      ? 'Yes'
+                      : answer?.completed === false
+                        ? 'No'
+                        : 'Not recorded';
+
+                  return (
+                    <View key={activity.id} style={styles.activityRow}>
+                      <Text style={styles.activityAnswer}>{label}</Text>
+                      <Text style={styles.activityText}>
+                        {activity.dailyQuestion || activity.description}
+                        {answer?.concern ? '  [concern noted]' : ''}
+                        {answer?.comment ? `\n${answer.comment}` : ''}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+                {entry?.comment ? (
+                  <Text style={styles.outcomeComment}>{entry.comment}</Text>
+                ) : null}
+              </View>
+            );
+          })}
+
+          <View style={styles.footer} fixed>
+            <FormFooter formLine={formLine} footerLine={footerLine} />
+          </View>
+        </Page>
+      ) : null}
+
+      {/* Addenda live on their own page so the signed note above stays exactly
+          as it was signed — nothing is reflowed by a later correction. */}
+      {addenda.length > 0 ? (
+        <Page size="LETTER" style={styles.page}>
+          <Letterhead
+            orgLine={orgLine}
+            letterhead={letterhead}
+            address={address}
+            logoSrc={logoSrc}
+          />
+
+          <Text style={styles.addendaHeading}>
+            Addenda — {residentName}, {serviceDate}, {shiftLabel}
+          </Text>
+
+          {addenda.map((a) => (
+            <View key={a.id} style={styles.addendum} wrap={false}>
+              <Text style={styles.narrativeText}>{a.body}</Text>
+              <Text style={styles.addendumMeta}>
+                {a.signatureName} · {a.signatureTitle} · {new Date(a.createdAt).toLocaleString()}
+              </Text>
+            </View>
+          ))}
+
+          <View style={styles.footer} fixed>
+            <FormFooter formLine={formLine} footerLine={footerLine} />
+          </View>
+        </Page>
+      ) : null}
+    </Document>
+  );
+}
