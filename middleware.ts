@@ -112,7 +112,14 @@ export const config = {
   // worker never registers and "Add to Home Screen" produces a shortcut with no
   // offline behaviour. `.apk` matters for the same reason as /download — an
   // unauthenticated phone has to be able to fetch it.
+  //
+  // `demo/` and `.mp4` are here for the same reason and were missed: the four
+  // films on the public page live in public/demo, and every one of them
+  // redirected to /login?next=... for exactly the people they are meant to
+  // convince. The posters are .jpg so they loaded, which made the page look
+  // fine and play nothing — the failure was invisible until somebody pressed
+  // play.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|brand/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk)$).*)'
+    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4)$).*)'
   ]
 };

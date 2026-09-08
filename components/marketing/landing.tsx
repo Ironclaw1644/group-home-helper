@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 import { FlipLogo, FlipMark } from '@/components/brand/mark';
 import { Walkthrough } from './walkthrough';
+import { Films } from './films';
 import { DemoCta } from './demo-cta';
 import { Reveal } from './reveal';
 import './marketing.css';
@@ -419,6 +420,20 @@ function HowItWorks() {
       title="What the screenshots do not show."
       lede="You have just watched the whole product. There is no implementation phase, no configuration project and no week of training, because there is not enough here to need one — so this is the part that does not photograph."
     >
+      {/* Four films of the real product, above the prose.
+          They were shot, cut and committed a day before anything linked to
+          them, so a reader could be told a signed note cannot be edited and
+          had no way to watch one refuse. */}
+      <div className="mb-12">
+        <h3 className="fb-label text-flip-amber">Watch it happen</h3>
+        <p className="mt-2 max-w-[46ch] text-[0.95rem] leading-relaxed text-flip-slate">
+          Four short films, each answering a different question. Nothing in them
+          is a mockup — every one is a recording of the demo you can open
+          yourself.
+        </p>
+        <Films className="mt-6" />
+      </div>
+
       <TimeCompare />
 
       <ol className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-flip-forest/12 bg-flip-forest/10 sm:grid-cols-2">
