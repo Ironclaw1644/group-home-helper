@@ -303,11 +303,27 @@ export async function createAgency(input: {
  * Fictional residents, written to exercise the parts of the app that matter:
  * different pronoun sets, a preferred name that differs from the legal one, and
  * rooms to sort by. None of these people exist.
+ *
+ * Their surnames used to be Sample, Example and Placeholder, which made the
+ * whole sandbox read as an unfinished wireframe rather than as software — and
+ * "Maria Example" was printed across the letterhead in the closing shot of the
+ * demo film, which is the single frame doing the most selling.
+ *
+ * The honest signal that these are not real people is carried by the product,
+ * not by a joke surname: every one of them shows a "Training" badge on the
+ * roster and on the note, the sandbox says so before it opens, the whole
+ * organization expires on its own, and the letterhead above them belongs to a
+ * fictional agency too. Nothing about that changes here.
+ *
+ * Worth knowing if this ever matters again: TemplatePdf renders a training
+ * example with no watermark on purpose, so that a trainee sees exactly the
+ * document they will be signing. On paper the marker is the fictional agency
+ * name, not the resident's.
  */
 const DEMO_RESIDENTS = [
   {
     first_name: 'Alexander',
-    last_name: 'Sample',
+    last_name: 'Brennan',
     preferred_name: 'Alex',
     room: '1A',
     grouping: 'North Hall',
@@ -318,7 +334,7 @@ const DEMO_RESIDENTS = [
   },
   {
     first_name: 'Maria',
-    last_name: 'Example',
+    last_name: 'Delgado',
     preferred_name: null,
     room: '2B',
     grouping: 'North Hall',
@@ -329,7 +345,7 @@ const DEMO_RESIDENTS = [
   },
   {
     first_name: 'Jordan',
-    last_name: 'Placeholder',
+    last_name: 'Whitfield',
     preferred_name: 'JP',
     room: '3',
     grouping: 'South Hall',

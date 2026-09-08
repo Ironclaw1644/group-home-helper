@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { FileDown, Printer, Smartphone, Sparkles, Target, Upload } from 'lucide-react';
-import { requireSession } from '@/lib/auth/session';
+import { getSession } from '@/lib/auth/session';
 import { AppShell } from '@/components/app-shell';
 import { Card, PageHeader } from '@/components/ui';
 
@@ -70,10 +70,18 @@ const SECTIONS = [
 ];
 
 export default async function HelpPage() {
-  const session = await requireSession();
+  // Readable signed out.
+  //
+  // This page answers the questions a prospect asks before they will hand over
+  // an email address — how a note prints, how an audit batch comes out, what
+  // the assistant does — and it sat behind the login wall, so the only people
+  // who could read it were the ones who had already decided. A signed-in user
+  // still gets the app shell around it; a stranger gets the same words with a
+  // way back to the front page.
+  const session = await getSession();
 
-  return (
-    <AppShell session={session}>
+  const body = (
+    <>
       <PageHeader title="Help" subtitle="How to do the things people ask about most" />
 
       <div className="space-y-4">
@@ -111,6 +119,36 @@ export default async function HelpPage() {
           Install it on a phone →
         </Link>
       </Card>
-    </AppShell>
+    </>
+  );
+
+  if (session) return <AppShell session={session}>{body}</AppShell>;
+
+  // Signed out: the same words, on the page's own background, with a way back
+  // to the front and a way into the demo. No app chrome, because there is no
+  // app to navigate yet.
+  return (
+    <main className="mx-auto min-h-screen w-full max-w-2xl bg-brand-sand px-4 py-8">
+      <Link
+        href="/"
+        className="mb-6 inline-block text-sm font-semibold text-brand-teal hover:underline"
+      >
+        ← FlipBrief
+      </Link>
+      {body}
+      <Card className="mt-4">
+        <h2 className="mb-2 text-sm font-semibold text-brand-navy">Try it yourself</h2>
+        <p className="text-sm text-brand-slate">
+          Everything above is doable right now in a sandbox with three fictional
+          residents. It asks you for nothing.
+        </p>
+        <Link
+          href="/"
+          className="mt-3 inline-block text-sm font-semibold text-brand-teal hover:underline"
+        >
+          Open the demo →
+        </Link>
+      </Card>
+    </main>
   );
 }

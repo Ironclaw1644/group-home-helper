@@ -29,6 +29,13 @@ const PUBLIC_PATHS = [
   '/forgot',
   '/reset',
   '/download',
+  // Help answers the questions somebody asks BEFORE they will give you an
+  // email address — how a note prints, how an audit batch comes out, what the
+  // assistant does with a resident's name. Behind the login wall the only
+  // people who could read it were the ones who had already decided. It holds
+  // no agency data: it is instructions, and it reads the session only to
+  // decide whether to draw the app shell around them.
+  '/help',
   '/api/app-version',
   '/join',
   '/signup',
