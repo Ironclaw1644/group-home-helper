@@ -132,7 +132,22 @@ const branding: Flow = {
       await page.waitForTimeout(900);
       mark('colours');
       await tap(palette);
-      await page.waitForTimeout(2200);
+      await page.waitForTimeout(700);
+      // Then put the sample on screen, because the sample is the point.
+      // Tapping a preset scrolled the swatch list into view and left the thing
+      // that actually repainted above the top of the phone — the film showed
+      // five colour chips changing rather than a letterhead changing, which is
+      // the same fact told in the least persuasive way available.
+      // scrollIntoViewIfNeeded refuses to move an element it already counts as
+      // partly visible, which left the sample clipped off the top while the
+      // swatch list filled the frame. Centre it explicitly.
+      const sample = page.locator('[aria-label="How your colours look"]').first();
+      if (await sample.count()) {
+        await sample.evaluate((el) =>
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        );
+        await page.waitForTimeout(3400);
+      }
     }
 
     // And the same document again. Logo on it, repainted in their colours,

@@ -390,6 +390,50 @@ export function IdentityFields({
   );
 }
 
+/**
+ * What the five colours actually do, shown where they are chosen.
+ *
+ * The full form preview lives at the top of the settings screen, which on a
+ * phone is a long way from the swatches — far enough that choosing a palette
+ * meant picking a colour, scrolling up to see what it did, and scrolling back.
+ * Nobody does that twice, so nobody tries the second palette.
+ *
+ * This is deliberately not a second copy of the letterhead. It is the smallest
+ * thing that shows each of the five roles doing its job: the agency name in the
+ * heading colour, a rule in the highlight, a chip on the soft background, the
+ * page behind it, and a line of secondary text. Every label in COLOR_FIELDS has
+ * something visible here answering to it.
+ */
+function ColorSample({ colors, name }: { colors: Record<string, string>; name: string }) {
+  const navy = colors.navy ?? '#000000';
+  const teal = colors.teal ?? navy;
+  const aqua = colors.aqua ?? teal;
+  const sand = colors.sand ?? '#ffffff';
+  const slate = colors.slate ?? navy;
+
+  return (
+    <div
+      className="mb-4 rounded-xl border border-brand-navy/10 p-4 transition-colors"
+      style={{ background: sand }}
+      aria-label="How your colours look"
+    >
+      <p className="text-sm font-semibold leading-tight" style={{ color: navy }}>
+        {name?.trim() || 'Your agency name'}
+      </p>
+      <div className="mt-2 h-1 w-16 rounded-full" style={{ background: teal }} />
+      <p className="mt-2 text-xs" style={{ color: slate }}>
+        Daily Progress Note — the way it prints.
+      </p>
+      <span
+        className="mt-3 inline-block rounded-lg px-2.5 py-1 text-[0.7rem] font-semibold"
+        style={{ background: aqua, color: navy }}
+      >
+        Signed
+      </span>
+    </div>
+  );
+}
+
 export function ColorFields({
   value,
   onChange
@@ -399,6 +443,8 @@ export function ColorFields({
 }) {
   return (
     <>
+      <ColorSample colors={value.colors} name={value.legalName || value.orgName} />
+
       <div className="mb-4 flex flex-wrap gap-2">
         {COLOR_PRESETS.map((preset) => (
           <button
