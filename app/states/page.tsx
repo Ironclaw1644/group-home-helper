@@ -123,11 +123,22 @@ function Group({
 
       <ul className="mt-5 grid gap-2 sm:grid-cols-2">
         {items.map((j) => (
-          <li
-            key={j.code}
-            className="rounded-xl bg-flip-card p-4 ring-1 ring-flip-forest/10"
-          >
-            <p className="text-[0.98rem] font-semibold text-flip-forest">{j.name}</p>
+          <li key={j.code}>
+            <Link
+              href={`/states/${j.code}`}
+              className="block rounded-xl bg-flip-card p-4 ring-1 ring-flip-forest/10 transition hover:ring-flip-moss/40"
+            >
+              <p className="flex items-center justify-between gap-2 text-[0.98rem] font-semibold text-flip-forest">
+                {j.name}
+                {/* A page icon, because "show me the form" is the question
+                    every one of these prompts and a list with no way through
+                    to the document is just a longer tick list. */}
+                <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 fill-none stroke-flip-moss" strokeWidth="1.8" aria-hidden>
+                  <path d="M14 3v5h5" />
+                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                  <path d="M9 13h6M9 17h4" />
+                </svg>
+              </p>
             {/* The citation is the whole point for a cited state, so it is
                 shown in full rather than truncated — a rule number a reader
                 cannot finish reading is no better than none. */}
@@ -135,7 +146,8 @@ function Group({
               {j.citation
                 ? j.citation.replace(/^Layout built to satisfy /, '').replace(/ Not a state-issued form\.$/, '')
                 : j.formLine}
-            </p>
+              </p>
+            </Link>
           </li>
         ))}
       </ul>

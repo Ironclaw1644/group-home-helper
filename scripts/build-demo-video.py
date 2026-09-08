@@ -149,7 +149,14 @@ def render_card(lines, path: str, sub: str = "") -> None:
     # first version pinned the badge near the top and left the bottom two
     # thirds of a 1920px frame empty, which reads as a mistake rather than as
     # space.
+    # Look in the flow's own directory first, then the note film's, which is
+    # where the mark was first rasterised. Flow films write to
+    # tmp/demo-video/<flow>/ and never had a copy, and render_card skips the
+    # badge silently when the file is absent — so three of the four films had
+    # an unbranded title card and nothing said so.
     mark_path = os.path.join(SRC, "mark.png")
+    if not os.path.exists(mark_path):
+        mark_path = os.path.join(ROOT, "tmp", "demo-video", "mark.png")
     block = 380 + len(lines) * 108 + (len(sub.split("\n")) * 62 + 30 if sub else 0)
     y = (H - block) // 2 + 380
     if os.path.exists(mark_path):
