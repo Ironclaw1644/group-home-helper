@@ -115,3 +115,58 @@ export function jurisdictionOption(
   if (!code) return null;
   return options.find((j) => j.code === code) ?? null;
 }
+
+/**
+ * What each state gets, for the public "your state" page.
+ *
+ * Separate from listJurisdictions because it answers a different question. That
+ * one feeds a picker and needs a code and a label. This one is for a stranger
+ * deciding whether we understand their state, so it carries the thing they
+ * would actually check: whether the printed page cites their documentation rule
+ * and, if so, which one.
+ *
+ * Reads the templates directly with the admin client for the same reason
+ * listJurisdictions does — anonymous visitors stay out of the database, and
+ * what comes back is template metadata with no organization, resident or note
+ * data in it.
+ */
+export type JurisdictionDetail = {
+  code: string;
+  name: string;
+  formTitle: string;
+  formLine: string;
+  /** The rule cited at the foot of the page, or null when none is claimed. */
+  citation: string | null;
+};
+
+export const listJurisdictionDetails = cache(async (): Promise<JurisdictionDetail[]> => {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('form_templates')
+    .select('jurisdiction, jurisdiction_name, render_config')
+    .is('org_id', null)
+    .eq('active', true);
+
+  if (error || !data) {
+    console.error('[jurisdictions] could not list details:', error?.message);
+    return [];
+  }
+
+  const rows = data
+    .filter((r) => r.jurisdiction !== 'GENERIC')
+    .map((r) => {
+      const cfg = (r.render_config ?? {}) as {
+        header?: { title?: string };
+        footer?: { form_line?: string; legal_citation?: string };
+      };
+      return {
+        code: r.jurisdiction as string,
+        name: (r.jurisdiction_name as string | null) ?? (r.jurisdiction as string),
+        formTitle: cfg.header?.title ?? 'Daily Progress Note',
+        formLine: cfg.footer?.form_line ?? 'Daily Progress Note',
+        citation: cfg.footer?.legal_citation ?? null
+      };
+    });
+
+  return rows.sort((a, b) => a.name.localeCompare(b.name));
+});

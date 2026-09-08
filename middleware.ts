@@ -36,6 +36,11 @@ const PUBLIC_PATHS = [
   // no agency data: it is instructions, and it reads the session only to
   // decide whether to draw the app shell around them.
   '/help',
+  // "What we print in your state" — a public page listing every jurisdiction
+  // and which rule, if any, its printed page cites. It is the answer to the
+  // first question a provider asks, and it holds only template metadata: no
+  // organization, resident or note data appears on it.
+  '/states',
   '/api/app-version',
   '/join',
   '/signup',

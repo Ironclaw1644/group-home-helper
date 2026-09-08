@@ -102,7 +102,7 @@ const NOT_YET = [
   // longer the limitation, but there is still a real one underneath it and it
   // belongs on this list rather than being quietly deleted: almost no state
   // issues a form at all, and for half of them nobody here has read the rule.
-  ['No state issues a form we can print.', 'We used to say Virginia did, and printed “Form #680” on every Virginia note. There is no such form — 680 is a section of 12VAC35-105, the regulation that requires progress notes at all. We had read a citation as a form number. What states publish is a rule about what a note must contain, leaving the layout to you; for twenty-three of them we have read that rule and cite it at the foot of the page, Virginia included. For the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets a form number, because nobody has one to give — and an invented one is the thing that actually hurts you in an audit.'],
+  ['No state issues a form we can print.', 'We used to say Virginia did, and printed “Form #680” on every Virginia note. There is no such form — 680 is a section of 12VAC35-105, the regulation that requires progress notes at all. We had read a citation as a form number. What states publish is a rule about what a note must contain, leaving the layout to you; for twenty-three of them we have read that rule and cite it at the foot of the page, Virginia included. For the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets a form number, because nobody has one to give — and an invented one is the thing that actually hurts you in an audit. There is a page listing every state and exactly which of the three yours is.'],
   ['No scheduling, no time clock, no family portal.', 'Small agencies do not buy those from the same place they buy documentation, and we would build them badly.'],
   ['And no customers yet.', 'FlipBrief has not been sold to anyone. You would be the first. There is no logo wall on this page because there is nothing honest to put on it.']
 ];
@@ -265,6 +265,11 @@ function SiteHeader() {
         <nav className="hidden items-center gap-7 md:flex">
           {[
             ['How it works', '#how'],
+            // A real page, not an anchor. "Which states do you cover" is the
+            // first question a provider asks and the answer is genuinely
+            // interesting, so it gets somewhere to live rather than a line
+            // buried in the limitations list.
+            ['Your state', '/states'],
             ['What an auditor sees', '#auditor'],
             ['Price', '#price'],
             ['Questions', '#questions']
