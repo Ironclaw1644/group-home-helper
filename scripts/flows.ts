@@ -56,11 +56,11 @@ const branding: Flow = {
   subtitle: 'Set up in a minute',
   captions: {
     settings: 'Make it yours.',
-    preview: 'The preview is the real document.',
+    before: 'This is the form today.',
     identity: 'Your legal name, your address,\nyour provider number.',
     logo: 'Upload your logo.',
     colours: 'Pick your colours.',
-    applied: 'It is on the form before you save.',
+    after: 'Same form. Your agency.',
     saved: 'Saved. Every note prints this way now.'
   },
   async run({ page, tap, mark, inject, type }) {
@@ -72,27 +72,31 @@ const branding: Flow = {
     // The preview sits at the top of the agency section now, so a viewer sees
     // the document change as the fields change. That is the whole point of the
     // screen and it is why this film exists.
+    // The letterhead BEFORE anything is changed, held long enough to register.
+    // The film's whole argument is a before and an after of the same document,
+    // and an after only means something if the viewer saw the before.
     await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
-    await page.waitForTimeout(1400);
-    mark('preview');
+    await page.waitForTimeout(2600);
+    mark('before');
+    await page.waitForTimeout(1600);
 
     const legal = page.locator('#b-legal');
     if (await legal.count()) {
       await legal.scrollIntoViewIfNeeded();
       await legal.fill('');
-      await type(legal, 'Riverbend Residential Services, LLC');
+      await type(legal, 'Harborlight Care Services, LLC');
       await page.waitForTimeout(500);
     }
     const letterhead = page.locator('#b-letterhead');
     if (await letterhead.count()) {
       await letterhead.fill('');
-      await type(letterhead, 'Residential Support Program');
+      await type(letterhead, 'Supported Living Program');
       await page.waitForTimeout(500);
     }
     const address = page.locator('#b-address');
     if (await address.count()) {
       await address.fill('');
-      await type(address, '19 Example Road, Richmond, VA 23220');
+      await type(address, '44 Beacon Street, Norfolk, VA 23510');
     }
     const footer = page.locator('#b-footer');
     if (await footer.count()) {
@@ -131,12 +135,12 @@ const branding: Flow = {
       await page.waitForTimeout(2200);
     }
 
-    // Back to the preview, which is the point: the logo and the colours are on
-    // the printed form before anything has been saved.
+    // And the same document again. Logo on it, repainted in their colours,
+    // before anything has been saved.
     await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(3000);
+    mark('after');
     await page.waitForTimeout(2600);
-    mark('applied');
-    await page.waitForTimeout(2000);
 
     const save = page.getByRole('button', { name: /^save/i }).first();
     if (await save.count()) {
