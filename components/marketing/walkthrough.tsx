@@ -80,7 +80,10 @@ const FRAMES: Frame[] = [
     src: '/walkthrough/05-prints-on-your-letterhead.png',
     step: 'It prints on your letterhead',
     caption:
-      'Your legal name, your logo, your address — on Form #680, ready for the binder or the licensing specialist.',
+      // Not "on Form #680". Virginia publishes no such form; 680 is a section
+      // of 12VAC35-105. The caption is about whose letterhead it carries,
+      // which was always the real point of this frame.
+      'Your legal name, your logo, your address — ready for the binder or the licensing specialist.',
     kind: 'document',
     width: 900,
     height: 1164

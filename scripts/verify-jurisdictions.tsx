@@ -143,6 +143,7 @@ const MIGRATIONS = path.join(process.cwd(), 'supabase', 'migrations');
  */
 async function loadSeededTemplates(): Promise<{
   templates: (FormTemplate & { orgId: string | null })[];
+  allTemplates: (FormTemplate & { orgId: string | null })[];
   db: PGlite;
 }> {
   const db = new PGlite({ extensions: { pgcrypto } });
@@ -154,14 +155,16 @@ async function loadSeededTemplates(): Promise<{
     await db.exec(readFileSync(path.join(MIGRATIONS, file), 'utf8'));
   }
 
+  // Active rows drive almost every check. The retired ones are loaded too,
+  // because a template is retired rather than deleted when a state is
+  // corrected — the notes signed under it still print from it, so it is still
+  // a thing the renderer has to handle.
   const res = await db.query<Record<string, unknown>>(
-    `select id, org_id, key, version, name, form_number, jurisdiction, schema, render_config
-       from ghh.form_templates where active order by jurisdiction, key`
+    `select id, org_id, key, version, name, form_number, jurisdiction, schema, render_config, active
+       from ghh.form_templates order by jurisdiction, key, version`
   );
 
-  return {
-    db,
-    templates: res.rows.map((r) => ({
+  const shape = (r: Record<string, unknown>) => ({
       id: String(r.id),
       orgId: (r.org_id as string | null) ?? null,
       key: String(r.key),
@@ -170,8 +173,13 @@ async function loadSeededTemplates(): Promise<{
       formNumber: (r.form_number as string | null) ?? null,
       jurisdiction: String(r.jurisdiction),
       schema: r.schema as FormTemplate['schema'],
-      renderConfig: (r.render_config ?? {}) as RenderConfig
-    }))
+    renderConfig: (r.render_config ?? {}) as RenderConfig
+  });
+
+  return {
+    db,
+    templates: res.rows.filter((r) => r.active).map(shape),
+    allTemplates: res.rows.map(shape)
   };
 }
 
@@ -179,7 +187,7 @@ async function loadSeededTemplates(): Promise<{
 
 async function main() {
   const dir = mkdtempSync(path.join(tmpdir(), 'ghh-juris-'));
-  const { templates, db } = await loadSeededTemplates();
+  const { templates, allTemplates, db } = await loadSeededTemplates();
 
   const virginia = templates.find((t) => t.jurisdiction === 'US-VA');
   const ohio = templates.find((t) => t.jurisdiction === 'US-OH');
@@ -197,8 +205,14 @@ async function main() {
 
     check('the Virginia template is still seeded', Boolean(virginia));
     check(
-      'it is still Form #680',
-      virginia?.formNumber === '680' && virginia?.key === 'daily_progress_note_680'
+      'it claims no form number, because Virginia issues none',
+      virginia?.formNumber === null,
+      `form_number is ${JSON.stringify(virginia?.formNumber)} — see 0040`
+    );
+    check(
+      'it cites the regulation instead',
+      /12VAC35-105-680/i.test(virginia?.renderConfig.footer?.legal_citation ?? ''),
+      'the Virginia footer should cite 12VAC35-105-680'
     );
     check(
       '0030 backfilled it to US-VA rather than leaving it stateless',
@@ -216,10 +230,27 @@ async function main() {
     );
 
     if (virginia) {
-      const before = await renderToBuffer(
-        <ShippedForm680 {...SHARED} template={virginia} />
+      // Compared against the RETIRED v1 row, not the active one.
+      //
+      // What this bar has always proved is that the template engine reproduces
+      // the original hard-coded Form #680 layout exactly — that turning the
+      // form into data changed nothing about the document. That is still worth
+      // proving and v1 is still that document: 0040 retired it rather than
+      // editing it, precisely so the notes signed under it keep printing what
+      // they printed.
+      //
+      // The active row deliberately differs now. Virginia never published a
+      // Form #680 — 680 is a section of 12VAC35-105 — so v2 drops the invented
+      // number and cites the regulation. Comparing v2 here would have asserted
+      // the false claim as the baseline, which is how it survived a year.
+      const shipped = allTemplates.find(
+        (t: FormTemplate) => t.key === 'daily_progress_note_680' && t.version === 1
       );
-      const after = await renderWith(virginia);
+      check('the original Form #680 row is retained for notes signed under it', Boolean(shipped));
+      if (!shipped) throw new Error('the v1 Virginia row is missing');
+
+      const before = await renderToBuffer(<ShippedForm680 {...SHARED} template={shipped} />);
+      const after = await renderWith(shipped);
 
       const beforeText = extractText(before, dir, 'va-before.pdf');
       const afterText = extractText(after, dir, 'va-after.pdf');
@@ -558,7 +589,7 @@ async function main() {
         const hasNumber = /\d+[a-z]?[.:\-]\d+|\d{4,}/i.test(citation);
         const hasAuthority =
           /Code|Rule|Regulation|Statute|Stat\.|Admin|Policy|Manual|Memorandum|§/i.test(citation) ||
-          /\b[A-Z]{3,8}\b|(?:[A-Z]\.){2,}/.test(citation);
+          /\b[A-Z]{3,8}\b|(?:[A-Z]\.){2,}|\d[A-Z]{2,}\d/.test(citation);
         check(
           `${label}: its citation names a real rule`,
           hasNumber && hasAuthority,
@@ -697,7 +728,11 @@ async function main() {
           select r.org_id, t.id, t.version, r.id, h.id, s.id, current_date, p.id,
                  'A note filed while the agency was set to Virginia.'
             from r, h, s, p, ghh.form_templates t
-           where t.jurisdiction = 'US-VA'
+           -- Scoped to the active row: correcting Virginia in 0040 retired the
+           -- old template rather than deleting it, so jurisdiction alone now
+           -- matches two and the insert fails outright. A jurisdiction has one
+           -- ACTIVE template; retired ones exist for notes already signed.
+           where t.jurisdiction = 'US-VA' and t.active
           returning id, org_id, author_id
         )
         select n.id as note_id, n.org_id, n.author_id from n
