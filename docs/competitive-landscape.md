@@ -133,3 +133,22 @@ Blunt. These are the ones that end calls.
 Reported honestly, per brief: **Therap Services, CareHub by DSPlife, SETWorks, MITC, Foothold Technology, ContinuumCloud/Welligent, Sandata, iCareManager, Sereniq, MedSys** publish no price. **CareHub is the only one that explains why**, arguing a published ladder "either overcharges the first or undercharges the second" and committing to same-day quotes with no discovery call ([pricing](https://carehub.mydsplife.com/pricing)) — which is a materially better answer than silence, and blunts FlipBrief's transparency advantage.
 
 **Vendors excluded as out-of-market:** Lumary and Brevity (Australian NDIS, not US Medicaid HCBS); dspworkplace (different "DSP" — not disability services). **"DSPeasy" could not be found and is presumed not to exist.**
+
+---
+
+## Addendum — 2026-09-09: a vendor the sweep missed
+
+**APDHQ** (`apdhq.com`) — Florida-specific compliance and documentation software for APD
+iBudget providers. Its own description: *"compliance and documentation software for Florida
+APD iBudget providers — consumer and staff records, an AI documentation partner for your
+session notes and reports, and built-in e-sign. Survey-ready, without the spreadsheets."*
+
+Found incidentally while searching for Florida's official APD forms library — it ranks for
+that query because it publishes an "APD Forms & Required Documents" index of its own.
+
+Why it matters more than its size suggests: it is the closest competitor found so far to
+what FlipBrief actually is. Not a waiver-operations platform, not an enterprise EHR — a
+documentation tool with AI note drafting, e-signature and a state-specific form index,
+sold to exactly the provider FlipBrief targets, in a state we cite. Pricing not yet
+checked. It belongs in the comparison table above once someone reads its pricing and
+feature pages properly.
