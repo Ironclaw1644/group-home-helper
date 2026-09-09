@@ -195,7 +195,29 @@ async function main() {
 
   mark('draft');
   await tap(page, page.getByRole('button', { name: /write from my entries/i }));
-  await page.getByText('Saved', { exact: true }).waitFor({ timeout: 60_000 });
+
+  // Wait for the draft to be ON SCREEN, not for the page to say "Saved".
+  //
+  // This waited on the text "Saved", which is the autosave indicator -- and
+  // autosave had already run for all the taps above, so "Saved" was on screen
+  // before the button was ever pressed. The wait resolved instantly, the film
+  // cut away 1.6s later, and the cut that shipped shows the button pressed,
+  // the spinner turning, and then "0 characters - 120 minimum" straight
+  // through to the signature. The one thing the film exists to show -- the
+  // draft writing itself -- is the one thing it never shows.
+  //
+  // Waiting on a condition that is already true is not waiting. The condition
+  // has to be the thing itself: text in the box, and the button back from
+  // "Writing…" so the film cannot cut mid-generation either.
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll('textarea')).some(
+        (t) => /describe the shift/i.test(t.placeholder ?? '') && t.value.trim().length > 0
+      ),
+    undefined,
+    { timeout: 120_000 }
+  );
+  await page.getByRole('button', { name: /write from my entries/i }).waitFor({ timeout: 120_000 });
   await page.waitForTimeout(1600);
 
   mark('narrative');

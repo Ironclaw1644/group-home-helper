@@ -39,18 +39,22 @@ type Film = {
   length: string;
 };
 
+// `length` is typed in rather than read off the file, so it has to be updated
+// when a film is recut. Check it against `ffprobe public/demo/flipbrief-*.mp4`
+// after a rebuild — the note film ran 0:57 here for a while after it became
+// 1:04.
 const FILMS: Film[] = [
   {
     key: 'demo',
     title: 'A shift note, start to finish',
     question: 'Will my staff actually use it?',
-    length: '0:57'
+    length: '1:04'
   },
   {
     key: 'roster',
     title: 'Moving your roster over',
     question: 'Do I have to retype everyone?',
-    length: '0:43'
+    length: '0:41'
   },
   {
     key: 'branding',
@@ -62,7 +66,7 @@ const FILMS: Film[] = [
     key: 'oversight',
     title: 'What an auditor sees',
     question: 'Could someone change a signed note?',
-    length: '0:20'
+    length: '0:21'
   }
 ];
 

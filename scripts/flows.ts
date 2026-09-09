@@ -119,7 +119,12 @@ const branding: Flow = {
         page.waitForEvent('filechooser', { timeout: 20_000 }),
         tap(upload)
       ]);
-      await chooser.setFiles(path.join(process.cwd(), 'tmp', 'demo-video', 'agency-logo.png'));
+      // The committed sample logo, not a file under tmp/. It used to point at
+      // tmp/demo-video/agency-logo.png, which is scratch space the build
+      // clears — so the letterhead film could be shot once and never again
+      // without somebody knowing to put a PNG back by hand. It is the same
+      // image the public page already ships.
+      await chooser.setFiles(path.join(process.cwd(), 'public', 'demo', 'example-agency-logo.png'));
       await page.waitForTimeout(3200);
     }
 
