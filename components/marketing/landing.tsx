@@ -117,7 +117,7 @@ const NOT_YET = [
 const FAQ = [
   {
     q: 'How much work is one note, really?',
-    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus about fifteen seconds while the draft is written — timed on the live site three times at thirteen, thirteen and twenty-nine seconds, the slow one being the first note after a quiet spell. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Nobody writes a sentence unless they want to change one, and that is the part that takes ten minutes on paper. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
+    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Then we timed it rather than guessing: three runs on the live site, one tap per second, from the roster to signed and locked. A note with one goal worked came to nineteen taps and thirty-one, thirty-three and forty-six seconds. Ten to twenty-four of those seconds were the draft being written — the slow one is the first note after a quiet spell — and a real person taps faster than once a second. What we cannot tell you is how long the same note takes on paper. We have never timed one and have not found anybody who has, so a comparison here would be a number we invented, and the ones you see quoted elsewhere usually are. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
   },
   {
     q: 'Does resident information go to an AI company?',
@@ -364,7 +364,31 @@ function Hero() {
             </span>
           </h1>
 
+          {/* The time is here, and it is measured.
+
+              The headline above deliberately carries no number, and the reason
+              written there is exact: it once said "Forty seconds", which
+              nobody had timed. That objection was right, and it is the reason
+              this sentence waited for scripts/time-a-note.ts rather than being
+              written first and checked later.
+
+              Timed three times on the live site, one tap per second, from
+              tapping the resident on the roster to the note being signed and
+              locked: 31s, 33s and 46s. The slow one was the first note after a
+              quiet spell, when the draft took 24s instead of 10. One tap per
+              second is slower than the demo capture's own pacing and far
+              slower than a DSP who has done it a hundred times, so "under a
+              minute" is a number a real person should beat, not one they have
+              to live up to.
+
+              It goes in the sentence rather than the headline because the
+              headline argument still holds: a number in the largest type on
+              the page is a number somebody will time you against on their
+              worst day. */}
           <p className="mt-5 max-w-[42ch] text-[1.04rem] leading-[1.55] text-flip-slate sm:text-[1.15rem]">
+            <strong className="font-semibold text-flip-forest">
+              A signed note in under a minute.
+            </strong>{' '}
             Your staff tap what happened, the draft writes itself, and they sign on their phone. It
             prints on your letterhead. Once signed, nobody can change it — including us.
           </p>
