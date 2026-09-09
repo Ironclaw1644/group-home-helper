@@ -117,7 +117,7 @@ const NOT_YET = [
 const FAQ = [
   {
     q: 'How much work is one note, really?',
-    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Then we timed it rather than guessing: three runs on the live site, one tap per second, from the roster to signed and locked. A note with one goal worked came to nineteen taps and thirty-one, thirty-three and forty-six seconds. Ten to twenty-four of those seconds were the draft being written — the slow one is the first note after a quiet spell — and a real person taps faster than once a second. What we cannot tell you is how long the same note takes on paper. We have never timed one and have not found anybody who has, so a comparison here would be a number we invented, and the ones you see quoted elsewhere usually are. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
+    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Then we timed it rather than guessing: three runs on the live site, one tap per second, from the roster to signed and locked. A note with one goal worked came to nineteen taps and thirty-one, thirty-three and forty-six seconds. Ten to twenty-four of those seconds were the draft being written — the slow one is the first note after a quiet spell — and a real person taps faster than once a second. The half hour we quote is not ours and we have not timed it: it is what a provider running homes today told us their own notes take. Treat that as one person telling you about their week rather than as a study — we looked for a study and there is not one, and the per-note figures quoted elsewhere in this market are usually invented. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
   },
   {
     q: 'Does resident information go to an AI company?',
@@ -384,10 +384,20 @@ function Hero() {
               It goes in the sentence rather than the headline because the
               headline argument still holds: a number in the largest type on
               the page is a number somebody will time you against on their
-              worst day. */}
+              worst day.
+
+              The half hour is a different kind of number and is not ours. It
+              is what a provider running homes today told us their own notes
+              take. We have not timed a paper note and have not found anybody
+              who has — the documentation-burden research is real but
+              qualitative, with no per-note minutes in it — so this is one
+              person's experience, said as such in the FAQ. That is the same
+              split the tap count uses: the claim here, the provenance where
+              precision belongs. If it ever needs defending, it needs a second
+              provider saying it, not a rounder number. */}
           <p className="mt-5 max-w-[42ch] text-[1.04rem] leading-[1.55] text-flip-slate sm:text-[1.15rem]">
             <strong className="font-semibold text-flip-forest">
-              A signed note in under a minute.
+              A signed note in under a minute, not half an hour.
             </strong>{' '}
             Your staff tap what happened, the draft writes itself, and they sign on their phone. It
             prints on your letterhead. Once signed, nobody can change it — including us.
