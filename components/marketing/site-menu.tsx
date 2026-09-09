@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { cn } from '@/lib/utils';
 
 /**
  * Everywhere a visitor is allowed to go, in one dropdown.
@@ -88,7 +89,10 @@ export function SiteMenu() {
         Menu
         <svg
           viewBox="0 0 24 24"
-          className={`h-3.5 w-3.5 fill-none stroke-current transition-transform ${open ? 'rotate-180' : ''}`}
+          className={cn(
+            'h-3.5 w-3.5 fill-none stroke-current transition-transform duration-150 ease-out motion-reduce:transition-none',
+            open && 'rotate-180'
+          )}
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -98,20 +102,44 @@ export function SiteMenu() {
         </svg>
       </button>
 
-      {open ? (
-        <div
-          id="site-menu"
-          role="menu"
-          // Right-aligned so it cannot run off the screen edge on a phone, and
-          // capped in height because the list is longer than a short viewport
-          // in landscape.
-          className="absolute right-0 z-50 mt-2 max-h-[75vh] w-[17.5rem] overflow-y-auto rounded-2xl border border-flip-forest/12 bg-flip-paper p-2 shadow-xl shadow-flip-forest/10"
-        >
-          <Group title="On this page" entries={SECTIONS} onNavigate={() => setOpen(false)} />
-          <Group title="Pages" entries={PAGES} onNavigate={() => setOpen(false)} bordered />
-          <Group title="Your account" entries={ACCOUNT} onNavigate={() => setOpen(false)} bordered />
-        </div>
-      ) : null}
+      {/*
+        Kept mounted and animated rather than mounted on open, because a panel
+        that only exists while it is open cannot be seen leaving — it would fade
+        in and then vanish, which reads worse than no animation at all.
+        `visibility` is in the transition list on purpose: it is not
+        interpolatable, so it flips at the END of the outgoing transition, which
+        is what lets the panel fade out before it stops being there.
+
+        `inert` is what makes keeping it mounted safe. Without it every link in
+        here stays in the tab order while the menu is shut, so a keyboard user
+        tabbing off the Menu button would walk through ten invisible links.
+      */}
+      <div
+        id="site-menu"
+        role="menu"
+        inert={!open}
+        aria-hidden={!open}
+        // Right-aligned so it cannot run off the screen edge on a phone, and
+        // capped in height because the list is longer than a short viewport in
+        // landscape. Origin at the top right so it grows out of the button
+        // rather than arriving from nowhere.
+        className={cn(
+          'absolute right-0 z-50 mt-2 max-h-[75vh] w-[17.5rem] origin-top-right overflow-y-auto',
+          'rounded-2xl border border-flip-forest/12 bg-flip-paper p-2 shadow-xl shadow-flip-forest/10',
+          'transition-[opacity,transform,visibility] duration-150 ease-out',
+          // The rest of the site already hides its motion under this; a menu
+          // that ignores it would be the only thing on the page that moves for
+          // somebody who asked for none.
+          'motion-reduce:transition-none',
+          open
+            ? 'visible translate-y-0 scale-100 opacity-100'
+            : 'invisible -translate-y-1 scale-[0.97] opacity-0'
+        )}
+      >
+        <Group title="On this page" entries={SECTIONS} onNavigate={() => setOpen(false)} />
+        <Group title="Pages" entries={PAGES} onNavigate={() => setOpen(false)} bordered />
+        <Group title="Your account" entries={ACCOUNT} onNavigate={() => setOpen(false)} bordered />
+      </div>
     </div>
   );
 }
