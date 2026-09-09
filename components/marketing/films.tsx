@@ -48,7 +48,7 @@ const FILMS: Film[] = [
     key: 'demo',
     title: 'A shift note, start to finish',
     question: 'Will my staff actually use it?',
-    length: '1:04'
+    length: '1:00'
   },
   {
     key: 'roster',

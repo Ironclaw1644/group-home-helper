@@ -35,9 +35,11 @@ export const revalidate = 3600;
 export default async function StatesPage() {
   const all = await listJurisdictionDetails();
 
-  // West Virginia is the only state in the country that publishes a form a
-  // provider fills in for progress notes, so it gets its own group of one
-  // rather than being lost among the cited.
+  // West Virginia is the only state of the fifty-one that REQUIRES its own
+  // form, so it gets a group of one rather than being lost among the cited.
+  // Not the only one that publishes a form: Texas publishes 4119, 4118, 4117
+  // and 2124, and tells providers they may use those or anything else that
+  // meets the requirements. This comment said otherwise, and so did the page.
   const reproduced = all.filter((j) => j.code === 'US-WV');
   const cited = all.filter((j) => j.citation && j.code !== 'US-WV');
   const plain = all.filter((j) => !j.citation && j.code !== 'US-WV');
@@ -57,16 +59,31 @@ export default async function StatesPage() {
         What we print in your state.
       </h1>
 
+      {/*
+        This said "almost no state publishes a progress-note form", and the
+        group below it said "1 state publishes an actual form". Two of the
+        fifty-one do. Texas publishes Form 4119 for residential support, and
+        our own research file has recorded that in `publishes: form` since the
+        day it was written — the copy was simply never reconciled with it.
+
+        The line that actually separates West Virginia is not that it publishes
+        a form. It is that West Virginia makes you use it.
+      */}
       <p className="mt-4 max-w-[54ch] text-[1.02rem] leading-relaxed text-flip-slate">
-        Almost no state publishes a progress-note form. Most publish a rule about
-        what a note has to contain and leave the page to you — so the useful
-        question is not whether we “support” your state, it is whether the
-        document we print cites the rule you are actually held to.
+        Two states publish a form for this, and only one of them makes you use
+        it. The other forty-nine publish a rule about what a note has to
+        contain and leave the page to you — so the useful question is not
+        whether we “support” your state, it is whether the document we print
+        cites the rule you are actually held to.
       </p>
 
       <Group
-        title={`${reproduced.length} state publishes an actual form`}
-        lede="We reproduce it, and say which revision."
+        title={
+          reproduced.length === 1
+            ? 'One state requires its own form'
+            : `${reproduced.length} states require their own form`
+        }
+        lede="West Virginia’s provider manual says documentation must be completed on a Direct-Support Service Log (WV-BMS-IDD-7). We reproduce it, and say which revision. Texas publishes forms too — Form 4119 for residential support among them — but tells providers they may document any way that meets the requirements, so Texas gets its rule at the foot of the page instead."
         items={reproduced}
         tone="best"
       />

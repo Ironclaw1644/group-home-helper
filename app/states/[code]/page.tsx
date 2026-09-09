@@ -73,10 +73,23 @@ export default async function StateFormPage({ params }: Params) {
         {state.name}
       </h1>
 
+      {/*
+        The West Virginia paragraph claimed it was the only state in the
+        country publishing a progress-note form a provider fills in. It is not:
+        Texas publishes Form 4119 for residential support, and our own research
+        file has recorded that as `publishes: form` all along. What is true,
+        and checked at both sources today, is that West Virginia is the only
+        one of the fifty-one that REQUIRES its form -- "documentation must be
+        completed on a Direct-Support Service Log (WV-BMS-IDD-7)" -- where
+        Texas says a provider may use its form "or another form created for a
+        similarly intended purpose".
+      */}
       {state.code === 'US-WV' ? (
         <p className="mt-4 text-[1rem] leading-relaxed text-flip-slate">
-          West Virginia is the only state in the country that publishes a
-          progress-note form a provider fills in. This reproduces it, and the
+          West Virginia’s provider manual says documentation must be completed
+          on a Direct-Support Service Log (WV-BMS-IDD-7). Of the fifty-one
+          jurisdictions we checked it is the only one that requires a named
+          form rather than leaving the page to you. This reproduces it, and the
           four questions below are the state’s own words.{' '}
           <span className="text-flip-forest">
             Their form is used when something out of the ordinary happens; we

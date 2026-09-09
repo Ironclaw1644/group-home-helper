@@ -98,12 +98,18 @@ const TRUST = [
 const NOT_YET = [
   ['No eMAR.', 'Medication administration stays wherever you keep it today. If your staff open Therap every shift for the MAR, they will still open it.'],
   ['No incident reporting yet.', 'The note asks whether there was an incident and records the answer. Filing the report with your state is still yours to do.'],
-  // This used to read "One form: Virginia's DBHDS #680 — if your state
-  // documents on a different form, this is not built for you yet." That is no
-  // longer the limitation, but there is still a real one underneath it and it
-  // belongs on this list rather than being quietly deleted: almost no state
-  // issues a form at all, and for half of them nobody here has read the rule.
-  ['No state issues a form we can print.', 'We used to say Virginia did, and printed “Form #680” on every Virginia note. There is no such form — 680 is a section of 12VAC35-105, the regulation that requires progress notes at all. We had read a citation as a form number. What states publish is a rule about what a note must contain, leaving the layout to you; for twenty-three of them we have read that rule and cite it at the foot of the page, Virginia included. For the rest the note is complete and defensible but claims nothing about your regulations. Nobody gets a form number, because nobody has one to give — and an invented one is the thing that actually hurts you in an audit. There is a page listing every state and exactly which of the three yours is.'],
+  // This read "No state issues a form we can print... nobody gets a form
+  // number, because nobody has one to give". Both sentences were false by the
+  // time anybody read them. West Virginia issues WV-BMS-IDD-7 and we have
+  // reproduced it since 0041, and Texas issues Form 4119 for residential
+  // support — which our own research file has recorded as `publishes: form`
+  // from the day it was written. The count was stale too: twenty-three had
+  // become twenty-six.
+  //
+  // No number is quoted here now. A count typed into prose goes stale the next
+  // time somebody reads a rule, and /states computes the three groups from the
+  // database, so that is where the number belongs.
+  ['Only one state’s form is built.', 'West Virginia requires documentation on a Direct-Support Service Log (WV-BMS-IDD-7) and we reproduce it. Texas publishes Form 4119 for residential support and we do not — a Texas note cites the Texas rule instead. Those two are the only states of the fifty-one that publish a form at all; everywhere else a state publishes a rule about what a note must contain and leaves the layout to you. Where we have read that rule we cite it at the foot of the page, and where we have not, the note is complete and defensible but claims nothing about your regulations. We used to say Virginia issued “Form #680” and printed that on every Virginia note. There is no such form — 680 is a section of 12VAC35-105, the regulation that requires progress notes at all. We had read a citation as a form number, and an invented one is the thing that actually hurts you in an audit. There is a page listing every state and exactly which of the three yours is.'],
   ['No scheduling, no time clock, no family portal.', 'Small agencies do not buy those from the same place they buy documentation, and we would build them badly.'],
   ['And no customers yet.', 'FlipBrief has not been sold to anyone. You would be the first. There is no logo wall on this page because there is nothing honest to put on it.']
 ];
@@ -111,7 +117,7 @@ const NOT_YET = [
 const FAQ = [
   {
     q: 'How much work is one note, really?',
-    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus about fifteen seconds while the draft is written. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Nobody writes a sentence unless they want to change one, and that is the part that takes ten minutes on paper. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
+    a: 'Somebody counted, on a phone, on the demo anyone can open: one resident, one shift, two service-plan goals, from the roster to a signed note. Twenty-seven taps, twenty-eight if you open the PDF, plus about fifteen seconds while the draft is written — timed on the live site three times at thirteen, thirteen and twenty-nine seconds, the slow one being the first note after a quiet spell. Two service-plan goals account for ten of those taps — a shift with no plan work in it is closer to seventeen. None of them is typing. Nobody writes a sentence unless they want to change one, and that is the part that takes ten minutes on paper. Your first week will be slower while people learn where things are, and a shift with an incident in it will always take longer, because it should. Count it yourself on the demo; if we are wrong we would rather you found out before you paid.'
   },
   {
     q: 'Does resident information go to an AI company?',
