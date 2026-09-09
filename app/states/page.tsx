@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { listJurisdictionDetails } from '@/lib/jurisdictions';
+import { SiteMenu } from '@/components/marketing/site-menu';
 
 /**
  * What your state gets — public, and deliberately unflattering where it should
@@ -43,12 +44,14 @@ export default async function StatesPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl bg-flip-paper px-5 py-10">
-      <Link
-        href="/"
-        className="text-sm font-semibold text-flip-moss hover:underline"
-      >
-        ← FlipBrief
-      </Link>
+      {/* This page carried a back link and nothing else, so the only way on
+          from it was backwards. The menu is the one the landing header has. */}
+      <div className="flex items-center justify-between gap-4">
+        <Link href="/" className="text-sm font-semibold text-flip-moss hover:underline">
+          ← FlipBrief
+        </Link>
+        <SiteMenu />
+      </div>
 
       <h1 className="fb-display mt-6 text-[2.1rem] font-medium leading-[1.05] text-flip-forest sm:text-[2.8rem]">
         What we print in your state.

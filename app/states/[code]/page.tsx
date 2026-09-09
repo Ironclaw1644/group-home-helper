@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { FormPreview } from '@/components/branding/branding-editor';
 import { DEFAULT_BRAND } from '@/lib/branding/theme';
 import { listJurisdictions, listJurisdictionDetails } from '@/lib/jurisdictions';
+import { SiteMenu } from '@/components/marketing/site-menu';
 
 /**
  * The form one state actually prints, before anybody signs up.
@@ -61,9 +62,12 @@ export default async function StateFormPage({ params }: Params) {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl bg-flip-paper px-5 py-10">
-      <Link href="/states" className="text-sm font-semibold text-flip-moss hover:underline">
-        ← All states
-      </Link>
+      <div className="flex items-center justify-between gap-4">
+        <Link href="/states" className="text-sm font-semibold text-flip-moss hover:underline">
+          ← All states
+        </Link>
+        <SiteMenu />
+      </div>
 
       <h1 className="fb-display mt-6 text-[2rem] font-medium leading-[1.05] text-flip-forest sm:text-[2.5rem]">
         {state.name}

@@ -5,6 +5,7 @@ import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 import { FlipLogo, FlipMark } from '@/components/brand/mark';
 import { Walkthrough } from './walkthrough';
 import { Films } from './films';
+import { SiteMenu } from './site-menu';
 import { DemoCta } from './demo-cta';
 import { Reveal } from './reveal';
 import './marketing.css';
@@ -284,12 +285,18 @@ function SiteHeader() {
           ))}
         </nav>
 
-        <Link
-          href="/login"
-          className="inline-flex min-h-[44px] items-center rounded-lg border border-flip-forest/25 px-4 text-[0.86rem] font-semibold text-flip-forest transition hover:border-flip-forest hover:bg-flip-forest hover:text-flip-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flip-forest"
-        >
-          Sign in
-        </Link>
+        <div className="flex items-center gap-2">
+          <SiteMenu />
+          <Link
+            href="/login"
+            // Hidden on a phone: the menu already carries Sign in, and two
+            // outlined buttons of the same weight next to each other on a
+            // 390px header is where the logo starts getting squeezed.
+            className="hidden min-h-[44px] items-center rounded-lg border border-flip-forest/25 px-4 text-[0.86rem] font-semibold text-flip-forest transition hover:border-flip-forest hover:bg-flip-forest hover:text-flip-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flip-forest sm:inline-flex"
+          >
+            Sign in
+          </Link>
+        </div>
       </Shell>
     </header>
   );
