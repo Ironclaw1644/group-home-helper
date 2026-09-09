@@ -17,7 +17,7 @@
 --
 -- So the rows below come in two tiers, and the tier is visible on the page.
 --
--- TIER 1 — 20 state(s) whose citation was independently verified.
+-- TIER 1 — 24 state(s) whose citation was independently verified.
 --   scripts/verify-citations.py fetched the state's own code site, confirmed
 --   the rule number appears there, and confirmed a verbatim quotation from
 --   the rule appears there too. The footer cites the rule and says plainly
@@ -28,6 +28,8 @@
 --            https://humanservices.arkansas.gov/wp-content/uploads/171108_DDSACS_II.doc
 --     US-CA  California             Cal. Code Regs. tit. 17, § 56026
 --            https://www.dds.ca.gov/wp-content/uploads/2025/06/FinalRegulationText.pdf
+--     US-FL  Florida                Fla. Admin. Code R. 59G-13.070, incorporating the DD iBudget Waiver Services Coverage and Limitations Handbook (May 2023)
+--            https://www.flrules.org/gateway/readRefFile.asp?filename=iBudget%20Handbook%20with%20ADT%20Redesign%20working%20file%20changes%20post%20workshop%20v3%20CLEAN%20Final_revised%206.12.23.pdf&refId=15361
 --     US-GA  Georgia                DBHDD Provider Manual for Community Developmental Disability Providers, FY2027 Q1, Part I.E (Individual Record) — progress notes and event notes
 --            https://dbhdd.org/files/Provider-Manual-DD.pdf
 --     US-HI  Hawaii                 Hawaiʻi 1915(c) HCBS Medicaid Waiver for Individuals with Intellectual and Developmental Disabilities, Waiver Provider Standards Manual § 3.10.A (Documentation Requirements for All Claims) and § 3.7.D (Maintenance of Participant Records)
@@ -38,8 +40,12 @@
 --            https://www.in.gov/fssa/ddars/files/460-IAC-6.PDF
 --     US-KY  Kentucky               907 KAR 12:010, Section 4(15)(g)(2)(a)
 --            https://apps.legislature.ky.gov/law/kar/titles/907/012/010/
+--     US-LA  Louisiana              Louisiana Medicaid Residential Options Waiver Provider Manual, Chapter 38, Section 38.8 (Record Keeping)
+--            https://ldh.la.gov/assets/medicaid/RFP_Documents/HCBS/PL_Exhibit31_ResidentialOptionsWaiverProviderManual.pdf
 --     US-MA  Massachusetts          115 CMR 4.00 (specifically 4.04(2)(a) Progress Notes; 4.03(2) General Requirements)
 --            https://www.sec.state.ma.us/reg_pub/pdf/100/115004.pdf
+--     US-ME  Maine                  MaineCare Benefits Manual, 10-144 C.M.R. ch. 101, Ch. II § 21.09 (Member Records)
+--            https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/c2s021-2022-087%20%28ACK%29.docx
 --     US-MO  Missouri               13 CSR 70-3.030(2)(A)
 --            https://www.sos.mo.gov/cmsimages/adrules/csr/current/13csr/13c70-3.pdf
 --     US-MS  Mississippi            Miss. Admin. Code Title 23, Part 208, Rule 5.10
@@ -62,8 +68,10 @@
 --            https://ddsn.sc.gov/sites/ddsn/files/PublicDocuments/Finance%20and%20Audit%20Resources/Residential%20Habilitation%20Standards%20-%20Revised%20(061820).pdf
 --     US-TX  Texas                  Texas HHSC, Home and Community-based Services (HCS) Program Billing Requirements, Sections 3810 (General Requirements), 3820 (Written Service Log and Written Summary Log), 3850 (Example Forms) and 4560 (Residential Support Subcomponent)
 --            https://fhb.hhs.texas.gov/sites/default/files/documents/hcs-billing-requirements.pdf
+--     US-WY  Wyoming                Wyoming Medicaid Rules, Chapter 45, Section 8 (Documentation Standards)
+--            https://health.wyo.gov/wp-content/uploads/2019/12/HCF-Medicaid-Chapter-45-DD-Waiver-Provider-Standards-Certification-and-Standards.pdf
 --
--- TIER 2 — 28 state(s) shipping with no citation at all.
+-- TIER 2 — 24 state(s) shipping with no citation at all.
 --   Either no rule was found, or what was found could not be verified against
 --   the state's own site. These print exactly what the GENERIC template
 --   prints: a complete, defensible progress note that names no state and
@@ -215,7 +223,7 @@ where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
 -- US-DC District of Columbia (tier 2)
---   no citation: page contains none of the rule numbers 1909.2
+--   no citation: DCMR 29-1909 may well enumerate note content -- the recorded elements are specific and note-shaped -- but dcregs.dc.gov serves the section as an index of rulemaking notices whose text sits behind an ASP.NET postback, so no fetchable primary source has been found. Not verified either way.
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -244,20 +252,28 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-FL Florida (tier 2)
---   no citation: only 0/32 of the quoted phrases appear on the cited page
+-- US-FL Florida (tier 1)
+--   Fla. Admin. Code R. 59G-13.070, incorporating the DD iBudget Waiver Services Coverage and Limitations Handbook (May 2023) — https://www.flrules.org/gateway/readRefFile.asp?filename=iBudget%20Handbook%20with%20ADT%20Redesign%20working%20file%20changes%20post%20workshop%20v3%20CLEAN%20Final_revised%206.12.23.pdf&refId=15361
+--   effective 2023-05
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000210'::uuid, null, 'daily_progress_note_fl', 1,
+  '00000000-0000-0000-0000-000000000310'::uuid, null, 'daily_progress_note_fl_v2', 2,
   'Daily Progress Note', null, 'US-FL', 'Florida',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Fla. Admin. Code R. 59G-13.070, incorporating the DD iBudget Waiver Services Coverage and Limitations Handbook (May 2023). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
+update ghh.form_templates set
+  render_config = '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Fla. Admin. Code R. 59G-13.070, incorporating the DD iBudget Waiver Services Coverage and Limitations Handbook (May 2023). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb,
+  updated_at = now()
+ where id = '00000000-0000-0000-0000-000000000310'::uuid;
+update ghh.form_templates set
+  active = (id = '00000000-0000-0000-0000-000000000310'::uuid), updated_at = now()
+ where org_id is null and jurisdiction = 'US-FL';
 
 -- US-GA Georgia (tier 1)
 --   DBHDD Provider Manual for Community Developmental Disability Providers, FY2027 Q1, Part I.E (Individual Record) — progress notes and event notes — https://dbhdd.org/files/Provider-Manual-DD.pdf
@@ -329,7 +345,7 @@ update ghh.form_templates set
  where org_id is null and jurisdiction = 'US-IA';
 
 -- US-ID Idaho (tier 2)
---   no citation: page contains none of the rule numbers 16.03.21.301.04
+--   no citation: IDAPA 16.03.21.301 is titled Organization Record Requirements and 301.04 is Participant Records -- what the file must hold, not what a note must say. Four of its five items are guardian contacts, health information, signed rights notifications and the plan of service; only 301.04.a touches service documentation. Same shape as Wisconsin, which was blocked for specifying record contents rather than note contents, so it is blocked on the same ground. The earlier failure was recorded as a rule-number mismatch, which was true but not the reason it does not ship.
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -419,20 +435,28 @@ update ghh.form_templates set
   active = (id = '00000000-0000-0000-0000-000000000318'::uuid), updated_at = now()
  where org_id is null and jurisdiction = 'US-KY';
 
--- US-LA Louisiana (tier 2)
---   no citation: not a state-run domain: www.lamedicaid.com
+-- US-LA Louisiana (tier 1)
+--   Louisiana Medicaid Residential Options Waiver Provider Manual, Chapter 38, Section 38.8 (Record Keeping) — https://ldh.la.gov/assets/medicaid/RFP_Documents/HCBS/PL_Exhibit31_ResidentialOptionsWaiverProviderManual.pdf
+--   effective 2011-12
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000219'::uuid, null, 'daily_progress_note_la', 1,
+  '00000000-0000-0000-0000-000000000319'::uuid, null, 'daily_progress_note_la_v2', 2,
   'Daily Progress Note', null, 'US-LA', 'Louisiana',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Louisiana Medicaid Residential Options Waiver Provider Manual, Chapter 38, Section 38.8 (Record Keeping). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
+update ghh.form_templates set
+  render_config = '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Louisiana Medicaid Residential Options Waiver Provider Manual, Chapter 38, Section 38.8 (Record Keeping). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb,
+  updated_at = now()
+ where id = '00000000-0000-0000-0000-000000000319'::uuid;
+update ghh.form_templates set
+  active = (id = '00000000-0000-0000-0000-000000000319'::uuid), updated_at = now()
+ where org_id is null and jurisdiction = 'US-LA';
 
 -- US-MA Massachusetts (tier 1)
 --   115 CMR 4.00 (specifically 4.04(2)(a) Progress Notes; 4.03(2) General Requirements) — https://www.sec.state.ma.us/reg_pub/pdf/100/115004.pdf
@@ -471,20 +495,28 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-ME Maine (tier 2)
---   no citation: page contains none of the rule numbers 10-144, 21.09
+-- US-ME Maine (tier 1)
+--   MaineCare Benefits Manual, 10-144 C.M.R. ch. 101, Ch. II § 21.09 (Member Records) — https://www.maine.gov/sos/sites/maine.gov.sos/files/inline-files/c2s021-2022-087%20%28ACK%29.docx
+--   effective 2022
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000222'::uuid, null, 'daily_progress_note_me', 1,
+  '00000000-0000-0000-0000-000000000322'::uuid, null, 'daily_progress_note_me_v2', 2,
   'Daily Progress Note', null, 'US-ME', 'Maine',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy MaineCare Benefits Manual, 10-144 C.M.R. ch. 101, Ch. II § 21.09 (Member Records). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
+update ghh.form_templates set
+  render_config = '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy MaineCare Benefits Manual, 10-144 C.M.R. ch. 101, Ch. II § 21.09 (Member Records). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb,
+  updated_at = now()
+ where id = '00000000-0000-0000-0000-000000000322'::uuid;
+update ghh.form_templates set
+  active = (id = '00000000-0000-0000-0000-000000000322'::uuid), updated_at = now()
+ where org_id is null and jurisdiction = 'US-ME';
 
 -- US-MI Michigan (tier 2)
 --   no citation: researcher wrote that this rule does not describe note content: 'NOT enumerate per-shift progress note content'
@@ -562,7 +594,7 @@ update ghh.form_templates set
  where org_id is null and jurisdiction = 'US-MS';
 
 -- US-MT Montana (tier 2)
---   no citation: citation names no rule number to check: "Montana Developmental Disabilities Program Services Manual, 'Documentation' section (DPHHS, Behavioral Health and Developmental Disabilities Division)"
+--   no citation: The DDP Program Services Manual does carry a Documentation section that says what an entry must contain, and it is published on dphhs.mt.gov -- but the manual disclaims being the rule: 'Provider manuals are to assist providers in billing Medicaid; they do not contain all Medicaid rules and regulations' and 'Rule citations in the text are a reference tool'. It names ARM 37.34.101 through 37.34.3005 as the actual rules. This is the mirror image of Florida, where the rule incorporates the handbook by reference and so makes it binding. Citing a document that says it is not the regulation would be the overclaim the footer exists to avoid.
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
@@ -947,17 +979,25 @@ from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
 
--- US-WY Wyoming (tier 2)
---   no citation: citation names no rule number to check: 'Wyoming Medicaid Rules, Chapter 45, Section 8 (Documentation Standards); see also Chapter 45, Section 7 (Provider Recordkeeping and Data Collection)'
+-- US-WY Wyoming (tier 1)
+--   Wyoming Medicaid Rules, Chapter 45, Section 8 (Documentation Standards) — https://health.wyo.gov/wp-content/uploads/2019/12/HCF-Medicaid-Chapter-45-DD-Waiver-Provider-Standards-Certification-and-Standards.pdf
+--   effective 2019-12
 insert into ghh.form_templates (
   id, org_id, key, version, name, form_number, jurisdiction,
   jurisdiction_name, schema, render_config
 )
 select
-  '00000000-0000-0000-0000-000000000248'::uuid, null, 'daily_progress_note_wy', 1,
+  '00000000-0000-0000-0000-000000000349'::uuid, null, 'daily_progress_note_wy_v2', 2,
   'Daily Progress Note', null, 'US-WY', 'Wyoming',
   g.schema,
-  '{"page": {"size": "LETTER", "margin": 42}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note"}, "narrative_min_height": 340}'::jsonb
+  '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Wyoming Medicaid Rules, Chapter 45, Section 8 (Documentation Standards). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb
 from ghh.form_templates g
 where g.key = 'daily_progress_note_generic' and g.org_id is null
 on conflict (id) do nothing;
+update ghh.form_templates set
+  render_config = '{"page": {"size": "LETTER", "margin": 42, "padding_bottom": 100}, "header": {"title": "Daily Progress Note"}, "footer": {"form_line": "Daily Progress Note", "legal_citation": "Layout built to satisfy Wyoming Medicaid Rules, Chapter 45, Section 8 (Documentation Standards). Not a state-issued form."}, "narrative_min_height": 340}'::jsonb,
+  updated_at = now()
+ where id = '00000000-0000-0000-0000-000000000349'::uuid;
+update ghh.form_templates set
+  active = (id = '00000000-0000-0000-0000-000000000349'::uuid), updated_at = now()
+ where org_id is null and jurisdiction = 'US-WY';

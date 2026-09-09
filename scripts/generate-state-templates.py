@@ -3,8 +3,13 @@
 
 Run after verify-citations.py has stripped everything it could not prove:
 
-  python3 scripts/verify-citations.py /tmp/states-all.json --write
-  python3 scripts/generate-state-templates.py /tmp/states-all.json
+  python3 scripts/verify-citations.py data/state-documentation-rules.json --write
+  python3 scripts/generate-state-templates.py data/state-documentation-rules.json
+
+data/state-documentation-rules.json is the researched rule for all fifty states
+and DC, and it is the only copy. It lived in /tmp for the first eleven
+migrations, which meant a reboot would have taken the input to this generator
+and every citation's provenance with it.
 
 WHY THIS IS A GENERATOR AND NOT FORTY-NINE HAND-WRITTEN MIGRATIONS
 
@@ -61,6 +66,54 @@ PADDING_WITH_CITATION = 100
 # into a paragraph and stops looking like a form.
 HEADING_MAX = 48
 
+# States whose template is written by hand in its own migration, and which this
+# generator must therefore not emit a row for. Two rows on one jurisdiction
+# would leave which-one-wins to migration order.
+#
+#   US-OH  0032 — OAC 5123-9-30(E) mapped element by element, 482 lines
+#   US-VA  0040 — the rule it always was, after a form number that never existed
+#   US-WV  0041 — the only real progress-note form in the country
+#
+# They stay in the data file even though nothing is generated from them, so that
+# verify-citations.py still checks them. Keeping them out of the file would put
+# the three highest-stakes claims in the product permanently beyond the reach of
+# the verifier -- which is the precise gap that let Virginia ship a fabricated
+# form number through eleven migrations.
+HAND_AUTHORED = {"US-OH", "US-VA", "US-WV"}
+
+# Which UUID a state's generated rows get, frozen per state.
+#
+# These used to be handed out by position -- enumerate(states) -- which makes a
+# template's identity depend on which OTHER states happen to be in the list.
+# Moving West Virginia to a hand-authored migration removed it from the list,
+# every state after it shifted up one, and Wyoming landed on the id of West
+# Virginia's retired v2 row. The insert is "on conflict do nothing", so it did
+# nothing; the update that follows then deactivated Wyoming's v1. Wyoming
+# vanished from the picker entirely, and the migration reported success.
+#
+# It is worth being precise about why this is worse than a missing state. A
+# signed note is pinned to the id of the template it was signed under, and
+# getTemplateById does not filter on active -- that is what stops a note
+# reprinting with a citation nobody had read on the day it was signed. An id
+# that can migrate between states is therefore an id that can print Wyoming's
+# regulator at the foot of a West Virginia record.
+#
+# So identity is nailed down here and never computed. The numbers reproduce
+# every row already live; Wyoming is 49 rather than its natural 48 because 48
+# is where West Virginia's retired row still sits. Adding a state means adding
+# a line with the next free number, and an unlisted state stops the generator
+# rather than guessing.
+SLOTS = {
+    "US-AK": 1, "US-AL": 2, "US-AR": 3, "US-AZ": 4, "US-CA": 5, "US-CO": 6,
+    "US-CT": 7, "US-DC": 8, "US-DE": 9, "US-FL": 10, "US-GA": 11, "US-HI": 12,
+    "US-IA": 13, "US-ID": 14, "US-IL": 15, "US-IN": 16, "US-KS": 17, "US-KY": 18,
+    "US-LA": 19, "US-MA": 20, "US-MD": 21, "US-ME": 22, "US-MI": 23, "US-MN": 24,
+    "US-MO": 25, "US-MS": 26, "US-MT": 27, "US-NC": 28, "US-ND": 29, "US-NE": 30,
+    "US-NH": 31, "US-NJ": 32, "US-NM": 33, "US-NV": 34, "US-NY": 35, "US-OK": 36,
+    "US-OR": 37, "US-PA": 38, "US-RI": 39, "US-SC": 40, "US-SD": 41, "US-TN": 42,
+    "US-TX": 43, "US-UT": 44, "US-VT": 45, "US-WA": 46, "US-WI": 47, "US-WY": 49,
+}
+
 
 def sql_str(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
@@ -105,12 +158,8 @@ def render_config(state: dict) -> dict:
 def main() -> None:
     states = json.load(open(sys.argv[1]))
 
-    # West Virginia is hand-authored in 0041 from the state's own document —
-    # the only real form in the country. Generating a row for it too would put
-    # two v2 templates on one jurisdiction and leave which-one-wins to
-    # migration order.
     states = sorted(
-        (s for s in states if s["code"] != "US-WV"), key=lambda s: s["code"]
+        (s for s in states if s["code"] not in HAND_AUTHORED), key=lambda s: s["code"]
     )
 
     tier1 = [s for s in states if s.get("confidence") == "primary-source-read" and s.get("citation")]
@@ -175,8 +224,16 @@ def main() -> None:
     w("-- these share one body of prompts and grounding vocabulary.")
     w("")
 
-    for i, s in enumerate(states, start=1):
+    unslotted = sorted(s["code"] for s in states if s["code"] not in SLOTS)
+    if unslotted:
+        raise SystemExit(
+            f"no UUID slot for {', '.join(unslotted)}. Add each to SLOTS with the "
+            "next free number -- do not renumber the states already there."
+        )
+
+    for s in states:
         code = s["code"]
+        i = SLOTS[code]
         key = f"daily_progress_note_{code.split('-')[1].lower()}"
         cfg = render_config(s)
         tier = 1 if s['code'] in t1codes else 2

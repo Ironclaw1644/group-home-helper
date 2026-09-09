@@ -57,13 +57,28 @@
 -- the guard means a state that has been used in earnest fails loudly here
 -- instead of quietly losing its citation.
 
+-- Named as the eight jurisdictions this retracts, rather than as everything
+-- absent from a list of the survivors.
+--
+-- It was written the other way round -- "not in (the twenty-one that keep a
+-- citation)" -- which reads like the same statement and is not. 0037 is a
+-- GENERATED file, and the set of states holding a v2 row grows every time
+-- somebody reads a rule and re-runs the generator. A survivor list frozen here
+-- therefore quietly means "and delete any state promoted after today", which is
+-- what it did: Florida, Louisiana, Maine and Wyoming were promoted, a v2 row is
+-- the only row the generator writes for a cited state, and replaying the
+-- migrations deleted all four outright. The live database did not show it,
+-- because this file had already run there before those states were promoted. A
+-- fresh one -- staging, a restore, anybody's first checkout -- came up four
+-- states short with every check green.
+--
+-- A retraction should name what it retracts. Then it stays true however far
+-- 0037 moves on.
 delete from ghh.form_templates t
  where t.org_id is null
    and t.version = 2
-   and t.jurisdiction not in (
-     'US-AK','US-AR','US-CA','US-GA','US-HI','US-IA','US-IN','US-KY','US-MA',
-     'US-MO','US-MS','US-NC','US-NH','US-NJ','US-NV','US-NY','US-PA','US-RI',
-     'US-SC','US-TX','US-WV'
+   and t.jurisdiction in (
+     'US-AZ','US-CO','US-IL','US-MN','US-ND','US-NM','US-OK','US-OR'
    )
    and not exists (select 1 from ghh.notes n where n.template_id = t.id);
 

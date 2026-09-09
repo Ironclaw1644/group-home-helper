@@ -28,12 +28,14 @@ citation, which is a perfectly good row. Coverage is not worth a false claim.
   python3 scripts/verify-citations.py /tmp/states-all.json --write  # + demote
 """
 
+import io
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import zipfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -113,6 +115,23 @@ def fetch(url: str, browser: bool = False) -> str:
             os.unlink(pdf_path)
         return ""
 
+    # Maine files its rules with the Secretary of State as Word documents, and
+    # so do several other states. Without this the bytes decode to zip noise, no
+    # quotation is ever found, and a real rule on a real state domain is dropped
+    # for the format it was filed in -- indistinguishable, in the output, from a
+    # citation that was made up. A .docx is a zip; the text lives in
+    # word/document.xml, and dropping the tags after forcing a space at every
+    # element boundary is enough for a shingle check. stdlib only, so this does
+    # not quietly become a machine that only works on one laptop.
+    if "wordprocessingml" in ctype.lower() or url.lower().endswith(".docx"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                xml = zf.read("word/document.xml").decode("utf-8", errors="replace")
+        except Exception:
+            return ""
+        xml = re.sub(r"</w:(p|tab|br|tr)>", " ", xml)
+        return re.sub(r"(?s)<[^>]+>", "", xml)
+
     body = raw.decode("utf-8", errors="replace")
     body = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", body)
     return re.sub(r"(?s)<[^>]+>", " ", body)
@@ -137,6 +156,34 @@ def rule_identifiers(citation: str) -> list:
     found = re.findall(r"\d+[a-z]?(?:[.\-:]\d+[a-z]?)+|\d{4,}", citation.lower())
     # Most components first: '6-24-2' is better evidence than '460'.
     return sorted(set(found), key=lambda s: (-len(re.split(r"[.\-:]", s)), -len(s)))
+
+
+# Words a state uses to number a rule when it does not use a dotted number.
+NUMBERED_DIVISION = re.compile(
+    r"\b(chapter|section|part|article|subchapter|appendix)\s+(\d{1,3})\b", re.I
+)
+
+
+def phrase_identifiers(citation: str) -> list:
+    """Divisions named in words -- [('chapter', '45'), ('section', '8')].
+
+    Not every state numbers its rules with a dotted string. Wyoming's DD waiver
+    provider standards are "Chapter 45" of the Wyoming Medicaid Rules, and the
+    documentation standard is "Section 8" of it. rule_identifiers finds nothing
+    in that, and correctly: it drops loose one- and two-digit fragments, because
+    a page containing "45" proves nothing.
+
+    "Chapter 45" is a different matter. The word carries the number, and a page
+    containing that phrase is evidence of the same weight as one containing
+    "5123-9-30". So these are extracted as phrases and matched as phrases.
+
+    They are held to a stricter standard than a dotted number, because any one
+    of them alone is weak -- half the legal documents in America contain the
+    words "section 8". A dotted number passes on finding ANY of the numbers
+    claimed; a citation identified only by phrases must produce EVERY phrase it
+    names at the source. Wyoming has to show both "chapter 45" and "section 8".
+    """
+    return [(m.group(1).lower(), m.group(2)) for m in NUMBERED_DIVISION.finditer(citation)]
 
 
 # A researcher saying, in some phrasing or other, that the rule they found is
@@ -288,10 +335,16 @@ def check(state: dict) -> tuple:
     flat = normalise(page)
 
     ids = rule_identifiers(cite)
-    if not ids:
+    phrases = phrase_identifiers(cite)
+    if ids:
+        if not any(normalise(i) in flat for i in ids):
+            return False, f"page contains none of the rule numbers {', '.join(ids[:3])}"
+    elif phrases:
+        missing = [f"{w} {n}" for w, n in phrases if normalise(f"{w} {n}") not in flat]
+        if missing:
+            return False, f"page does not name {', '.join(missing[:3])}"
+    else:
         return False, f"citation names no rule number to check: {cite!r}"
-    if not any(normalise(i) in flat for i in ids):
-        return False, f"page contains none of the rule numbers {', '.join(ids[:3])}"
 
     evidence = (state.get("evidence") or "").strip()
     if not evidence:

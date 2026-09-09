@@ -195,6 +195,36 @@ async function main() {
 
   try {
     // -----------------------------------------------------------------------
+    section('Every state is there at all');
+    // -----------------------------------------------------------------------
+    //
+    // This runs first, on the freshly migrated database, because everything
+    // below walks whatever states it finds -- so a state that disappears is
+    // not a failure, it is one fewer iteration, and the run still ends green.
+    //
+    // Wyoming disappeared exactly that way. The seed migration hands each
+    // state a UUID and those UUIDs were positional, so moving West Virginia
+    // out of the generated set shifted every later state up one and dropped
+    // Wyoming onto West Virginia's retired row. The insert is "on conflict do
+    // nothing", so it did nothing; the update that follows then deactivated
+    // Wyoming's only other row. The migration reported success, this file
+    // reported success, and a state was missing from the product.
+    //
+    // Counting is the cheapest thing that would have caught it.
+    const shipped = templates.filter((t) => t.orgId === null && t.jurisdiction !== 'GENERIC');
+    const shippedCodes = shipped.map((t) => t.jurisdiction);
+    check(
+      'all fifty states and DC ship a template',
+      shippedCodes.length === 51,
+      `${shippedCodes.length} shipped jurisdictions, expected 51`
+    );
+    check(
+      'and no state ships two active templates',
+      new Set(shippedCodes).size === shippedCodes.length,
+      `more than one active row for ${[...new Set(shippedCodes.filter((c, i) => shippedCodes.indexOf(c) !== i))].join(', ')}`
+    );
+
+    // -----------------------------------------------------------------------
     section('(a) Virginia is unchanged — byte for byte');
     // -----------------------------------------------------------------------
     //
@@ -586,7 +616,17 @@ async function main() {
         // The number may carry a letter inside it (Minnesota's 245D.095), and
         // the authority may be a dotted abbreviation (New Jersey's N.J.A.C.)
         // that no \b[A-Z]{3,}\b can see. Both were rejecting real citations.
-        const hasNumber = /\d+[a-z]?[.:\-]\d+|\d{4,}/i.test(citation);
+        // Not every state numbers a rule with a dotted string. Wyoming's DD
+        // waiver provider standards are Chapter 45 of the Wyoming Medicaid
+        // Rules and the documentation standard is Section 8 of it, which is a
+        // perfectly specific identifier a licensing specialist can look up and
+        // which "45" on its own is not. The word carries the number, so the
+        // word and the number are required together -- the same rule
+        // verify-citations.py applies when it goes and looks for the thing at
+        // the source.
+        const hasNumber =
+          /\d+[a-z]?[.:\-]\d+|\d{4,}/i.test(citation) ||
+          /\b(?:chapter|section|part|article|subchapter|appendix)\s+\d{1,3}\b/i.test(citation);
         const hasAuthority =
           /Code|Rule|Regulation|Statute|Stat\.|Admin|Policy|Manual|Memorandum|§/i.test(citation) ||
           /\b[A-Z]{3,8}\b|(?:[A-Z]\.){2,}|\d[A-Z]{2,}\d/.test(citation);
