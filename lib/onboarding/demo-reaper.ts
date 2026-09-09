@@ -73,7 +73,11 @@ export async function listExpiredDemoOrgs(admin: Admin): Promise<Array<{ id: str
     .select('id, name')
     .eq('is_demo', true)
     .not('expires_at', 'is', null)
-    .lt('expires_at', new Date().toISOString());
+    .lt('expires_at', new Date().toISOString())
+    // Longest dead first. Now that a sweep can stop before it reaches the end
+    // of the list, which end it starts from decides whether a backlog drains
+    // or whether the same stale orgs are skipped every time.
+    .order('expires_at', { ascending: true });
 
   if (error) {
     console.error('[demo] could not list expired sandboxes', error.message);
@@ -143,7 +147,10 @@ export async function purgeDemoOrg(orgId: string): Promise<ReapedOrg | null> {
 
   await removeFiles(admin, 'ghh-documents', documentPaths);
   await removeFiles(admin, 'ghh-signatures', signaturePaths);
-  await removeOrphanedDemoAccounts(admin);
+  // The orphaned-account sweep used to run here, once per org purged. It is a
+  // global sweep -- it lists every auth user and checks each for a surviving
+  // profile -- so running it per org did the same whole-table walk again for
+  // every org in the batch. Callers run it once, after their loop.
 
   return {
     orgId,
@@ -155,23 +162,61 @@ export async function purgeDemoOrg(orgId: string): Promise<ReapedOrg | null> {
 }
 
 /**
- * Sweep every expired sandbox.
+ * How long a visitor is willing to spend clearing up after previous visitors.
  *
- * Called at the start of the demo endpoint, so the cleanup runs on the traffic
- * that creates the mess. That is why sixteen of these piled up: pruning existed
- * as `npm run demo:prune` and nothing ever ran it. A sweep that depends on
- * someone remembering is a sweep that does not happen.
+ * The sweep used to take everything it found and the visitor waited for all of
+ * it. Thirteen had built up on this machine and the demo endpoint answered in
+ * 120 seconds — measured twice, within 300ms of each other; the next request,
+ * with nothing left to reap, took 4.2. That two minutes sits directly behind
+ * the "Try it yourself" button, which is the one thing on the site asking a
+ * stranger for their patience rather than their email address. There are 77
+ * demo orgs against 1 real one in the database as this is written, so the
+ * unbounded version was a ten-minute wait for whoever arrived after they
+ * expired.
+ *
+ * A budget in milliseconds rather than a count of orgs, because what has to be
+ * bounded is the wait, not the tidying. A count bounds the wrong thing: three
+ * orgs was sixteen seconds here and would be something else on a slower day or
+ * a bigger sandbox. Checked before each purge, so the true worst case is the
+ * budget plus one purge.
+ *
+ * Cleanup still rides on the traffic that creates the mess — a sweep that
+ * depends on someone remembering is a sweep that does not happen. Each demo
+ * creates one sandbox and clears what it has time for, so a backlog drains
+ * under its own traffic, and `npm run demo:prune` still empties it in one go.
  */
-export async function reapExpiredDemos(): Promise<ReapedOrg[]> {
+const REAP_BUDGET_MS = 5_000;
+
+/**
+ * Sweep expired sandboxes for up to `budgetMs`, oldest first.
+ */
+export async function reapExpiredDemos(budgetMs: number = REAP_BUDGET_MS): Promise<ReapedOrg[]> {
   const admin = createSupabaseAdminClient();
   const expired = await listExpiredDemoOrgs(admin);
+  const deadline = Date.now() + budgetMs;
 
   const reaped: ReapedOrg[] = [];
   for (const org of expired) {
+    if (Date.now() >= deadline) {
+      console.log(
+        '[demo] %d expired sandbox(es) left after clearing %d — the rest wait for the next visitor',
+        expired.length - reaped.length,
+        reaped.length
+      );
+      break;
+    }
     const result = await purgeDemoOrg(org.id);
     if (result) reaped.push(result);
   }
+
+  // Once, after the loop, not once per org.
+  if (reaped.length > 0) await removeOrphanedDemoAccounts(admin);
   return reaped;
+}
+
+/** The orphaned-account sweep, for callers that purge orgs themselves. */
+export async function reapOrphanedDemoAccounts(): Promise<number> {
+  return removeOrphanedDemoAccounts(createSupabaseAdminClient());
 }
 
 async function removeFiles(admin: Admin, bucket: string, paths: string[]): Promise<void> {
@@ -190,22 +235,36 @@ async function removeFiles(admin: Admin, bucket: string, paths: string[]): Promi
  * left, so a real customer's account can never be selected here.
  */
 async function removeOrphanedDemoAccounts(admin: Admin): Promise<number> {
-  const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
+  // Paged rather than one call of 200. It asked for a single page of 200 and
+  // treated that as "every user", so once the install passed 200 accounts the
+  // ones beyond the first page could never be seen and orphans past that line
+  // would have accumulated forever. There are 77 demo orgs against 1 real one
+  // in this database already.
+  const demoUsers: Array<{ id: string }> = [];
+  for (let page = 1; page <= 50; page += 1) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+    const users = data?.users ?? [];
+    for (const u of users) {
+      if (u.email?.endsWith('@demo.invalid')) demoUsers.push({ id: u.id });
+    }
+    if (users.length < 200) break;
+  }
+  if (demoUsers.length === 0) return 0;
+
+  // One query for every surviving profile, not one query per user. Per-user
+  // was a round trip each, run once per org purged, and it was where the demo
+  // endpoint's time was actually going.
+  const { data: profiles } = await admin
+    .from('profiles')
+    .select('id')
+    .in('id', demoUsers.map((u) => u.id));
+  const stillHasProfile = new Set((profiles ?? []).map((p) => p.id as string));
 
   let removed = 0;
-  for (const user of data?.users ?? []) {
-    if (!user.email?.endsWith('@demo.invalid')) continue;
-
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!profile) {
-      await admin.auth.admin.deleteUser(user.id).catch(() => {});
-      removed++;
-    }
+  for (const user of demoUsers) {
+    if (stillHasProfile.has(user.id)) continue;
+    await admin.auth.admin.deleteUser(user.id).catch(() => {});
+    removed++;
   }
   return removed;
 }

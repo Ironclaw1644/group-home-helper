@@ -32,7 +32,9 @@ async function main() {
   // Imported after loadEnv: the admin client reads its configuration at module
   // load, and a static import would run before the file has been read.
   const { createSupabaseAdminClient } = await import('../lib/supabase/admin');
-  const { listExpiredDemoOrgs, purgeDemoOrg } = await import('../lib/onboarding/demo-reaper');
+  const { listExpiredDemoOrgs, purgeDemoOrg, reapOrphanedDemoAccounts } = await import(
+    '../lib/onboarding/demo-reaper'
+  );
 
   const admin = createSupabaseAdminClient();
 
@@ -85,6 +87,14 @@ async function main() {
     } else {
       console.log(`  FAILED   ${org.id} — left in place`);
     }
+  }
+
+  // purgeDemoOrg used to do this itself, once per org, which meant walking the
+  // whole auth user list again for every org in the batch. It runs once here
+  // instead, after everything above has gone.
+  if (removed > 0) {
+    const accounts = await reapOrphanedDemoAccounts();
+    if (accounts > 0) console.log(`  removed  ${accounts} orphaned demo account(s)`);
   }
 
   console.log(`\nRemoved ${removed} of ${targets.length} demo organization(s).\n`);
