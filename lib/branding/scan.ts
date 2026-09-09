@@ -52,7 +52,11 @@ async function fetchText(url: string): Promise<string | null> {
     const res = await fetch(parsed.toString(), {
       signal: controller.signal,
       redirect: 'follow',
-      headers: { 'user-agent': 'AHFS-Notes-BrandScan/1.0' }
+      // Identifies the product, not a customer. This read
+      // "AHFS-Notes-BrandScan/1.0", so every prospect whose site we fetched
+      // got one particular agency's name in their access log, on a request
+      // they never asked for.
+      headers: { 'user-agent': 'FlipBrief-BrandScan/1.0' }
     });
     if (!res.ok) return null;
 

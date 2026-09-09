@@ -38,6 +38,7 @@
     "shots:review": "tsx --tsconfig scripts/tsconfig.json scripts/capture-review.ts",
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "verify:contrast": "node --experimental-strip-types scripts/verify-contrast.mjs",
+    "verify:icons": "python3 scripts/generate-brand-icons.py --check",
     "video:capture": "tsx --tsconfig scripts/tsconfig.json scripts/capture-demo-video.ts",
     "video:build": "python3 scripts/build-demo-video.py",
     "video:flow": "tsx --tsconfig scripts/tsconfig.json scripts/capture-flow.ts"

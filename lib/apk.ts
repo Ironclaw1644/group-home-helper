@@ -25,7 +25,10 @@ export const APK_CHANGELOG: Array<{ version: string; date: string; notes: string
   }
 ];
 
-export const APK_FILENAME = `ahfs-daily-notes-${APK_VERSION}.apk`;
+// Named for the product. This was `ahfs-daily-notes-1.0.0.apk`, so every DSP
+// installing the Android app from the public download page got a file named
+// after one particular customer -- including staff at every other agency.
+export const APK_FILENAME = `flipbrief-${APK_VERSION}.apk`;
 
 /**
  * Where the file is served from.

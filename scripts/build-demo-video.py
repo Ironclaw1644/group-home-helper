@@ -49,9 +49,12 @@ SUBTITLE = "Shift notes for group homes"
 
 W, H = 1080, 1920
 BAND_H = 300
-FOREST = (20, 69, 47)
-PAPER = (251, 248, 243)
-SAND = (217, 179, 130)
+
+# The mark and the brand's flat colours come from scripts/brand_mark.py, which
+# is also what generates the app icons. They were defined in both places, which
+# is how the films and the icons could have drifted apart without anybody
+# noticing until one of them looked wrong.
+from brand_mark import FOREST, PAPER, SAND, render_mark  # noqa: E402
 
 # The product's own face, not the system's. Archivo SemiBold is what the app
 # and the landing page set, and it is bundled by next/font as woff2; PIL cannot
@@ -155,39 +158,6 @@ def render_caption(text: str, path: str, note: str = "") -> None:
         d.text(((W - w) // 2, y + 4), note, font=nf, fill=SAND + (255,))
     img.save(path)
 
-
-def render_mark(size: int) -> Image.Image:
-    """The FlipBrief mark, drawn rather than loaded.
-
-    It used to be read from tmp/demo-video/mark.png, and render_card skipped
-    the badge in silence when that file was not there. Nothing in the repository
-    ever created it — somebody put it there once — so the first time tmp was
-    cleared every title card went out as plain green type, including the four
-    poster frames on the public page, and nothing reported it.
-
-    public/icon-512.png is not a substitute: that file is At Home Family
-    Services' logo, not ours, so reaching for it puts a customer's branding on
-    our own films.
-
-    So the mark is drawn here from the same geometry as
-    public/brand/flipbrief-mark.svg — an F on a 64 grid whose middle arm lifts
-    at the tip, in two flat colours. Keep the two in step if either changes.
-    Drawn at 4x and reduced, because PIL's polygon edges are hard otherwise.
-    """
-    s = 4
-    box = size * s
-    u = box / 64.0  # one SVG unit
-    img = Image.new("RGBA", (box, box), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rectangle([12 * u, 8 * u, 24 * u, 56 * u], fill=FOREST + (255,))   # stem
-    d.rectangle([12 * u, 8 * u, 46 * u, 20 * u], fill=FOREST + (255,))   # top arm
-    d.rectangle([12 * u, 30 * u, 38 * u, 41 * u], fill=FOREST + (255,))  # middle arm
-    d.polygon(                                                            # the lifting tip
-        [(38 * u, 30 * u), (42 * u, 30 * u), (54 * u, 21 * u),
-         (54 * u, 32 * u), (42 * u, 41 * u), (38 * u, 41 * u)],
-        fill=SAND + (255,),
-    )
-    return img.resize((size, size), Image.LANCZOS)
 
 
 def render_card(lines, path: str, sub: str = "") -> None:
