@@ -38,9 +38,9 @@ import type {
  *
  * This component draws whatever the template's `render_config` describes. It
  * has no idea which state it is printing for, and there is no branch anywhere
- * below on a form number, a jurisdiction, or an agency. Virginia's Form #680 is
- * the first template rather than a special case — it reaches this renderer as a
- * row, exactly like Ohio's does.
+ * below on a form number, a jurisdiction, or an agency. Virginia is the first
+ * template rather than a special case — it reaches this renderer as a row,
+ * exactly like Ohio's does.
  *
  * Three rules hold the design together:
  *
@@ -50,14 +50,18 @@ import type {
  *   2. **The org describes who filed it.** `orgLine`, `letterhead`, `address`,
  *      `footerLine` and `logoSrc` are supplied by the caller from the
  *      requesting user's own organization and are never read off the template —
- *      the shipped #680 row is global, shared by every agency on the install,
+ *      the shipped Virginia row is global, shared by every agency on the install,
  *      so an identity there would print on everybody's Medicaid records. That
  *      is a bug this codebase has already had once.
  *
- *   3. **Every default is Form #680.** A template that sets none of the new
- *      keys renders exactly what shipped before templates existed. The #680 row
- *      in production sets none of them, which is what makes that provable —
- *      see scripts/verify-jurisdictions.tsx.
+ *   3. **Every default is the original Virginia layout.** A template that sets
+ *      none of the new keys renders exactly what shipped before templates
+ *      existed. The Virginia row in production sets none of them, which is what
+ *      makes that provable — see scripts/verify-jurisdictions.tsx.
+ *
+ *      One exception, and it is the point of `0040`: the footer no longer
+ *      carries a form number. "Form #680" was never a document Virginia
+ *      publishes. Never default a `form_line` back into existence here.
  *
  * Training examples render through here with no watermark and no distinguishing
  * mark: a stamped-up sample teaches nothing, so trainees see exactly what their
@@ -242,7 +246,7 @@ function FieldRow({
  * The agency identity block at the top of every page.
  *
  * `template.renderConfig.header.org_line` is deliberately NOT consulted here.
- * The shipped Form #680 template is global (`org_id` null) and carried one
+ * The shipped Virginia template is global (`org_id` null) and carried one
  * agency's legal name and logo path, so honouring it printed that agency's
  * letterhead on every other agency's forms — which is the whole bug the
  * org-scoped props exist to fix. The template describes the *form*; the org
@@ -367,7 +371,7 @@ export function TemplatePdf({
   const signatureLabel = config.signature_block?.label ?? DEFAULT_SIGNATURE_LABEL;
   const signatureLabelWidth = config.signature_block?.label_width;
   const signatureValueWidth = config.signature_block?.value_width ?? 200;
-  // #680 reserves 76pt. A template with a taller footer says so; see
+  // The default footer reserves 76pt. A template with a taller footer says so; see
   // RenderConfig.page.padding_bottom.
   const pageStyle =
     config.page?.padding_bottom !== undefined

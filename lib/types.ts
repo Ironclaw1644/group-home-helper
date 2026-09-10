@@ -96,7 +96,7 @@ export type ResidentSort = 'last_name' | 'first_name' | 'room' | 'recent';
  * One outcome from a resident's Individual Service Plan.
  *
  * This is what makes each resident's note page different: the form is the
- * shared Form #680 sections plus this person's own outcomes. A Medicaid
+ * shared note sections plus this person's own outcomes. A Medicaid
  * reviewer asks whether the day's documentation shows progress toward the plan,
  * so the note has to be built from the plan rather than from a fixed checklist.
  */
@@ -386,10 +386,15 @@ export type PrintRow = { fields: PrintField[] };
 /**
  * How one jurisdiction's document is laid out.
  *
- * Every key is optional and every default reproduces Virginia's Form #680
- * exactly as it printed before templates existed. That is deliberate: the
- * shipped #680 row carries none of these keys, so "omitted" has to mean
+ * Every key is optional and every default reproduces the original Virginia
+ * layout exactly as it printed before templates existed. That is deliberate:
+ * the shipped Virginia row carries none of these keys, so "omitted" has to mean
  * "unchanged" or the regression bar could not be met.
+ *
+ * One thing changed rather than being reproduced: the footer no longer carries
+ * a form number. `0040` retracted "Form #680", which never existed — 680 is a
+ * section of 12VAC35-105. Set `footer.form_line` only from a document the state
+ * actually publishes.
  */
 export type RenderConfig = {
   page?: {
@@ -398,7 +403,7 @@ export type RenderConfig = {
     /**
      * Space reserved at the foot of every page for the fixed footer block.
      *
-     * Defaults to 76, which is what Form #680 needs for its form line, agency
+     * Defaults to 76, which is what the default footer needs for its form line, agency
      * line and Title/Date row. A template with a taller footer — Ohio adds a
      * rule citation — must raise this, or the signature row is drawn on top of
      * it. Content overlapping the footer of a signed Medicaid record is not a
@@ -422,13 +427,13 @@ export type RenderConfig = {
    * What service this document records, in the jurisdiction's own words —
    * Ohio's rule asks for "type of service" and its answer for a group home is
    * "Homemaker/Personal Care". Printed only where a template's layout asks for
-   * the `service_type` source, so Virginia's #680 is unaffected.
+   * the `service_type` source, so Virginia's layout is unaffected.
    */
   service_type?: string;
 
-  /** Identity blanks above the title. Defaults to #680's name + Medicaid row. */
+  /** Identity blanks above the title. Defaults to the name + Medicaid row. */
   identity_rows?: PrintRow[];
-  /** Blanks between the title and the prompts. Defaults to #680's date + shift row. */
+  /** Blanks between the title and the prompts. Defaults to the date + shift row. */
   meta_rows?: PrintRow[];
 
   signature_block?: {
@@ -437,7 +442,7 @@ export type RenderConfig = {
     /**
      * Fixed width for that label, in points.
      *
-     * Leave it unset for a short label — #680's 'Staff Signature: ' sizes
+     * Leave it unset for a short label — the default 'Staff Signature: ' sizes
      * itself and must keep doing so, byte for byte. Set it for a long one:
      * without an explicit width the text engine will wrap a long label into a
      * narrow column rather than let it take the room it needs.

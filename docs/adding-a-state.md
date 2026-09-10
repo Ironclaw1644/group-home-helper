@@ -18,10 +18,24 @@ document is allowed to claim.
 
 **1. Does this state publish a form, or a rule?**
 
-Virginia publishes DBHDS Form #680 — a numbered document with a layout. Ohio
-publishes OAC 5123-9-30, a rule enumerating twelve things service documentation
-must contain, and leaves the layout to the provider. These are different
-products:
+West Virginia publishes the WV-BMS-IDD-7 Direct-Support Service Log — a named
+document with a layout the state controls. Ohio publishes OAC 5123-9-30, a rule
+enumerating twelve things service documentation must contain, and leaves the
+layout to the provider. These are different products:
+
+Almost every state is Ohio. Only two of the fifty-one publish a form at all, so
+assume you are writing a rule-citing template until the state's own site proves
+otherwise.
+
+> **Read this before you type a form number.** Virginia was carried in this
+> repo as "DBHDS Form #680" for a year, and every Virginia note printed it. No
+> such form exists: 680 is the *section* of 12VAC35-105 that requires progress
+> notes. Somebody read a citation and promoted it to a form number, and it went
+> unchecked because Virginia was the premise the citation verifier was built to
+> protect. Migration `0040` retracted it. A form number is a claim that a
+> numbered state document exists and that this is it — an invented one on a
+> Medicaid record is worse than a blank page, because a blank page does not get
+> filed.
 
 | The state publishes | `form_number` | `footer.form_line` | `footer.legal_citation` |
 |---|---|---|---|
@@ -118,10 +132,11 @@ Constraints worth knowing before you hit a check violation:
 
 ### `render_config` — the printed document
 
-Every key is optional, and **every default is Form #680**. A template that sets
-nothing prints exactly what Virginia printed before templates existed — which is
-what makes the regression bar provable, so do not change a default to suit a new
-state. Set what differs and leave the rest alone.
+Every key is optional, and **every default is the original Virginia layout**. A
+template that sets nothing prints exactly what Virginia printed before templates
+existed — minus the retracted form number — which is what makes the regression
+bar provable, so do not change a default to suit a new state. Set what differs
+and leave the rest alone.
 
 The keys that matter for a new state:
 
@@ -135,7 +150,7 @@ The keys that matter for a new state:
 | `meta_rows` | Labelled blanks between the title and the prompts |
 | `signature_block` | Signature label, its width, and the footer fields |
 | `outcome_page` | Service-plan page heading and its status vocabulary |
-| `page.padding_bottom` | Raise it if your footer is taller than #680's |
+| `page.padding_bottom` | Raise it if your footer is taller than the default one |
 
 A field's `source` must be one of `PRINT_SOURCES` (`lib/types.ts`) — a closed
 set, because a template is untrusted data and the renderer is not an evaluator.
@@ -146,9 +161,9 @@ commit.
 
 Two traps:
 
-- **`page.padding_bottom` defaults to 76**, which is what #680's footer needs. A
-  taller footer — a citation line, say — without raising this draws the
-  signature row on top of the footer. On a signed Medicaid record that is not
+- **`page.padding_bottom` defaults to 76**, which is what the default footer
+  needs. A taller footer — a citation line, say — without raising this draws
+  the signature row on top of the footer. On a signed Medicaid record that is not
   cosmetic.
 - **A long `signature_block.label` needs an explicit `label_width`.** Without
   one the text engine wraps it into a narrow column instead of giving it room.

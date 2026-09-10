@@ -23,7 +23,7 @@ const SignupBody = z.object({
    * Which state's documentation rules this agency files under.
    *
    * Required, and NOT defaulted. Defaulting it is how an Ohio provider ends up
-   * printing Virginia's Form #680 and filing it with Medicaid — which is
+   * printing Virginia's layout and filing it with Medicaid — which is
    * exactly what this app did for every customer before form templates
    * existed. One extra tap at sign-up is a fair price for not doing that.
    */

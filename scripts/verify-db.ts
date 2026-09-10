@@ -65,10 +65,67 @@ async function main() {
     names.join(', ')
   );
 
-  const template = await withSystem((db) =>
-    db.one<{ form_number: string }>(`select form_number from ghh.form_templates limit 1`)
+  // A template is seeded at all.
+  //
+  // This used to read `select form_number from ghh.form_templates limit 1` and
+  // assert it equalled '680'. Two things were wrong with it. There are now
+  // fifty-two global templates rather than one, and the query carried no ORDER
+  // BY, so it asserted a property of whichever row Postgres happened to hand
+  // back. And the property it asserted is the one migration 0040 exists to
+  // retract: there is no Virginia "Form #680", 680 is a section of
+  // 12VAC35-105, and a check demanding that number would have failed the day
+  // the fix landed if it had ever been reading the right row.
+  const templateCount = await withSystem((db) =>
+    db.one<{ n: number }>(
+      `select count(*)::int as n from ghh.form_templates where org_id is null and active`
+    )
   );
-  check('Form #680 template seeded', template?.form_number === '680');
+  check('global templates seeded', (templateCount?.n ?? 0) > 0, `${templateCount?.n} active`);
+
+  // No active template claims a form number.
+  //
+  // This is the regression bar for 0040, and it is deliberately absolute. Both
+  // states that publish a real document — West Virginia's WV-BMS-IDD-7 and
+  // nobody else — carry that document's identity in `render_config.footer
+  // .form_line`, not in `form_number`. So any non-null `form_number` on an
+  // active row means somebody reintroduced a numbered claim, which is the exact
+  // failure that printed an invented form number on Medicaid records for a
+  // year. If a state genuinely needs the column, this check is the place to
+  // argue it, with the state's own document cited here.
+  const numbered = await withSystem((db) =>
+    db.query<{ jurisdiction: string; form_number: string }>(
+      `select jurisdiction, form_number from ghh.form_templates
+        where org_id is null and active and form_number is not null`
+    )
+  );
+  check(
+    'no active template carries a form number',
+    (numbered?.length ?? 0) === 0,
+    numbered?.map((r) => `${r.jurisdiction}=#${r.form_number}`).join(', ') || 'none'
+  );
+
+  // Virginia specifically cites the rule instead of naming a form.
+  const va = await withSystem((db) =>
+    db.one<{ form_number: string | null; render_config: { footer?: { legal_citation?: string } } }>(
+      `select form_number, render_config from ghh.form_templates
+        where org_id is null and active and jurisdiction = 'US-VA'`
+    )
+  );
+  check('Virginia claims no form number', va !== null && va.form_number === null);
+  check(
+    'Virginia cites 12VAC35-105-680 as a rule, not a form',
+    Boolean(va?.render_config?.footer?.legal_citation?.includes('Not a state-issued form')),
+    va?.render_config?.footer?.legal_citation ?? '(none)'
+  );
+
+  // The retired v1 is still there, because notes were signed under it.
+  const retiredVa = await withSystem((db) =>
+    db.one<{ n: number }>(
+      `select count(*)::int as n from ghh.form_templates
+        where id = '00000000-0000-0000-0000-000000000100' and not active`
+    )
+  );
+  check('the pre-0040 Virginia row is retained for notes signed under it', retiredVa?.n === 1);
 
   // -------------------------------------------------------------------------
   section('Fixtures');

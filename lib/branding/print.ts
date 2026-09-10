@@ -30,7 +30,7 @@ export type PrintIdentity = {
    * The agency's Medicaid provider number.
    *
    * Ohio's documentation rule asks for it by name (OAC 5123-9-30(E)(7),
-   * "provider identifier/contract number"); Virginia's Form #680 does not print
+   * "provider identifier/contract number"); Virginia's layout does not print
    * it. Loaded here either way, because it is a fact about who filed the
    * document, and which jurisdictions print it is the template's business.
    */

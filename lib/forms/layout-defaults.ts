@@ -3,11 +3,16 @@ import type { FormTemplate, PrintField, PrintRow } from '@/lib/types';
 /**
  * What a template prints when it says nothing.
  *
- * These ARE Form #680. The shipped #680 template row carries none of the layout
- * keys below, so these constants are what it prints — which is exactly why they
- * are written as the fallback rather than as an "example" template. Changing one
- * changes a signed Medicaid record's appearance; verify:jurisdictions fails if
- * any of them drift.
+ * These are the original Virginia layout. That template row carries none of the
+ * layout keys below, so these constants are what it prints — which is exactly
+ * why they are written as the fallback rather than as an "example" template.
+ * Changing one changes a signed Medicaid record's appearance;
+ * verify:jurisdictions fails if any of them drift.
+ *
+ * The footer line is deliberately not among them. It used to default to
+ * "Daily Progress Notes Form #680", a form number for a document that does not
+ * exist; `0040` retracted it and a template that declares no footer now prints
+ * none. Do not reintroduce a default here — see docs/adding-a-state.md.
  *
  * They live here rather than inside `lib/pdf/TemplatePdf.tsx` because the
  * on-screen form preview needs the same answers, and that preview is a client
@@ -64,8 +69,8 @@ export const DEFAULT_ACTIVITY_LABELS = {
  * The labels on the identity blanks, for showing a preview of a form.
  *
  * Takes the first identity row, because that is the row a preview has space
- * for. A template that declares no identity rows prints Form #680's, so that is
- * what this returns for it too.
+ * for. A template that declares no identity rows prints the default ones above,
+ * so that is what this returns for it too.
  */
 export function identityLabels(rows: PrintRow[] | undefined): string[] {
   return (rows ?? DEFAULT_IDENTITY_ROWS)[0].fields.map((f) => f.label.trim());
@@ -76,8 +81,8 @@ export function identityLabels(rows: PrintRow[] | undefined): string[] {
  *
  * `ghh.available_jurisdictions()` returns the labels a template declared, or
  * null for one that declares none — because a template that declares none
- * prints Form #680's, and the fallback belongs here rather than repeated in
- * SQL.
+ * prints the defaults above, and the fallback belongs here rather than repeated
+ * in SQL.
  */
 export const DEFAULT_IDENTITY_LABELS: string[] = identityLabels(undefined);
 

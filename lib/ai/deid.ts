@@ -57,7 +57,7 @@ const PLACEHOLDER_TOKEN = /\bR\.(?=$|\s|[,;:)'’"”])/g;
  * The placeholder's period does double duty. In "R. ate breakfast" it belongs
  * to the abbreviation and has to disappear along with it. In "Staff provided
  * verbal prompts to support R." it is *also* the full stop ending the sentence,
- * and dropping it produced this, live, in a signed and printed Form #680:
+ * and dropping it produced this, live, in a signed and printed note:
  *
  *   "...to support JP There were no problems or concerns during shift."
  *

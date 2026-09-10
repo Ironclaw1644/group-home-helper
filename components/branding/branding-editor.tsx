@@ -523,7 +523,7 @@ export function ResetColorsButton({
 export type PreviewForm = {
   /** The heading, e.g. 'Daily Progress Note'. */
   title: string;
-  /** The footer line, e.g. 'Daily Progress Notes Form #680'. */
+  /** The footer line, e.g. 'Direct-Support Service Log (WV-BMS-IDD-7)'. */
   formLine: string;
   /** Identity blanks, e.g. ["Individual's Name:", 'Medicaid:']. */
   identityLabels: string[];

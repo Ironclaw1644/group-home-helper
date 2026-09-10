@@ -8,7 +8,7 @@
  */
 
 /**
- * Style anchor, derived from the agency's own completed Form #680 in
+ * Style anchor, derived from the agency's own completed paper note in
  * EE/detail.jpg.
  *
  * These are sentence *patterns*, not a filled-in note, and that is deliberate.

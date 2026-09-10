@@ -6,7 +6,7 @@ import { Eraser, ImageUp, Loader2, PenLine, Type } from 'lucide-react';
 /**
  * Sign a note by drawing, typing, or uploading an image of a signature.
  *
- * The paper Form #680 carries a handwritten signature, so drawing is the
+ * The paper note carries a handwritten signature, so drawing is the
  * default. But a DSP on a desktop with a mouse produces something that looks
  * nothing like their signature, and someone who already has a signature image
  * shouldn't have to redraw it every shift — so all three are offered and all

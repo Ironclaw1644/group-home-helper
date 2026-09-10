@@ -3,10 +3,18 @@
  *
  *   npm run db:seed
  *
- * Reads the org/home/shift/resident rows and the Form #680 template out of
+ * Reads the org/home/shift/resident rows and the base note template out of
  * supabase/migrations/0004_seed_680.sql so that file stays the single source of
  * truth — the template JSON is large enough that hand-copying it into a
  * migration call would be a real transcription risk.
+ *
+ * That file is the ORIGINAL 2024 seed and still carries `form_number: '680'`
+ * and a "Daily Progress Notes Form #680" footer, because an applied migration
+ * is history and does not get rewritten. Migration 0040 retracts that claim —
+ * there is no such Virginia form — by retiring this row and promoting a v2 that
+ * cites 12VAC35-105-680 as a rule. So this script must never reactivate the row
+ * it seeds on a database that has already been migrated past 0040; see
+ * `vaRetracted` below.
  *
  * Idempotent: every write is an upsert on a fixed UUID, so re-running after
  * editing the template updates it in place.
@@ -23,6 +31,9 @@ const SHIFT_DAY_ID = '00000000-0000-0000-0000-000000000020';
 const SHIFT_NIGHT_ID = '00000000-0000-0000-0000-000000000021';
 const DEMO_RESIDENT_ID = '00000000-0000-0000-0000-000000000030';
 const TEMPLATE_ID = '00000000-0000-0000-0000-000000000100';
+/** The v2 Virginia template promoted by migration 0040. Its presence means the
+ *  "Form #680" claim has been retracted on this database. */
+const VA_V2_TEMPLATE_ID = '00000000-0000-0000-0000-000000000399';
 
 function loadEnv() {
   const file = path.join(process.cwd(), '.env.local');
@@ -166,7 +177,19 @@ async function main() {
     })
   );
 
-  await step('Form #680 template', () =>
+  // Has 0040 already run? If the v2 Virginia row is present, this database has
+  // retracted the form number and the row below is history, not the live
+  // template. Seeding it `active: true` in that case would put two active
+  // global templates on US-VA and hand the invented number back to every
+  // Virginia note — undoing the retraction with a routine `npm run db:seed`.
+  const { data: vaV2 } = await db
+    .from('form_templates')
+    .select('id')
+    .eq('id', VA_V2_TEMPLATE_ID)
+    .maybeSingle();
+  const vaRetracted = Boolean(vaV2);
+
+  await step(`base note template${vaRetracted ? ' (retired — 0040 applied)' : ''}`, () =>
     db.from('form_templates').upsert({
       id: TEMPLATE_ID,
       org_id: null, // global — available to every organization
@@ -176,20 +199,23 @@ async function main() {
       form_number: '680',
       schema,
       render_config: renderConfig,
-      active: true
+      active: !vaRetracted
     })
   );
 
   // Read back through the same client to confirm the rows are really there.
   const { data: check } = await db
     .from('form_templates')
-    .select('form_number, schema')
+    .select('form_number, schema, active')
     .eq('id', TEMPLATE_ID)
     .maybeSingle();
 
   const sectionCount = (check?.schema as { sections?: unknown[] })?.sections?.length ?? 0;
   console.log(
-    `\nVerified: Form #${check?.form_number} stored with ${sectionCount} sections.\n`
+    `\nVerified: base template stored with ${sectionCount} sections` +
+      (vaRetracted
+        ? ', left inactive because 0040 has retracted its form number.\n'
+        : ' and active (pre-0040 database).\n')
   );
 }
 

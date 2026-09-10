@@ -104,7 +104,7 @@ async function main() {
     console.warn('logo not found — rendering without it');
   }
 
-  const out = path.join(process.cwd(), 'tmp', 'sample-form-680.pdf');
+  const out = path.join(process.cwd(), 'tmp', 'sample-note.pdf');
   await renderToFile(
     <TemplatePdf
       note={note}

@@ -22,7 +22,11 @@ export type JurisdictionOption = {
   name: string;
   /** The heading this state's form prints — 'Daily Progress Note'. */
   formTitle: string;
-  /** Its footer line — 'Daily Progress Notes Form #680'. */
+  /**
+   * Its footer line — e.g. 'Direct-Support Service Log (WV-BMS-IDD-7)', or a
+   * plain description for a state that publishes no form. Never a form number
+   * that has not been read off the state's own document.
+   */
   formLine: string;
   /** Its identity blanks — ["Individual's Name:", 'Medicaid:']. */
   identityLabels: string[];
@@ -99,9 +103,9 @@ export const listJurisdictions = cache(async (): Promise<JurisdictionOption[]> =
       name: r.name,
       formTitle: r.form_title ?? 'Daily Progress Note',
       formLine: r.form_line ?? '',
-      // A template that declares no identity rows prints Form #680's, so fall
-      // back to the constants the renderer itself falls back to rather than
-      // to a second copy of them.
+      // A template that declares no identity rows prints the renderer's
+      // defaults, so fall back to the constants the renderer itself falls back
+      // to rather than to a second copy of them.
       identityLabels: (r.identity_labels ?? DEFAULT_IDENTITY_LABELS).map((l) => l.trim()),
       // No fallback, on purpose. Every other caption here degrades to a
       // sensible default; this one must not. Null means "this state publishes

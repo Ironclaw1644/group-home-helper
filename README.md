@@ -1,8 +1,15 @@
 # Group Home Helper — Daily Progress Notes
 
-Staff-facing app for **At Home Family Services, LLC**. Replaces the handwritten
-**Daily Progress Note, Form #680** that a DSP fills out for every resident, on
+Staff-facing app for small group homes and behavioural care agencies. Replaces
+the handwritten daily progress note that a DSP fills out for every resident, on
 every shift, every day.
+
+> **There is no "Form #680".** The app shipped for a year printing that caption
+> on every Virginia note. 680 is a *section* of 12VAC35-105 — the regulation
+> requiring progress notes — not a document DBHDS publishes. Migration `0040`
+> retired it; Virginia now cites the rule. West Virginia's WV-BMS-IDD-7 is the
+> one real state form the app reproduces (`0041`). If you are about to write a
+> form number anywhere in this repo, read `docs/adding-a-state.md` first.
 
 Two things it does:
 
@@ -122,7 +129,7 @@ connection, and that a pre-staged note cannot sign itself. After deploying,
 refresh the snapshot with
 `npm run verify:schema -- --refresh --applied-through=<last file applied>`.
 
-Then seed the Form #680 template and starting data:
+Then seed the base note template and starting data:
 
 ```bash
 npm run db:seed
@@ -253,7 +260,7 @@ separately, and they are used in different places on purpose:
 | Where | Which name | Why |
 | --- | --- | --- |
 | Roster, note screen, narrative | Preferred | A note about "Alexander" reads as written by someone who does not know him |
-| "Individual's Name" on Form #680 | **Legal** | It is the identity field on a Medicaid document |
+| "Individual's Name" on the printed note | **Legal** | It is the identity field on a Medicaid document |
 
 **Discharge, not delete.** Unchecking "currently living here" removes someone
 from the daily roster. The row stays, because their signed notes reference it
@@ -527,7 +534,7 @@ The AI draft button is a subscription. **Nothing else is.**
 | Training examples on the demo resident | Writing and editing notes |
 | | Signing, and the lock that follows |
 | | Duplicate-note detection |
-| | Form #680 PDFs |
+| | Progress-note PDFs |
 | | Batch export for audits |
 | | Resident roster management |
 | | The access audit log |
@@ -676,7 +683,8 @@ nothing to protect against.
 
 ```bash
 npm run verify:guardrails   # grounding, concern rule, de-identification, duplicates
-npm run pdf:sample          # writes tmp/sample-form-680.pdf
+npm run verify:wv-form      # WV-BMS-IDD-7 rendered against the state's own form
+npm run pdf:sample          # writes tmp/sample-note.pdf
 npm run verify:ai           # live model checks (needs ANTHROPIC_API_KEY)
 npm run typecheck
 npm run build
@@ -686,8 +694,10 @@ npm run build
 must hold regardless of how the model behaves, so run it on every change.
 
 Compare the output of `pdf:sample` against the scanned original in Drive
-(`EE/detail.jpg`) — header, the five numbered prompts, narrative block,
-signature line, and the `Daily Progress Notes Form #680` footer should line up.
+(`EE/detail.jpg`) — header, the five numbered prompts, narrative block and
+signature line should line up. The footer should cite `12VAC35-105-680` and say
+plainly that it is not a state-issued form; if it prints a form *number*, the
+seed has regressed to pre-`0040` behaviour.
 
 ### Checks worth doing by hand
 
@@ -733,8 +743,9 @@ since branding is user-editable and can come from an arbitrary site.
 
 ## Adding another form
 
-Form #680 is the first row in `ghh.form_templates`, not hardcoded. Its `schema`
-jsonb drives the web form, the AI grounding input, and the PDF.
+The base note is the first row in `ghh.form_templates`, not hardcoded. Its
+`schema` jsonb drives the web form, the AI grounding input, and the PDF. Every
+state is a template row on top of it.
 
 To add a second form (MAR, incident report): insert a template row, and add a
 branch for any new field type in both `components/form/FieldRenderer.tsx` and
