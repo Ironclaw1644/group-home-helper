@@ -44,12 +44,12 @@ recorded at the bottom.
 
 ## Located but not fully searched
 
-| State | Agency | Where | Obstacle |
-|---|---|---|---|
 **All three are now reachable** — the Cloudflare block was automation detection, not the
 network (see below). What remains is finding the right index URL inside each site, which is
 ordinary work rather than a wall.
 
+| State | Agency | Where | Status |
+|---|---|---|---|
 | **NY** | OPWDD | `opwdd.ny.gov` reachable; index URL not yet found | `/forms` and `/providers/forms` both 404. Numbered forms exist (OPWDD Form 108, 108a) but those found so far are registration/background-check, not notes. |
 | **FL** | APD | `apd.myflorida.com` reachable | Homepage loads; `/providers/` returns a near-empty page. Florida's *documentation rules* are settled regardless: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
 | **AR** | DHS DDS | `humanservices.arkansas.gov/…/developmental-disabilities-services/forms-documents/` | Forms & Documents page read 2026-09-09: 827 links, **no note- or log-titled form**. Tentative NO — the page is nav-heavy and may paginate, so worth one more pass before it moves to Verified. |
