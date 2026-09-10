@@ -69,6 +69,61 @@ scraped contact details, just what they published.
 | `@nursekeat` | NC Innovations Waiver, autism/IDD | developmentaldisabilities, waiverservices |
 | `@deonlovell` | NC, appears across all three group-home tags, `#autism` | grouphome, grouphomeowner, grouphomestartup |
 
+## @healthbizfixer is a partner, not a prospect — and the best lead found
+
+Read 2026-09-10, 18 videos from their public profile. They do not run a group
+home. **They are a consultant who helps other people open and maintain HCBS and
+waiver programs**, concentrated in Virginia, with clients in Georgia, Texas and
+South Carolina. *"Since Friday, three of our client agencies in Virginia have
+had unannounced licensing inspections."*
+
+That makes them the wrong shape for a $100/month subscription and the right
+shape for a referral relationship, because their audience is our buyer and
+they reach it continuously.
+
+**They already teach our exact pitch, unprompted:**
+
+> *"When Licensing sees copy-paste notes, they don't ask why. They ask: 'How
+> long has this agency been falsifying records? How are you monitoring staff
+> documentation?'"*
+
+That is the argument for signed, timestamped, uneditable notes, made better
+than our own marketing makes it, to precisely the people who need to hear it.
+Two more in the same vein:
+
+> *"These compliance mistakes show up EVERY week — Policies ≠ Operations, weak
+> documentation, unclear roles."*
+
+> *"Most providers think passing licensing means they're good. But if your staff
+> isn't trained… if your documentation isn't right… if your services can't be
+> verified…"*
+
+**And they are already sold on the mechanism.** *"Providers can't afford to
+waste time on admin work. This is just one example of how I use AI to take hours
+off my work."* We do not have to convince them that AI-assisted documentation is
+legitimate; they advocate it publicly.
+
+**They run a funnel that manufactures our buyer.** *"How to start a group home
+in Virginia in under 60 seconds 🔑 Comment 'VIRGINIA' for the full checklist."*
+Every person who comments is a brand-new Virginia provider who has just been
+told their documentation will get them cited — before they have chosen a system.
+That is the moment FlipBrief is easiest to adopt and hardest to displace later.
+
+**The economics argue for us.** They publish revenue benchmarks for their
+audience — roughly $6,380/month in Texas, $11,107 in South Carolina, $12,557 in
+Virginia. At $100 flat, FlipBrief is about **0.8% of a Virginia provider's
+monthly revenue**. That framing is theirs, not ours, and it is a better one than
+any we have used.
+
+Also worth knowing from their content: Virginia has a **Sponsored Residential**
+model that is distinct from licensed group homes, and DBHDS stopped accepting
+something as of 31 August 2026 (post references a memo with dates). Both are
+worth understanding before any Virginia conversation.
+
+**Not contacted.** Nothing has been sent, and nothing will be without Ironclaw
+saying so. The recommendation is a referral or partner-code arrangement, not a
+sales pitch.
+
 `@twiyamichele` (*"5 things you need to know before opening a group home"*) has
 the broadest reach of any account found — 3 tags, 4 videos — but no I/DD
 language. An educator for the adjacent market, useful to watch, not a prospect.
