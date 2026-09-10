@@ -26,6 +26,16 @@ export type JurisdictionOption = {
   formLine: string;
   /** Its identity blanks — ["Individual's Name:", 'Medicaid:']. */
   identityLabels: string[];
+  /**
+   * What this state prints at the foot of the page, or null.
+   *
+   * Null is meaningful and is not a missing value: it means this state
+   * publishes no rule about what a note must contain, so the page cites
+   * nothing. Twenty-four of the fifty-two are null. Do not substitute a
+   * default for it — an invented citation on a filed Medicaid record is the
+   * failure the whole verification pipeline exists to prevent.
+   */
+  legalCitation: string | null;
 };
 
 /**
@@ -48,6 +58,7 @@ type JurisdictionRow = {
   form_title: string | null;
   form_line: string | null;
   identity_labels: string[] | null;
+  legal_citation: string | null;
 };
 
 /**
@@ -91,7 +102,12 @@ export const listJurisdictions = cache(async (): Promise<JurisdictionOption[]> =
       // A template that declares no identity rows prints Form #680's, so fall
       // back to the constants the renderer itself falls back to rather than
       // to a second copy of them.
-      identityLabels: (r.identity_labels ?? DEFAULT_IDENTITY_LABELS).map((l) => l.trim())
+      identityLabels: (r.identity_labels ?? DEFAULT_IDENTITY_LABELS).map((l) => l.trim()),
+      // No fallback, on purpose. Every other caption here degrades to a
+      // sensible default; this one must not. Null means "this state publishes
+      // no rule we have read", and filling that gap with something plausible
+      // is the exact failure the citation verifier exists to prevent.
+      legalCitation: r.legal_citation ?? null
     }))
   );
 });

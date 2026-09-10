@@ -527,6 +527,18 @@ export type PreviewForm = {
   formLine: string;
   /** Identity blanks, e.g. ["Individual's Name:", 'Medicaid:']. */
   identityLabels: string[];
+  /**
+   * The rule printed at the foot, or null when the state publishes none.
+   *
+   * This is the only field that differs between most states, and the preview
+   * did not show it. Fifty-one of the fifty-two options render an identical
+   * heading and form line, so changing the state picker moved nothing on
+   * screen and the setting read as though it did nothing. What it actually
+   * changes is this line.
+   *
+   * Null renders as absent, never as a placeholder.
+   */
+  legalCitation?: string | null;
 };
 
 export function FormPreview({
@@ -594,6 +606,9 @@ export function FormPreview({
       >
         {form ? <div>{form.formLine}</div> : null}
         {value.footerLine ? <div>{value.footerLine}</div> : null}
+        {form?.legalCitation ? (
+          <div className="mt-1 italic">{form.legalCitation}</div>
+        ) : null}
       </div>
     </div>
   );

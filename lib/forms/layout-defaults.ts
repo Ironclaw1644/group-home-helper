@@ -91,7 +91,7 @@ export const DEFAULT_IDENTITY_LABELS: string[] = identityLabels(undefined);
  */
 export function formCaptions(
   template: Pick<FormTemplate, 'name' | 'formNumber' | 'renderConfig'>
-): { title: string; formLine: string; identityLabels: string[] } {
+): { title: string; formLine: string; identityLabels: string[]; legalCitation: string | null } {
   return {
     title: template.renderConfig.header?.title ?? template.name,
     formLine:
@@ -99,6 +99,10 @@ export function formCaptions(
       (template.formNumber === null
         ? template.name
         : `Daily Progress Notes Form #${template.formNumber}`),
-    identityLabels: identityLabels(template.renderConfig.identity_rows)
+    identityLabels: identityLabels(template.renderConfig.identity_rows),
+    // No fallback. The other two captions degrade to a default; this one must
+    // render as absent when absent, because the states with no citation are
+    // precisely the ones where inventing one would do harm.
+    legalCitation: template.renderConfig.footer?.legal_citation ?? null
   };
 }

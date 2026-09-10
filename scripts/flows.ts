@@ -295,8 +295,75 @@ const oversight: Flow = {
   }
 };
 
+/* ------------------------------------------------------------------ */
+
+/**
+ * Picking the state, and seeing what changes.
+ *
+ * This film could not honestly be made until 0042. The picker offers
+ * fifty-two options whose heading and footer line are identical for fifty-one
+ * of them, so a recording of somebody changing it showed the same document
+ * over and over. What actually differs is the citation at the foot of the
+ * page, and the screen did not show it.
+ *
+ * Now it does, so the film has something true to show: three states, three
+ * genuinely different answers, including the answer most buyers get.
+ */
+const forms: Flow = {
+  key: 'forms',
+  title: 'Your state, on the page',
+  subtitle: 'Pick it once',
+  captions: {
+    settings: 'One setting decides\nwhat every note prints.',
+    current: 'Virginia cites its own rule.\nIt is at the foot of the page.',
+    wv: 'West Virginia publishes a form.\nWe reproduce it.',
+    tx: 'Texas publishes a rule instead.\nSo the page cites the rule.',
+    none: 'Most states publish neither.\nSo the page claims nothing.',
+    safe: 'Change it whenever.\nSigned notes keep the form they were signed on.'
+  },
+  async run({ page, tap, mark, inject }) {
+    await page.goto(new URL('/settings', page.url()).toString(), { waitUntil: 'networkidle' });
+    await inject();
+    await page.waitForTimeout(1200);
+    mark('settings');
+
+    // The preview first, unchanged, so the viewer knows what they are looking
+    // at before anything moves.
+    await page.getByText(/how the printed form will look/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(2400);
+    mark('current');
+    await page.waitForTimeout(2200);
+
+    const picker = page.locator('#s-jurisdiction');
+    await picker.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+
+    // Three states, chosen because they are the three real answers a buyer
+    // gets: a form, a rule, or nothing. Colorado is not a filler — it is what
+    // twenty-four states look like, and it is the one competitors imply does
+    // not exist.
+    for (const [beat, code] of [['wv', 'US-WV'], ['tx', 'US-TX'], ['none', 'US-CO']] as const) {
+      await tap(picker);
+      await picker.selectOption(code);
+      await page.waitForTimeout(1400);
+      mark(beat);
+      await page.waitForTimeout(2600);
+    }
+
+    // Ending on the warning is the point: the setting is reversible, and the
+    // records already filed are not touched by it.
+    await page.getByText(/keep the form they were signed on/i).first().scrollIntoViewIfNeeded();
+    await page.waitForTimeout(800);
+    mark('safe');
+    await page.waitForTimeout(2600);
+  }
+};
+
+/* ------------------------------------------------------------------ */
+
 export const FLOWS: Record<string, Flow> = {
   branding: branding,
   roster: roster,
-  oversight: oversight
+  oversight: oversight,
+  forms: forms
 };

@@ -4,29 +4,35 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * The four demo films, on the public page.
+ * The five demo films, on the public page.
  *
  * They existed for a day before anyone could watch them: shot, cut, committed
  * to public/demo, and linked from nowhere. A prospect could read that signed
  * notes cannot be edited and had no way to watch one refuse.
  *
- * WHY FOUR AND NOT ONE
+ * WHY FIVE AND NOT ONE
  *
- * An owner deciding on this is not asking one question, they are asking four,
+ * An owner deciding on this is not asking one question, they are asking five,
  * and the answers do not compress into a single film:
  *
  *   will my staff actually use it      -> the note
  *   do I have to retype everything     -> the roster
  *   will it look like OUR agency       -> the letterhead
  *   can somebody fake a record         -> the audit
+ *   which form will it print for me    -> the state picker
  *
- * One reel forces the order; four lets somebody watch the one they are worried
- * about. The last is the one that closes an audit-frightened buyer, and it is
- * deliberately not buried at the end of a three-minute cut.
+ * One reel forces the order; five lets somebody watch the one they are worried
+ * about. The audit film is the one that closes an audit-frightened buyer, and
+ * it is deliberately not buried at the end of a four-minute cut.
+ *
+ * The state film could not honestly be made until the picker showed the
+ * citation. Before that, changing the state moved nothing on screen for
+ * fifty-one of the fifty-two options, so a film of somebody using it showed the
+ * same document over and over.
  *
  * NOTHING PRELOADS
  *
- * Four films is about seven megabytes and the reader is on a phone, often on
+ * Five films is about thirteen megabytes and the reader is on a phone, often on
  * cellular, and has not decided to spend anything on us yet. Each one loads a
  * poster and nothing else until it is tapped; `preload="metadata"` and no
  * autoplay are the whole reason this is a client component.
@@ -61,6 +67,12 @@ const FILMS: Film[] = [
     title: 'Your letterhead, your colours',
     question: 'Will it look like my agency?',
     length: '0:41'
+  },
+  {
+    key: 'forms',
+    title: 'Your state, on the page',
+    question: 'Which form will it print for me?',
+    length: '0:33'
   },
   {
     key: 'oversight',

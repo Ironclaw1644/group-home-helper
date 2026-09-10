@@ -227,6 +227,27 @@ export function SettingsForm({
                     restyling one after it was filed would change the document without changing
                     what happened.
                   </p>
+                  {/* What actually differs between two states is the line at the
+                      foot of the page, and the preview beside this alert
+                      deliberately does not move until the change is saved. So
+                      the choice is spelled out here instead: a buyer can read
+                      what they are switching to before they commit, without the
+                      screen implying it has already happened. Both branches say
+                      something — "cites nothing" is the honest answer for
+                      twenty-four states and is the one they most need to hear
+                      before they pay for a state library elsewhere. */}
+                  {chosen?.legalCitation ? (
+                    <p className="mt-2">
+                      Every page will carry:{' '}
+                      <span className="font-mono text-[0.85em]">{chosen.legalCitation}</span>
+                    </p>
+                  ) : chosen ? (
+                    <p className="mt-2">
+                      {chosen.name} publishes no rule about what a progress note must contain, so
+                      the page will cite nothing. That is deliberate — a citation we cannot stand
+                      behind is worse on a filed record than none.
+                    </p>
+                  ) : null}
                 </Alert>
               </div>
             ) : (
