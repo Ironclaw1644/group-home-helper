@@ -46,9 +46,13 @@ recorded at the bottom.
 
 | State | Agency | Where | Obstacle |
 |---|---|---|---|
-| **NY** | OPWDD | `opwdd.ny.gov/system/files/documents/…` | Site returns 403 to scripted fetches. Numbered forms confirmed to exist (e.g. OPWDD Form 108, 108a) but the ones found are registration/background-check, not notes. |
-| **FL** | APD | `apd.myflorida.com` | 403/404 on guessed paths. Note that Florida's *documentation rules* are settled: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
-| **AR** | DHS DDS | `humanservices.arkansas.gov` | 403, and the cited source is a legacy `.doc` our extractor cannot read. |
+**All three are now reachable** — the Cloudflare block was automation detection, not the
+network (see below). What remains is finding the right index URL inside each site, which is
+ordinary work rather than a wall.
+
+| **NY** | OPWDD | `opwdd.ny.gov` reachable; index URL not yet found | `/forms` and `/providers/forms` both 404. Numbered forms exist (OPWDD Form 108, 108a) but those found so far are registration/background-check, not notes. |
+| **FL** | APD | `apd.myflorida.com` reachable | Homepage loads; `/providers/` returns a near-empty page. Florida's *documentation rules* are settled regardless: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
+| **AR** | DHS DDS | `humanservices.arkansas.gov/…/developmental-disabilities-services/forms-documents/` | Forms & Documents page read 2026-09-09: 827 links, **no note- or log-titled form**. Tentative NO — the page is nav-heavy and may paginate, so worth one more pass before it moves to Verified. |
 
 ## California is structurally different — worth knowing
 
@@ -69,12 +73,18 @@ from the served HTML. Arizona too. See the `fetch-blocked-pages` skill for the e
 ladder and, importantly, for how to tell a JavaScript problem from an IP block before
 spending money on the wrong fix.
 
-**Does not work, and cannot be fixed locally.** Cloudflare-protected agencies — NY OPWDD,
-FL APD, GA DBHDD, AR DHS. Tested 2026-09-09 with headless Chromium, headed Chromium and
-headed real Chrome: all three returned an identical 403 "Just a moment...". Three different
-browsers failing the same way is the signature of an IP-reputation block, not a fingerprint
-one, so no local technique reaches them. They need egress from a residential address, which
-means a paid unblocker proxy.
+**Works for the Cloudflare-protected agencies too, and costs nothing.** NY OPWDD, FL APD,
+GA DBHDD and AR DHS all return `403 Just a moment` to ordinary Playwright. A persistent real-Chrome
+profile — `launchPersistentContext`, `channel: 'chrome'`, headed,
+`--disable-blink-features=AutomationControlled`, `ignoreDefaultArgs: ['--enable-automation']`
+— takes all four to `200` with real content.
+
+An earlier draft of this file said the opposite: that three browsers failing identically
+proved an IP-reputation block needing a paid proxy. That was wrong twice over. The three
+were not independent tests — every one was automated in the same detectable way — and the
+machine was already egressing from AS7018 AT&T, a residential consumer ISP, which is the
+exact thing an unblocker service sells. Checking your own egress org before buying a proxy
+takes one command and would have caught it.
 
 **Does not work.** Guessing forms-library URLs, and crawling agency homepages for a "Forms"
 link. Both were tried here at length. Modern state sites are JavaScript-rendered and
