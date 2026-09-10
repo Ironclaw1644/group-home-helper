@@ -50,8 +50,8 @@ ordinary work rather than a wall.
 
 | State | Agency | Where | Status |
 |---|---|---|---|
-| **NY** | OPWDD | `opwdd.ny.gov` reachable; index URL not yet found | `/forms` and `/providers/forms` both 404. Numbered forms exist (OPWDD Form 108, 108a) but those found so far are registration/background-check, not notes. |
-| **FL** | APD | `apd.myflorida.com` reachable | Homepage loads; `/providers/` returns a near-empty page. Florida's *documentation rules* are settled regardless: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
+| **NY** | OPWDD | `opwdd.ny.gov/search/forms` — the real index, found 2026-09-09 | It is a **search interface, not a static list**: 9,928 characters, 115 links, zero document links until a query is entered. Finishing New York means driving that search, not fetching a page. Numbered forms exist (OPWDD Form 108, 108a) but those seen so far are registration/background-check, not notes. |
+| **FL** | APD | `apd.myflorida.com` reachable | The homepage loads fine (4,361 chars headless). `/providers/` returns IIS's own `403 - Forbidden: Access is denied` — a wrong path, not a bot block. Florida's *documentation rules* are settled regardless: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
 | **AR** | DHS DDS | `humanservices.arkansas.gov/…/developmental-disabilities-services/forms-documents/` | Forms & Documents page read 2026-09-09: 827 links, **no note- or log-titled form**. Tentative NO — the page is nav-heavy and may paginate, so worth one more pass before it moves to Verified. |
 
 ## California is structurally different — worth knowing
@@ -77,7 +77,10 @@ spending money on the wrong fix.
 GA DBHDD and AR DHS all return `403 Just a moment` to ordinary Playwright. A persistent real-Chrome
 profile — `launchPersistentContext`, `channel: 'chrome'`, headed,
 `--disable-blink-features=AutomationControlled`, `ignoreDefaultArgs: ['--enable-automation']`
-— takes all four to `200` with real content.
+— takes all four to `200` with real content. That recipe is **headed only**: the same
+warmed profile returns `403 Attention Required` headless. For headless, SeleniumBase CDP
+Mode works and extracts more (NY 7,641 chars vs 4,524; FL 4,361 vs 1,744), because
+`chromium.launch()` is the detectable part rather than CDP itself.
 
 An earlier draft of this file said the opposite: that three browsers failing identically
 proved an IP-reputation block needing a paid proxy. That was wrong twice over. The three
