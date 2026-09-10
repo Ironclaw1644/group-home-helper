@@ -35,12 +35,46 @@ recorded at the bottom.
 
 | State | Agency | Forms library | Note/log form? | Detail |
 |---|---|---|---|---|
-| **TX** | HHSC | `fhb.hhs.texas.gov/forms` | **YES — optional** | Form 4119 *Residential Support Services (RSS) and Supervised Living (SL) Service Delivery Log*. Also 4117 supported employment, 4118 respite, 2124 transportation, 8615/8616 skills & socialisation. Completed within 14 days, kept in the individual's record. §3850 says "may be used"; a provider may document "in any way that meets the requirements of Section 3800". |
+| **TX** | HHSC | `fhb.hhs.texas.gov/forms` | **YES — optional, and not a note** | Form 4119 *Residential Support Services (RSS) and Supervised Living (SL) Service Delivery Log*. Also 4117 supported employment, 4118 respite, 2124 transportation, 8615/8616 skills & socialisation. Completed within 14 days, kept in the individual's record. §3850 says "may be used"; a provider may document "in any way that meets the requirements of Section 3800". **Read the form itself before claiming anything about it — see below.** |
 | **WV** | Bureau for Medical Services | `bms.wv.gov` (IDDW provider manual) | **YES — mandatory** | WV-BMS-IDD-7 *Direct-Support Service Log*. Manual: *"Documentation must be completed on a Direct-Support Service Log (WV-BMS-IDD-7)"*. Also WV-BMS-IDD-08. This "must" is the only one of its kind found. |
 | **MO** | DMH, Division of DD | `dmh.mo.gov/dev-disabilities/forms` | **NO** | Real forms library, but the logs are *RN Oversight Service Log* (nursing), *Adaptive Equipment Maintenance Log*, *Professional Managers Log*. Also publishes *Agency Documentation Review for ISL and Group Homes* — an audit checklist the state reviews **against**, which is useful to read but is not a note form. |
 | **NC** | DHHS | `ncdhhs.gov` (records management manual) | **NO** | The entire 168,000-character records manual names exactly one form: `DMH-4401`, *Drug Education School Completion form*. Unrelated. |
 | **OH** | DODD | `dodd.ohio.gov/wps/portal/gov/dodd/forms-and-rules/forms` | **NO** | Index read 2026-09-09 by rendering it in a real browser — it is client-side and invisible to `curl`. 85 forms: assessments, applications, attestations, training verifications. Zero occurrences of "service log", "progress note" or "daily note". Note the index sits two levels below `/forms`. |
 | **VA** | DBHDS | DBHDS licensing forms | **NO** | DBHDS numbers forms with an `OL-` prefix. There is no "Form #680" — 680 is a section of regulation `12VAC35-105`. This is the fabricated form number the product printed for about a year. |
+
+## Texas Form 4119 is not a note, and we should not say it is
+
+Downloaded and read 2026-09-09. Both language versions:
+
+- `fhb.hhs.texas.gov/sites/default/files/documents/laws-regulations/forms/4119/4119.pdf`
+- `…/4119/4119-S.pdf` (Spanish)
+
+Two things about it matter, and neither is visible from the title.
+
+**It is a dynamic XFA form.** `pdftotext` returns a 680-character "Please wait…
+upgrade Adobe Reader" placeholder and nothing else — no form number, no field
+labels. Chrome, Safari and Preview do not render XFA either. The real content is
+XML in the AcroForm `/XFA` array: 9 parts, 309KB, a 300KB template, 195 fields
+whose names are `A1, A2, A3…` and whose meanings live in 193 `<toolTip>` nodes.
+Anything that tries to fill the state's own PDF with a normal PDF library will
+fail, and anything that judges the file by `pdftotext` output will call it empty.
+
+**It is a weekly grid of initials, not a narrative note.** Columns are Sunday
+through Saturday. Rows are activities — bathing, dressing, personal hygiene,
+eating, meal planning, meal preparation, housekeeping, then independent-living
+skills. The instruction on the form reads *"At the end of your shift, initial
+all items that you completed with the individual. If there were any
+incidents…"*.
+
+So FlipBrief's daily narrative note and Form 4119 are different documents doing
+different jobs, and no amount of layout work turns one into the other. We must
+not claim to "support Form 4119" or print it. What is true, and is enough:
+§3850 says the form *may* be used, and a provider may document "in any way that
+meets the requirements of Section 3800" — so a narrative note is legitimate in
+Texas on its own terms. Say that instead.
+
+This is the same failure shape as Form #680, caught one step earlier: a title
+that sounds compatible, believed without opening the file.
 
 ## Located but not fully searched
 
@@ -50,7 +84,7 @@ ordinary work rather than a wall.
 
 | State | Agency | Where | Status |
 |---|---|---|---|
-| **NY** | OPWDD | `opwdd.ny.gov/search/forms` — the real index, found 2026-09-09 | It is a **search interface, not a static list**: 9,928 characters, 115 links, zero document links until a query is entered. Finishing New York means driving that search, not fetching a page. Numbered forms exist (OPWDD Form 108, 108a) but those seen so far are registration/background-check, not notes. |
+| **NY** | OPWDD | `opwdd.ny.gov/search/forms` — the real index, found 2026-09-09 | It is a **search interface, not a static list**: 9,928 characters, 115 links, zero document links until a query is entered. Numbered forms exist (OPWDD Form 108, 108a) but those seen so far are registration/background-check, not notes. **`robots.txt` disallows `/search/`** (read through a browser 2026-09-09; `/providers` is allowed, `/search/forms` and `/admin/` are not). Advisory rather than binding, but it means driving that search is against the site's stated preference — so find another route into NY's forms, or ask OPWDD, rather than automating the one path they asked crawlers to leave alone. |
 | **FL** | APD | `apd.myflorida.com` reachable | The homepage loads fine (4,361 chars headless). `/providers/` returns IIS's own `403 - Forbidden: Access is denied` — a wrong path, not a bot block. Florida's *documentation rules* are settled regardless: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
 | **AR** | DHS DDS | `humanservices.arkansas.gov/…/developmental-disabilities-services/forms-documents/` | Forms & Documents page read 2026-09-09: 827 links, **no note- or log-titled form**. Tentative NO — the page is nav-heavy and may paginate, so worth one more pass before it moves to Verified. |
 
