@@ -39,13 +39,13 @@ recorded at the bottom.
 | **WV** | Bureau for Medical Services | `bms.wv.gov` (IDDW provider manual) | **YES — mandatory** | WV-BMS-IDD-7 *Direct-Support Service Log*. Manual: *"Documentation must be completed on a Direct-Support Service Log (WV-BMS-IDD-7)"*. Also WV-BMS-IDD-08. This "must" is the only one of its kind found. |
 | **MO** | DMH, Division of DD | `dmh.mo.gov/dev-disabilities/forms` | **NO** | Real forms library, but the logs are *RN Oversight Service Log* (nursing), *Adaptive Equipment Maintenance Log*, *Professional Managers Log*. Also publishes *Agency Documentation Review for ISL and Group Homes* — an audit checklist the state reviews **against**, which is useful to read but is not a note form. |
 | **NC** | DHHS | `ncdhhs.gov` (records management manual) | **NO** | The entire 168,000-character records manual names exactly one form: `DMH-4401`, *Drug Education School Completion form*. Unrelated. |
+| **OH** | DODD | `dodd.ohio.gov/wps/portal/gov/dodd/forms-and-rules/forms` | **NO** | Index read 2026-09-09 by rendering it in a real browser — it is client-side and invisible to `curl`. 85 forms: assessments, applications, attestations, training verifications. Zero occurrences of "service log", "progress note" or "daily note". Note the index sits two levels below `/forms`. |
 | **VA** | DBHDS | DBHDS licensing forms | **NO** | DBHDS numbers forms with an `OL-` prefix. There is no "Form #680" — 680 is a section of regulation `12VAC35-105`. This is the fabricated form number the product printed for about a year. |
 
 ## Located but not fully searched
 
 | State | Agency | Where | Obstacle |
 |---|---|---|---|
-| **OH** | DODD | `dodd.ohio.gov/forms`, `/wps/portal/gov/dodd/forms-and-rules` | JavaScript portal; the form index is not in the served HTML. |
 | **NY** | OPWDD | `opwdd.ny.gov/system/files/documents/…` | Site returns 403 to scripted fetches. Numbered forms confirmed to exist (e.g. OPWDD Form 108, 108a) but the ones found are registration/background-check, not notes. |
 | **FL** | APD | `apd.myflorida.com` | 403/404 on guessed paths. Note that Florida's *documentation rules* are settled: 59G-13.070 incorporates the iBudget Handbook, which defines "Daily Progress Note" in prose, not as a numbered form. |
 | **AR** | DHS DDS | `humanservices.arkansas.gov` | 403, and the cited source is a legacy `.doc` our extractor cannot read. |
@@ -62,6 +62,19 @@ California form library means a regional centre's, not the state's.
 **Works.** Reading the state's own provider manual and searching it for form numbers —
 that is `scripts/scan-state-forms.py`, and it is how both real hits are corroborated. A
 state that mandates a form nearly always names it in the manual that mandates it.
+
+**Works for the JavaScript portals.** Rendering the page in real Chromium via Playwright.
+This is what finally opened Ohio, whose form index is built client-side and is simply absent
+from the served HTML. Arizona too. See the `fetch-blocked-pages` skill for the escalation
+ladder and, importantly, for how to tell a JavaScript problem from an IP block before
+spending money on the wrong fix.
+
+**Does not work, and cannot be fixed locally.** Cloudflare-protected agencies — NY OPWDD,
+FL APD, GA DBHDD, AR DHS. Tested 2026-09-09 with headless Chromium, headed Chromium and
+headed real Chrome: all three returned an identical 403 "Just a moment...". Three different
+browsers failing the same way is the signature of an IP-reputation block, not a fingerprint
+one, so no local technique reaches them. They need egress from a residential address, which
+means a paid unblocker proxy.
 
 **Does not work.** Guessing forms-library URLs, and crawling agency homepages for a "Forms"
 link. Both were tried here at length. Modern state sites are JavaScript-rendered and
