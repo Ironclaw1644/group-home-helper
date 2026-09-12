@@ -213,9 +213,13 @@ async function main() {
       // What it was reaching for is worth keeping: the footer must come from
       // the template rather than from anything hardcoded in the renderer. So
       // assert exactly that, against whatever line the fixture supplies.
+      // A fixture with no footer line fails this rather than passing it
+      // vacuously: "the template supplied nothing and nothing was printed"
+      // would satisfy an includes() check while proving nothing at all.
+      const footerLine = poisonedTemplate.renderConfig.footer?.form_line ?? '';
       check(
         'the footer printed is the one the template supplies',
-        formText.includes(poisonedTemplate.renderConfig.footer.form_line)
+        footerLine.length > 0 && formText.includes(footerLine)
       );
     }
 
