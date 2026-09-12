@@ -1,0 +1,60 @@
+{
+  "_comment": [
+    "GOLDEN SPEC — West Virginia Direct Support Progress Note.",
+    "",
+    "This file is the state's requirements, not ours. Every value below was read",
+    "off the published document; nothing here is inferred, and nothing here may be",
+    "changed to make a test pass. If the state revises the form, update this file",
+    "FIRST, deliberately, and let the test fail until the product follows.",
+    "",
+    "The failure this guards against is not hypothetical: the product printed a",
+    "fabricated Virginia 'Form #680' for roughly a year. 680 is a section of",
+    "regulation 12VAC35-105, not a document. A form number that nobody checked",
+    "against a source is the exact bug class this file exists to make impossible."
+  ],
+  "source": {
+    "url": "https://wvaso.acentra.com/wp-content/uploads/sites/19/2025/01/IDD_07_Direct-Support-Doc_11.01.23.doc",
+    "publisher": "Acentra Health, ASO for the WV Bureau for Medical Services",
+    "program": "West Virginia I/DD Waiver",
+    "revision": "11.01.23",
+    "consulted": "2026-09-08",
+    "note": "The .doc carries three forms. We reproduce the second only."
+  },
+  "forms_in_source": [
+    { "name": "Direct Support Service Log", "reproduced": false, "why": "Time sheet with billing units and per-entry service codes. The app holds neither." },
+    { "name": "Direct Support Progress Note", "reproduced": true, "why": "The narrative form. This is the one." },
+    { "name": "Transportation Log", "reproduced": false, "why": "Odometer readings and trip reasons. Out of scope." }
+  ],
+  "template_key": "direct_support_progress_note_wv",
+  "jurisdiction": "US-WV",
+
+  "title": "Direct Support Progress Note",
+  "footer_form_line": "WV I/DD Waiver — Direct Support Progress Note (rev. 11.01.23)",
+
+  "form_number": null,
+  "form_number_rationale": "The document numbers nothing on its face. 'IDD_07' is a filename on the ASO's website, not a form number printed on the page. Null is the honest value and the test enforces it.",
+
+  "prompts_verbatim": [
+    "Were there any parts of the goal in which the person did especially well or poorly?",
+    "Did anything out of the ordinary occur (such as illness, behaviors, etc.)?",
+    "Did the person require more support than usual?",
+    "How did the person respond to support and services provided?"
+  ],
+  "prompts_note": "The state prints these as one run-on prompt above the narrative column. We split them into four and substitute {name}/{subject} for 'the person'. The wording is theirs; only the pronoun placeholders are ours.",
+
+  "required_identity_fields": [
+    "resident_legal_name",
+    "medicaid_id",
+    "org_line",
+    "provider_id",
+    "service_date",
+    "shift_start",
+    "signature_name"
+  ],
+
+  "scope_caveats_for_buyers": [
+    "The form is EXCEPTION-BASED: its subtitle limits it to the Traditional Service Delivery Model and to shifts where something out of the ordinary occurred. This app writes a note every shift, so an agency using it documents MORE than West Virginia asks, not less. Safe direction to be wrong in, but say it in the sales conversation rather than letting a buyer discover it.",
+    "We do not replace the Direct Support Service Log.",
+    "We do not do the Transportation Log."
+  ]
+}

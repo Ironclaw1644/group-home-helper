@@ -309,7 +309,7 @@ const template: FormTemplate = {
   },
   renderConfig: {
     header: { title: 'Daily Progress Note' },
-    footer: { form_line: 'Daily Progress Notes Form #680' },
+    footer: { form_line: 'WV I/DD Waiver — Direct Support Progress Note (rev. 11.01.23)' },
     narrative_min_height: 340
   }
 } as unknown as FormTemplate;
@@ -570,7 +570,7 @@ async function main() {
 
     check('the form renders', buffer.length > 1000);
 
-    const file = path.join(dir, 'form680.pdf');
+    const file = path.join(dir, 'progress-note.pdf');
     writeFileSync(file, buffer);
 
     let text: string | null = null;

@@ -53,18 +53,25 @@ const resident: Resident = {
 };
 
 /**
- * A template carrying the old hardcoded identity.
+ * A template carrying a hardcoded agency identity, on purpose.
  *
- * This is what is actually in the production database on the global
- * `daily_progress_note_680` row, so rendering against it is the real test.
+ * The point of this fixture is the poisoned branding — one agency's logo, org
+ * line and letterhead baked into a global row — because that is the leak the
+ * renderer must refuse. It is deliberately a template nobody would want.
+ *
+ * It used to say it was "what is actually in the production database on the
+ * global `daily_progress_note_680` row". That stopped being true at 0040,
+ * which deactivated the fabricated Virginia row. It is now the shipped West
+ * Virginia form with the poison added, so the fixture is a real template again
+ * rather than a description of a row that no longer exists.
  */
 const poisonedTemplate: FormTemplate = {
   id: 'tpl',
-  key: 'daily_progress_note_680',
-  version: 1,
-  name: 'Daily Progress Note',
-  formNumber: '680',
-  jurisdiction: 'US-VA',
+  key: 'direct_support_progress_note_wv',
+  version: 2,
+  name: 'Direct Support Progress Note',
+  formNumber: null,
+  jurisdiction: 'US-WV',
   schema: {
     prompts: ['Where did {name} choose to go?', 'How did staff support {name}?'],
     sections: [],
@@ -77,7 +84,7 @@ const poisonedTemplate: FormTemplate = {
       org_line: 'At Home Family Service, LLC',
       title: 'Daily Progress Note'
     },
-    footer: { form_line: 'Daily Progress Notes Form #680' },
+    footer: { form_line: 'WV I/DD Waiver — Direct Support Progress Note (rev. 11.01.23)' },
     narrative_min_height: 340
   }
 };
@@ -167,10 +174,10 @@ async function main() {
       />
     );
 
-    check('Form #680 renders without a logo', form.length > 1000);
+    check('the progress note renders without a logo', form.length > 1000);
     check('Quarterly review renders without a logo', quarterly.length > 1000);
 
-    const formText = extractText(form, dir, 'form680.pdf');
+    const formText = extractText(form, dir, 'progress-note.pdf');
     const quarterlyText = extractText(quarterly, dir, 'quarterly.pdf');
 
     if (formText === null || quarterlyText === null) {
@@ -180,7 +187,7 @@ async function main() {
       // require an org-supplied identity.
     } else {
       for (const [label, text] of [
-        ['Form #680', formText],
+        ['Progress note', formText],
         ['Quarterly review', quarterlyText]
       ] as const) {
         check(`${label} prints the requesting agency`, text.includes(DEMO_ORG_LINE));
@@ -197,10 +204,18 @@ async function main() {
         }
       }
 
-      // The form number identifies the Virginia document and must survive.
+      // This check used to read: "The form number identifies the Virginia
+      // document and must survive" — asserting formText included the literal
+      // 'Daily Progress Notes Form #680'. It was a guard pointing the wrong
+      // way. Had anyone deleted the fabricated caption from the renderer, this
+      // is the test that would have gone red and told them to put it back.
+      //
+      // What it was reaching for is worth keeping: the footer must come from
+      // the template rather than from anything hardcoded in the renderer. So
+      // assert exactly that, against whatever line the fixture supplies.
       check(
-        'Form #680 still carries its form number',
-        formText.includes('Daily Progress Notes Form #680')
+        'the footer printed is the one the template supplies',
+        formText.includes(poisonedTemplate.renderConfig.footer.form_line)
       );
     }
 

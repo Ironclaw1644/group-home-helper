@@ -1,0 +1,42 @@
+{
+  "_comment": [
+    "Every form number this product is allowed to print, and the source that",
+    "proves it exists. Anything form-number-shaped that is NOT in this registry",
+    "is treated as a fabrication by verify:wv-form and fails the build.",
+    "",
+    "This exists because 'Virginia Form #680' shipped for about a year. It was",
+    "never a document — 680 is a section of regulation 12VAC35-105. Nobody",
+    "caught it because nothing checked form numbers against sources. Now",
+    "something does. To add a number here you must paste the URL you read it",
+    "off, and 'a competitor's site said so' is not a source."
+  ],
+  "verified": [
+    {
+      "number": "4119",
+      "label": "Form 4119",
+      "jurisdiction": "US-TX",
+      "title": "Residential Support Services (RSS) and Supervised Living (SL) Service Delivery Log",
+      "publisher": "Texas HHSC",
+      "source": "https://fhb.hhs.texas.gov/sites/default/files/documents/laws-regulations/forms/4119/4119.pdf",
+      "read_on": "2026-09-09",
+      "we_print_it": false,
+      "notes": "Real and cited on /states, but NOT reproduced. It is optional (HCS Billing Requirements §3850 says 'may'), it is a service delivery log rather than a progress note, and it is a dynamic XFA PDF that standard PDF libraries cannot fill. Cite it; never claim to produce it."
+    }
+  ],
+  "known_fabrications": [
+    {
+      "number": "680",
+      "label": "Form #680",
+      "claimed_jurisdiction": "US-VA",
+      "reality": "No such form. DBHDS numbers its forms with an OL- prefix. 680 is a section of regulation 12VAC35-105, and the state publishes a rule rather than a document.",
+      "shipped_for": "roughly one year",
+      "status": "removed from runtime; README still carries the old language and is tracked separately"
+    }
+  ],
+  "document_codes_not_form_numbers": [
+    {
+      "code": "WV-BMS-IDD-7",
+      "note": "Named in West Virginia's IDDW provider manual as the Direct-Support Service Log. We cite the manual's requirement but reproduce the Progress Note, not the Service Log. Not a form number printed on the page we reproduce, which is why the WV template's form_number is null."
+    }
+  ]
+}
