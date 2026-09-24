@@ -800,6 +800,17 @@ function SiteFooter() {
           documentation rule where one exists. Staff joining an agency need an invitation from
           their supervisor.
         </p>
+
+        <p className="mt-6 text-[0.8rem] leading-relaxed text-flip-paper/55">
+          <a
+            href="https://luziq.ai/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-flip-paper hover:underline"
+          >
+            Website powered by Luziq
+          </a>
+        </p>
       </Shell>
     </footer>
   );
