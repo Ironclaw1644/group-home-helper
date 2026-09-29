@@ -246,7 +246,7 @@ export function FormImporter({
               We found {forms.length} forms in those pages. Showing the one staff write their note on — tap
               another to switch.
             </p>
-            <div role="radiogroup" aria-label="Forms found" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            <div role="radiogroup" aria-label="Forms found" className="flex flex-wrap gap-2">
               {forms.map((f, i) => (
                 <button
                   key={`${f.title}-${i}`}
