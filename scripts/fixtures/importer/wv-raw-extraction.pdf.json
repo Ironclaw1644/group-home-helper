@@ -1,0 +1,280 @@
+{
+  "_comment": "Recorded model output. Regenerate with npm run spike:import-wv.",
+  "usage": {
+    "model": "claude-opus-5-5",
+    "inputTokens": 7023,
+    "outputTokens": 2540,
+    "elapsedSeconds": 20.3
+  },
+  "raw": {
+    "forms": [
+      {
+        "title": "DIRECT SUPPORT SERVICE LOG",
+        "subtitle": "(To be used with Traditional Service Delivery Models)",
+        "pages": [
+          1
+        ],
+        "printed_form_numbers": [],
+        "prompt_blocks_verbatim": [],
+        "fields": [
+          {
+            "label": "Name of Person Who Receives Services",
+            "suggested_source": "resident_legal_name",
+            "section": "identity"
+          },
+          {
+            "label": "Provider Agency",
+            "suggested_source": "org_line",
+            "section": "identity"
+          },
+          {
+            "label": "Month of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Year of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Service Name",
+            "suggested_source": "service_type",
+            "section": "other"
+          },
+          {
+            "label": "Service Code",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Identifier (ID)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Total Time Per Service For This Page",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Date",
+            "suggested_source": "service_date",
+            "section": "meta"
+          },
+          {
+            "label": "ID",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Start Time am/pm",
+            "suggested_source": "shift_start",
+            "section": "meta"
+          },
+          {
+            "label": "Stop Time am/pm",
+            "suggested_source": "shift_stop",
+            "section": "meta"
+          },
+          {
+            "label": "Total Time",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Was training provided? (Y/N)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Provider/Staff Initials",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Provider/Staff Name",
+            "suggested_source": "signature_name",
+            "section": "signature"
+          },
+          {
+            "label": "Provider/Staff Signature",
+            "suggested_source": null,
+            "section": "signature"
+          },
+          {
+            "label": "Page ____ of ____",
+            "suggested_source": null,
+            "section": "other"
+          }
+        ],
+        "is_log_or_table": true
+      },
+      {
+        "title": "DIRECT SUPPORT PROGRESS NOTE",
+        "subtitle": "(To be used with Traditional Service Delivery Model and if something out of the ordinary occurs while providing services)",
+        "pages": [
+          1,
+          2
+        ],
+        "printed_form_numbers": [],
+        "prompt_blocks_verbatim": [
+          "Were there any parts of the goal in which the person did especially well or poorly?  Did anything out of the ordinary occur (such as illness, behaviors, etc.)?  Did the person require more support than usual?  How did the person respond to support and services provided?"
+        ],
+        "fields": [
+          {
+            "label": "Name of Person Who Receives Services",
+            "suggested_source": "resident_legal_name",
+            "section": "identity"
+          },
+          {
+            "label": "Provider Agency",
+            "suggested_source": "org_line",
+            "section": "identity"
+          },
+          {
+            "label": "Month of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Year of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Date",
+            "suggested_source": "service_date",
+            "section": "meta"
+          },
+          {
+            "label": "Time AM PM",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Provider/Staff Initials",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Provider/Staff Name",
+            "suggested_source": "signature_name",
+            "section": "signature"
+          },
+          {
+            "label": "Provider/Staff Signature",
+            "suggested_source": null,
+            "section": "signature"
+          },
+          {
+            "label": "Page ____ of ____",
+            "suggested_source": null,
+            "section": "other"
+          }
+        ],
+        "is_log_or_table": false
+      },
+      {
+        "title": "TRANSPORTATION LOG",
+        "subtitle": "(To be used with Traditional Service Delivery Model and if applicable)",
+        "pages": [
+          2,
+          3
+        ],
+        "printed_form_numbers": [
+          "WV-BMS-I/DD-7 Direct Support Service Effective 11/01/23"
+        ],
+        "prompt_blocks_verbatim": [],
+        "fields": [
+          {
+            "label": "Service Code (Use separate pages for miles and trips): A0160 U1 (Miles) A0120 HI (Trip)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Name of Person Who Receives Services",
+            "suggested_source": "resident_legal_name",
+            "section": "identity"
+          },
+          {
+            "label": "Provider Agency",
+            "suggested_source": "org_line",
+            "section": "identity"
+          },
+          {
+            "label": "Month of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Year of Service",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Date",
+            "suggested_source": "service_date",
+            "section": "meta"
+          },
+          {
+            "label": "Travel From (starting address)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Travel To (end address)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Reason for Travel (must correspond to an objective on the IPP)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Starting Odometer Reading (optional)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Ending Odometer Reading (optional)",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Total Miles or Trips",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Provider Initials",
+            "suggested_source": null,
+            "section": "meta"
+          },
+          {
+            "label": "Total Miles for This Page",
+            "suggested_source": null,
+            "section": "other"
+          },
+          {
+            "label": "Provider/Staff Name",
+            "suggested_source": "signature_name",
+            "section": "signature"
+          },
+          {
+            "label": "Provider/Staff Signature",
+            "suggested_source": null,
+            "section": "signature"
+          },
+          {
+            "label": "Page____of____",
+            "suggested_source": null,
+            "section": "other"
+          }
+        ],
+        "is_log_or_table": true
+      }
+    ]
+  }
+}

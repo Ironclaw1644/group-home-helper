@@ -1,0 +1,451 @@
+{
+  "score": {
+    "matchedDraftName": "DIRECT SUPPORT PROGRESS NOTE",
+    "promptsMatched": 4,
+    "promptsTotal": 4,
+    "promptMisses": [],
+    "identityFound": [
+      "resident_legal_name",
+      "org_line",
+      "service_date",
+      "signature_name"
+    ],
+    "identityMissing": [
+      "medicaid_id",
+      "provider_id",
+      "shift_start"
+    ],
+    "formNumberNull": true
+  },
+  "drafts": [
+    {
+      "org_id": "spike-org",
+      "key": "imported_direct_support_service_log",
+      "version": 1,
+      "name": "DIRECT SUPPORT SERVICE LOG",
+      "form_number": null,
+      "jurisdiction": "GENERIC",
+      "active": false,
+      "schema": {
+        "prompts": [],
+        "sections": [],
+        "narrative": {
+          "key": "narrative",
+          "type": "narrative",
+          "label": "Narrative"
+        },
+        "signature": {
+          "key": "signature",
+          "type": "signature",
+          "attestation": ""
+        }
+      },
+      "render_config": {
+        "header": {
+          "title": "DIRECT SUPPORT SERVICE LOG"
+        },
+        "identity_rows": [
+          {
+            "fields": [
+              {
+                "source": "resident_legal_name",
+                "label": "Name of Person Who Receives Services: ",
+                "width": 120
+              },
+              {
+                "source": "org_line",
+                "label": "Provider Agency: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "meta_rows": [
+          {
+            "fields": [
+              {
+                "label": "Month of Service: ",
+                "width": 120
+              },
+              {
+                "label": "Year of Service: ",
+                "width": 120
+              },
+              {
+                "source": "service_type",
+                "label": "Service Name: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Service Code: ",
+                "width": 120
+              },
+              {
+                "label": "Identifier (ID): ",
+                "width": 120
+              },
+              {
+                "label": "Total Time Per Service For This Page: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "source": "service_date",
+                "label": "Date: ",
+                "width": 120
+              },
+              {
+                "label": "ID: ",
+                "width": 120
+              },
+              {
+                "source": "shift_start",
+                "label": "Start Time am/pm: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "source": "shift_stop",
+                "label": "Stop Time am/pm: ",
+                "width": 120
+              },
+              {
+                "label": "Total Time: ",
+                "width": 120
+              },
+              {
+                "label": "Was training provided? (Y/N): ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Provider/Staff Initials: ",
+                "width": 120
+              },
+              {
+                "source": "signature_name",
+                "label": "Provider/Staff Name: ",
+                "width": 120
+              },
+              {
+                "label": "Page ____ of ____: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "signature_block": {
+          "label": "Provider/Staff Signature: "
+        }
+      },
+      "import_review": {
+        "status": "pending_human_signoff",
+        "source_pages": [
+          1
+        ],
+        "subtitle": "(To be used with Traditional Service Delivery Models)",
+        "is_log_or_table": true,
+        "rejected_form_numbers": [],
+        "unmapped_labels": [
+          "Month of Service",
+          "Year of Service",
+          "Service Code",
+          "Identifier (ID)",
+          "Total Time Per Service For This Page",
+          "ID",
+          "Total Time",
+          "Was training provided? (Y/N)",
+          "Provider/Staff Initials",
+          "Page ____ of ____"
+        ],
+        "prompt_blocks_verbatim": []
+      }
+    },
+    {
+      "org_id": "spike-org",
+      "key": "imported_direct_support_progress_note",
+      "version": 1,
+      "name": "DIRECT SUPPORT PROGRESS NOTE",
+      "form_number": null,
+      "jurisdiction": "GENERIC",
+      "active": false,
+      "schema": {
+        "prompts": [
+          "Were there any parts of the goal in which the person did especially well or poorly?",
+          "Did anything out of the ordinary occur (such as illness, behaviors, etc.)?",
+          "Did the person require more support than usual?",
+          "How did the person respond to support and services provided?"
+        ],
+        "sections": [],
+        "narrative": {
+          "key": "narrative",
+          "type": "narrative",
+          "label": "Narrative"
+        },
+        "signature": {
+          "key": "signature",
+          "type": "signature",
+          "attestation": ""
+        }
+      },
+      "render_config": {
+        "header": {
+          "title": "DIRECT SUPPORT PROGRESS NOTE"
+        },
+        "identity_rows": [
+          {
+            "fields": [
+              {
+                "source": "resident_legal_name",
+                "label": "Name of Person Who Receives Services: ",
+                "width": 120
+              },
+              {
+                "source": "org_line",
+                "label": "Provider Agency: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "meta_rows": [
+          {
+            "fields": [
+              {
+                "label": "Month of Service: ",
+                "width": 120
+              },
+              {
+                "label": "Year of Service: ",
+                "width": 120
+              },
+              {
+                "source": "service_date",
+                "label": "Date: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Time AM PM: ",
+                "width": 120
+              },
+              {
+                "label": "Provider/Staff Initials: ",
+                "width": 120
+              },
+              {
+                "source": "signature_name",
+                "label": "Provider/Staff Name: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Page ____ of ____: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "signature_block": {
+          "label": "Provider/Staff Signature: "
+        }
+      },
+      "import_review": {
+        "status": "pending_human_signoff",
+        "source_pages": [
+          1,
+          2
+        ],
+        "subtitle": "(To be used with Traditional Service Delivery Model and if something out of the ordinary occurs while providing services)",
+        "is_log_or_table": false,
+        "rejected_form_numbers": [],
+        "unmapped_labels": [
+          "Month of Service",
+          "Year of Service",
+          "Time AM PM",
+          "Provider/Staff Initials",
+          "Page ____ of ____"
+        ],
+        "prompt_blocks_verbatim": [
+          "Were there any parts of the goal in which the person did especially well or poorly?  Did anything out of the ordinary occur (such as illness, behaviors, etc.)?  Did the person require more support than usual?  How did the person respond to support and services provided?"
+        ]
+      }
+    },
+    {
+      "org_id": "spike-org",
+      "key": "imported_transportation_log",
+      "version": 1,
+      "name": "TRANSPORTATION LOG",
+      "form_number": null,
+      "jurisdiction": "GENERIC",
+      "active": false,
+      "schema": {
+        "prompts": [],
+        "sections": [],
+        "narrative": {
+          "key": "narrative",
+          "type": "narrative",
+          "label": "Narrative"
+        },
+        "signature": {
+          "key": "signature",
+          "type": "signature",
+          "attestation": ""
+        }
+      },
+      "render_config": {
+        "header": {
+          "title": "TRANSPORTATION LOG"
+        },
+        "identity_rows": [
+          {
+            "fields": [
+              {
+                "source": "resident_legal_name",
+                "label": "Name of Person Who Receives Services: ",
+                "width": 120
+              },
+              {
+                "source": "org_line",
+                "label": "Provider Agency: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "meta_rows": [
+          {
+            "fields": [
+              {
+                "label": "Service Code (Use separate pages for miles and trips): A0160 U1 (Miles) A0120 HI (Trip): ",
+                "width": 120
+              },
+              {
+                "label": "Month of Service: ",
+                "width": 120
+              },
+              {
+                "label": "Year of Service: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "source": "service_date",
+                "label": "Date: ",
+                "width": 120
+              },
+              {
+                "label": "Travel From (starting address): ",
+                "width": 120
+              },
+              {
+                "label": "Travel To (end address): ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Reason for Travel (must correspond to an objective on the IPP): ",
+                "width": 120
+              },
+              {
+                "label": "Starting Odometer Reading (optional): ",
+                "width": 120
+              },
+              {
+                "label": "Ending Odometer Reading (optional): ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "label": "Total Miles or Trips: ",
+                "width": 120
+              },
+              {
+                "label": "Provider Initials: ",
+                "width": 120
+              },
+              {
+                "label": "Total Miles for This Page: ",
+                "width": 120
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "source": "signature_name",
+                "label": "Provider/Staff Name: ",
+                "width": 120
+              },
+              {
+                "label": "Page____of____: ",
+                "width": 120
+              }
+            ]
+          }
+        ],
+        "signature_block": {
+          "label": "Provider/Staff Signature: "
+        }
+      },
+      "import_review": {
+        "status": "pending_human_signoff",
+        "source_pages": [
+          2,
+          3
+        ],
+        "subtitle": "(To be used with Traditional Service Delivery Model and if applicable)",
+        "is_log_or_table": true,
+        "rejected_form_numbers": [
+          {
+            "printed": "WV-BMS-I/DD-7 Direct Support Service Effective 11/01/23",
+            "why": "not in the verified form-number registry; a document code or filename is not a form number"
+          }
+        ],
+        "unmapped_labels": [
+          "Service Code (Use separate pages for miles and trips): A0160 U1 (Miles) A0120 HI (Trip)",
+          "Month of Service",
+          "Year of Service",
+          "Travel From (starting address)",
+          "Travel To (end address)",
+          "Reason for Travel (must correspond to an objective on the IPP)",
+          "Starting Odometer Reading (optional)",
+          "Ending Odometer Reading (optional)",
+          "Total Miles or Trips",
+          "Provider Initials",
+          "Total Miles for This Page",
+          "Page____of____"
+        ],
+        "prompt_blocks_verbatim": []
+      }
+    }
+  ]
+}

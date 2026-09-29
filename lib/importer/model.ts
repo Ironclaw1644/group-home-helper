@@ -3,10 +3,10 @@ import 'server-only';
 /**
  * The network half of the importer: the only file here that talks to a model.
  *
- * SPIKE — spike/form-importer. Reads nothing from and writes nothing to the
- * database. Every decision about what a template or preset may contain is made
- * afterwards by the pure modules (template-draft.ts, presets.ts); this file
- * only asks the model to transcribe.
+ * Reads nothing from and writes nothing to the database. Every decision about
+ * what a template or preset may contain is made afterwards by the pure modules
+ * (template-draft.ts, editable.ts, presets.ts); this file only asks the model
+ * to transcribe.
  *
  * Uses Anthropic because it is the one hosted provider this app keeps (see
  * lib/ai/anthropic.ts). A BLANK form carries no patient information, so Paths 1
@@ -21,9 +21,23 @@ import type { GateResult } from './phi-gate';
 import type { RawPreset } from './presets';
 import type { RawExtraction } from './template-draft';
 
-export const IMPORTER_MODEL = process.env.ANTHROPIC_IMPORTER_MODEL || 'claude-opus-5';
+/**
+ * Opus 5.5, measured against Sonnet 5.5 on West Virginia's official form
+ * (scripts/fixtures/importer, 2026-09-29): both copied all four printed
+ * questions verbatim; only Opus also found every printed field from the photo
+ * pages (5 of the 5 the form prints — Sonnet missed "Time"). About $0.07 and
+ * 20 s per import against $0.03 and 10 s, once per agency. Accuracy first.
+ */
+export const IMPORTER_MODEL = process.env.ANTHROPIC_IMPORTER_MODEL || 'claude-opus-5-5';
 
-export type Upload = { mediaType: 'image/png' | 'image/jpeg' | 'application/pdf'; base64: string };
+/** Reading a page is transcription, not reasoning; medium is Opus 5.5's own default, stated. */
+const IMPORTER_EFFORT = 'medium' as const;
+
+/** Past this the admin has been watching a spinner long enough; they can retry. */
+const IMPORT_TIMEOUT_MS = 100_000;
+
+export type UploadMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'application/pdf';
+export type Upload = { mediaType: UploadMediaType; base64: string };
 
 export type Usage = { model: string; inputTokens: number; outputTokens: number; elapsedSeconds: number };
 
@@ -91,10 +105,11 @@ Accuracy rules:
 
 export async function extractForms(uploads: Upload[]): Promise<{ raw: RawExtraction; usage: Usage }> {
   const started = Date.now();
-  const response = await getClient().messages.parse({
+  const response = await getClient().messages.parse(
+    {
     model: IMPORTER_MODEL,
     max_tokens: 16000,
-    output_config: { format: zodOutputFormat(FormSchema) },
+    output_config: { effort: IMPORTER_EFFORT, format: zodOutputFormat(FormSchema) },
     system: FORM_SYSTEM,
     messages: [
       {
@@ -102,7 +117,9 @@ export async function extractForms(uploads: Upload[]): Promise<{ raw: RawExtract
         content: [...toBlocks(uploads), { type: 'text', text: 'Transcribe every form in this upload.' }]
       }
     ]
-  });
+    },
+    { timeout: IMPORT_TIMEOUT_MS, maxRetries: 1 }
+  );
   if (response.stop_reason === 'refusal') throw new Error('model refused the form upload');
   if (!response.parsed_output) throw new Error(`no parsed output (stop_reason=${response.stop_reason})`);
   return { raw: response.parsed_output, usage: usageOf(response, started) };
