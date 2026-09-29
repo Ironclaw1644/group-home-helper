@@ -275,6 +275,25 @@ console.log('\nReview and confirm — what an edit can and cannot do');
     check('a state footer line and citation are not carried onto the agency form', rc.footer === undefined);
     check('the printed title is the form title', rc.header?.title === 'Daily Note');
     check('the signature label prints as on the page', rc.signature_block?.label === 'Staff Signature: ');
+    const packed = renderConfigFor(
+      {
+        ...f,
+        fields: [
+          { label: 'Name of Person Who Receives Services', source: 'resident_legal_name', section: 'identity' },
+          { label: 'Provider Agency', source: 'org_line', section: 'identity' },
+          { label: 'Date', source: 'service_date', section: 'meta' },
+          { label: 'Time', source: 'shift_start', section: 'meta' },
+          { label: 'Shift', source: 'shift_label', section: 'meta' }
+        ]
+      },
+      {}
+    );
+    check(
+      'a label too long to share a line gets its own row, so it cannot overprint its value',
+      packed.identity_rows?.length === 2 && packed.identity_rows[0].fields.length === 1,
+      JSON.stringify(packed.identity_rows)
+    );
+    check('short boxes still share a row', packed.meta_rows?.length === 1 && packed.meta_rows[0].fields.length === 3);
   }
   check('no title is refused', !normalizeEditable({ title: ' ', prompts: ['x?'], attestation: 'a' }).ok);
   check('no questions is refused', !normalizeEditable({ title: 't', prompts: [' '], attestation: 'a' }).ok);

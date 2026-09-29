@@ -239,11 +239,14 @@ export function FormImporter({
     return (
       <div className="space-y-4 pb-28">
         {forms.length > 1 ? (
-          <Card>
-            <p className="text-sm font-semibold text-brand-navy">
-              We found {forms.length} forms in those pages. Which one do staff write their shift note on?
+          // Compact on purpose: the filled-in form is what the admin came to
+          // see, so the choice of which form sits in one line above it.
+          <div>
+            <p className="mb-2 text-xs text-brand-slate">
+              We found {forms.length} forms in those pages. Showing the one staff write their note on — tap
+              another to switch.
             </p>
-            <div role="radiogroup" className="mt-3 flex flex-col gap-2">
+            <div role="radiogroup" aria-label="Forms found" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {forms.map((f, i) => (
                 <button
                   key={`${f.title}-${i}`}
@@ -255,23 +258,16 @@ export function FormImporter({
                   }}
                   className={
                     i === selected
-                      ? 'flex items-center justify-between gap-3 rounded-xl border-2 border-brand-teal bg-brand-aqua/15 px-3 py-3 text-left'
-                      : 'flex items-center justify-between gap-3 rounded-xl border border-brand-navy/15 bg-white px-3 py-3 text-left'
+                      ? 'shrink-0 rounded-full bg-brand-navy px-3 py-2 text-xs font-semibold text-white'
+                      : 'shrink-0 rounded-full border border-brand-navy/15 bg-white px-3 py-2 text-xs font-semibold text-brand-slate'
                   }
                 >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-brand-navy">{f.title}</span>
-                    <span className="block text-xs text-brand-slate">
-                      {f.isLogOrTable
-                        ? 'A log or time sheet — FlipBrief writes narrative notes, not these'
-                        : `${f.prompts.length} question${f.prompts.length === 1 ? '' : 's'} for staff to answer`}
-                    </span>
-                  </span>
-                  {i === selected ? <Check className="h-5 w-5 shrink-0 text-brand-teal" /> : null}
+                  {f.title.length > 34 ? `${f.title.slice(0, 32)}…` : f.title}
+                  {f.isLogOrTable ? ' · log' : ''}
                 </button>
               ))}
             </div>
-          </Card>
+          </div>
         ) : null}
 
         {form.isLogOrTable ? (
@@ -632,11 +628,15 @@ function PaperPreview({
 }
 
 function FormEditor({ form, onChange }: { form: EditableForm; onChange: (patch: Partial<EditableForm>) => void }) {
+  // Opened from under the preview; bring it up rather than leave it below the fold.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), []);
   const usedSources = useMemo(() => new Set(form.fields.map((f) => f.source).filter(Boolean)), [form.fields]);
   const setField = (i: number, patch: Partial<EditableField>) =>
     onChange({ fields: form.fields.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
 
   return (
+    <div ref={ref} className="scroll-mt-4">
     <Card>
       <div className="space-y-5">
         <label className="block">
@@ -764,5 +764,6 @@ function FormEditor({ form, onChange }: { form: EditableForm; onChange: (patch: 
         </label>
       </div>
     </Card>
+    </div>
   );
 }

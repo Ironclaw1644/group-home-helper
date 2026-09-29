@@ -20,7 +20,6 @@
 import {
   PRINT_SOURCES,
   type FormTemplateSchema,
-  type PrintField,
   type PrintRow,
   type PrintSource,
   type RenderConfig
@@ -169,21 +168,50 @@ export function normalizeEditable(input: unknown): Normalized {
   };
 }
 
-function toPrintField(f: EditableField, width: number): PrintField {
-  return {
-    ...(f.source ? { source: f.source } : {}),
-    label: /[?]$/.test(f.label) ? `${f.label} ` : `${f.label}: `,
-    width,
-    grow: true
-  };
+function printedLabel(label: string): string {
+  return /[?]$/.test(label) ? `${label} ` : `${label}: `;
 }
 
-function rowsOf(fields: EditableField[], perRow: number, width: number): PrintRow[] {
+/** Letter page at the default 42 pt margins. */
+const CONTENT_WIDTH = 528;
+/** Helvetica-Bold at 10 pt averages a little under 6 pt a character. */
+const LABEL_PT_PER_CHAR = 5.9;
+const CELL_GAP = 14;
+
+/**
+ * Pack boxes into rows by how wide they will actually print, so a long label
+ * ("Name of Person Who Receives Services:") gets a row of its own instead of
+ * being squeezed until it overprints its own value. Only the last box in a
+ * row stretches, to fill the line the way a ruled paper form does.
+ */
+function rowsOf(fields: EditableField[], blank: number, maxPerRow: number): PrintRow[] {
   const rows: PrintRow[] = [];
-  for (let i = 0; i < fields.length; i += perRow) {
-    rows.push({ fields: fields.slice(i, i + perRow).map((f) => toPrintField(f, width)) });
+  let current: EditableField[] = [];
+  let used = 0;
+  const need = (f: EditableField) => printedLabel(f.label).length * LABEL_PT_PER_CHAR + blank;
+  for (const f of fields) {
+    const w = need(f);
+    if (current.length > 0 && (current.length >= maxPerRow || used + CELL_GAP + w > CONTENT_WIDTH)) {
+      rows.push(toRow(current, blank));
+      current = [];
+      used = 0;
+    }
+    used += (current.length ? CELL_GAP : 0) + w;
+    current.push(f);
   }
+  if (current.length) rows.push(toRow(current, blank));
   return rows;
+}
+
+function toRow(fields: EditableField[], blank: number): PrintRow {
+  return {
+    fields: fields.map((f, i) => ({
+      ...(f.source ? { source: f.source } : {}),
+      label: printedLabel(f.label),
+      width: blank,
+      ...(i === fields.length - 1 ? { grow: true } : {})
+    }))
+  };
 }
 
 /**
@@ -195,12 +223,12 @@ function rowsOf(fields: EditableField[], perRow: number, width: number): PrintRo
 export function renderConfigFor(form: EditableForm, base: RenderConfig): RenderConfig {
   const identity = form.fields.filter((f) => f.section === 'identity');
   const meta = form.fields.filter((f) => f.section === 'meta');
-  const label = `${form.signatureLabel}: `;
+  const label = printedLabel(form.signatureLabel);
   return {
     page: { size: base.page?.size ?? 'LETTER', margin: base.page?.margin ?? 42 },
     header: { title: form.title },
-    identity_rows: rowsOf(identity, 2, 160),
-    meta_rows: rowsOf(meta, 3, 100),
+    identity_rows: rowsOf(identity, 140, 2),
+    meta_rows: rowsOf(meta, 90, 3),
     signature_block: {
       label,
       // Long printed labels ("Provider/Staff Signature") wrap into a narrow

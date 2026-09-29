@@ -73,7 +73,7 @@ async function main() {
   await snap(page, 'form-preview-full', true);
 
   await page.getByRole('button', { name: /something wrong\? fix it/i }).click();
-  await page.getByText('Questions staff answer').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(800);
   await snap(page, 'form-fix-it');
   await page.getByRole('button', { name: /done fixing/i }).click();
 
