@@ -49,9 +49,12 @@ type Candidate = {
  */
 const CANDIDATES: Candidate[] = [
   // Anthropic — cached prefix reads bill at 10% of input.
+  // $/MTok from the Claude API model table, read 2026-09-29. Cache writes bill
+  // at 1.25x input. Haiku 4.5 only caches a prefix of 4096+ tokens, which the
+  // note prompt is not, so it pays full input on every note.
   { id: 'claude-haiku-4-5-20251001', vendor: 'anthropic', price: { input: 1, output: 5 }, cacheDiscount: 0.1 },
-  { id: 'claude-sonnet-5', vendor: 'anthropic', price: { input: 3, output: 15 }, cacheDiscount: 0.1 },
-  { id: 'claude-opus-5', vendor: 'anthropic', price: { input: 5, output: 25 }, cacheDiscount: 0.1 },
+  { id: 'claude-sonnet-5-5', vendor: 'anthropic', price: { input: 2, output: 10 }, cacheDiscount: 0.1 },
+  { id: 'claude-opus-5-5', vendor: 'anthropic', price: { input: 4, output: 20 }, cacheDiscount: 0.1 },
 
   // Local — free, and the baseline everything else has to beat on value.
   // No PHI leaves the machine, so this is also the only row that needs no BAA.
@@ -102,6 +105,7 @@ async function measure(candidate: Candidate): Promise<Row | null> {
   const inputs: number[] = [];
   const outputs: number[] = [];
   const cacheReads: number[] = [];
+  const cacheWrites: number[] = [];
   const failures: string[] = [];
 
   for (const testCase of CASES) {
@@ -124,6 +128,7 @@ async function measure(candidate: Candidate): Promise<Row | null> {
       if (result.usage.inputTokens) inputs.push(result.usage.inputTokens);
       if (result.usage.outputTokens) outputs.push(result.usage.outputTokens);
       cacheReads.push(result.usage.cacheReadTokens ?? 0);
+      cacheWrites.push(result.usage.cacheWriteTokens ?? 0);
 
       if (problems.length === 0) {
         passed++;
@@ -143,15 +148,19 @@ async function measure(candidate: Candidate): Promise<Row | null> {
   const avgInput = mean(inputs);
   const avgOutput = mean(outputs);
   const avgCacheRead = mean(cacheReads);
+  const avgCacheWrite = mean(cacheWrites);
 
   let costPerNote: number | null = null;
   if (candidate.price === null) {
     costPerNote = 0;
   } else if (avgInput || avgOutput) {
-    const freshInput = Math.max(0, avgInput - avgCacheRead);
+    // Anthropic reports input_tokens EXCLUDING cached reads and writes, so the
+    // three are added, not subtracted. (This used to subtract the cache read
+    // from input_tokens, which under-priced every cached call.)
     costPerNote =
-      (freshInput / 1_000_000) * candidate.price.input +
+      (avgInput / 1_000_000) * candidate.price.input +
       (avgCacheRead / 1_000_000) * candidate.price.input * candidate.cacheDiscount +
+      (avgCacheWrite / 1_000_000) * candidate.price.input * 1.25 +
       (avgOutput / 1_000_000) * candidate.price.output;
   }
 

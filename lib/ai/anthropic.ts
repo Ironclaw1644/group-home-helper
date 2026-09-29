@@ -12,12 +12,14 @@ import type { DraftResult, ModelProvider, StructuredResult } from './provider';
  * Hosted provider (Anthropic).
  *
  * Opt in with AI_PROVIDER=anthropic. This sends note content off the machine,
- * so it requires signed BAAs with Anthropic and your host — see README. The
- * default provider is local, which needs none of that.
+ * so de-identification (deid.ts) stays on: the model sees "R.", the chip
+ * labels and scrubbed free text, never a name, a date of service, an ID, a
+ * house or a colleague. Sending the real record needs signed BAAs with
+ * Anthropic and the host first — FlipBrief has none today, and nothing in this
+ * file may be read as saying otherwise.
  *
- * This is the intended production path once those agreements exist. It is the
- * only hosted provider: the OpenAI adapter was removed because production was
- * running on it without a BAA.
+ * It is the only hosted provider: the OpenAI adapter was removed because
+ * production was running on it without a BAA.
  */
 
 /**
@@ -32,13 +34,23 @@ import type { DraftResult, ModelProvider, StructuredResult } from './provider';
 export const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
- * `medium` keeps latency reasonable for a DSP waiting on a phone mid-shift.
+ * How hard the model thinks before writing, per model.
  *
- * Not every model accepts an effort setting, and passing it to one that does
- * not is a 400 that would read to a DSP as "draft failed". generate() retries
- * once without it rather than surfacing that.
+ * A DSP is waiting on a phone mid-shift, and rendering recorded selections as a
+ * paragraph is not a reasoning problem, so the 5.x models run at `low`. Haiku
+ * 4.5 does not accept an effort setting at all — sending one is a 400 — so it
+ * gets none rather than paying a failed round trip on every note.
  */
-const EFFORT = 'medium' as const;
+export function effortFor(model: string): 'low' | 'medium' | null {
+  if (/haiku/.test(model)) return null;
+  return 'low';
+}
+
+/**
+ * Past this a DSP has given up waiting. One retry, then the route falls back
+ * (see generateWithFallback in provider.ts) instead of spinning for a minute.
+ */
+const DRAFT_TIMEOUT_MS = 20_000;
 
 const NoteDraftSchema = z.object({
   narrative: z
@@ -107,11 +119,12 @@ export function anthropicProvider(modelOverride?: string): ModelProvider {
         // cache rather than re-billed on every note. Keep everything variable
         // in userMessage — interpolating a name or date into the system prompt
         // would silently invalidate the cache on every request.
+        const effort = effortFor(model);
         const request = (withEffort: boolean) => ({
           model,
           max_tokens: 4000,
           output_config: {
-            ...(withEffort ? { effort: EFFORT } : {}),
+            ...(withEffort && effort ? { effort } : {}),
             format: zodOutputFormat(NoteDraftSchema)
           },
           system: [
@@ -127,19 +140,26 @@ export function anthropicProvider(modelOverride?: string): ModelProvider {
         const client = getClient();
         let response;
         try {
-          response = await client.messages.parse(request(true));
+          response = await client.messages.parse(request(true), {
+            timeout: DRAFT_TIMEOUT_MS,
+            maxRetries: 1
+          });
         } catch (err) {
-          // Models that do not accept an effort setting reject the whole
-          // request. Retry without it rather than failing the draft.
+          // A model this table has not met may reject the effort setting.
+          // Retry without it rather than failing the draft.
           const message = err instanceof Error ? err.message : String(err);
           if (!/effort/i.test(message)) throw err;
-          response = await client.messages.parse(request(false));
+          response = await client.messages.parse(request(false), {
+            timeout: DRAFT_TIMEOUT_MS,
+            maxRetries: 1
+          });
         }
 
         const usage = {
           inputTokens: response.usage?.input_tokens ?? null,
           outputTokens: response.usage?.output_tokens ?? null,
           cacheReadTokens: response.usage?.cache_read_input_tokens ?? null,
+          cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? null,
           elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
         };
 
@@ -184,8 +204,7 @@ export function anthropicProvider(modelOverride?: string): ModelProvider {
      * provider unable to read a pasted list at all.
      *
      * The schema arrives as plain JSON Schema rather than zod, because it is
-     * defined by the caller. `messages.create` with a forced tool call is the
-     * path that accepts one.
+     * defined by the caller, and goes out as a json_schema output format.
      */
     async generateStructured<T>(
       system: string,
@@ -200,35 +219,41 @@ export function anthropicProvider(modelOverride?: string): ModelProvider {
       }
 
       try {
+        // Structured output rather than a forced tool call: the 5.5 models
+        // reject tool_choice "tool" with a 400, which would have broken this
+        // quietly the day the model id changed.
         const response = await getClient().messages.create({
           model,
           max_tokens: 4000,
           system,
-          tools: [
-            {
-              name: schemaName,
-              description: 'Return the extracted data.',
-              input_schema: schema as unknown as Anthropic.Tool['input_schema']
-            }
-          ],
-          // Forced, so the model answers with the schema rather than prose
-          // about the schema.
-          tool_choice: { type: 'tool', name: schemaName },
+          output_config: {
+            format: { type: 'json_schema', schema }
+          },
           messages: [{ role: 'user', content: userMessage }]
-        });
+        } as Anthropic.MessageCreateParamsNonStreaming);
 
-        const block = response.content.find((c) => c.type === 'tool_use');
-        if (!block || block.type !== 'tool_use') {
+        if (response.stop_reason === 'refusal') {
+          return { ok: false, message: 'The model declined this request.' };
+        }
+        const text = response.content.find((c) => c.type === 'text');
+        if (!text || text.type !== 'text') {
+          return { ok: false, message: 'The model returned nothing usable.' };
+        }
+        let data: T;
+        try {
+          data = JSON.parse(text.text) as T;
+        } catch {
           return { ok: false, message: 'The model returned nothing usable.' };
         }
 
         return {
           ok: true,
-          data: block.input as T,
+          data,
           usage: {
             inputTokens: response.usage?.input_tokens ?? null,
             outputTokens: response.usage?.output_tokens ?? null,
             cacheReadTokens: response.usage?.cache_read_input_tokens ?? null,
+            cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? null,
             elapsedSeconds: Number(((Date.now() - started) / 1000).toFixed(1))
           }
         };

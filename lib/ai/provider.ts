@@ -54,6 +54,8 @@ export type DraftUsage = {
   inputTokens: number | null;
   outputTokens: number | null;
   cacheReadTokens: number | null;
+  /** Tokens written to the prompt cache on this call (billed at 1.25x input). */
+  cacheWriteTokens?: number | null;
   /** Wall-clock seconds. The number that decides whether staff will use this. */
   elapsedSeconds: number | null;
 };
@@ -156,5 +158,62 @@ export function coerceDraft(raw: string): NoteDraft | null {
     narrative: obj.narrative.trim(),
     entities_used: toStringArray(obj.entities_used),
     unsupported_claims: toStringArray(obj.unsupported_claims)
+  };
+}
+
+export type DraftAttempt = DraftResult & {
+  /** Who actually answered — the fallback, when it was used. */
+  provider: ProviderName;
+  fellBack: boolean;
+};
+
+/**
+ * Generate with a fallback, without widening where the note goes.
+ *
+ * Order: the configured provider; then, only if that was a hosted one that
+ * errored or timed out, a local model the operator has explicitly pointed
+ * OLLAMA_HOST at and that answers a health check within two seconds; then an
+ * honest "write it yourself". The fallback receives the byte-identical
+ * message the hosted call was built from — already de-identified — so it can
+ * only ever see less than the primary did, never more.
+ *
+ * A refusal or an empty answer is not retried elsewhere. The model answered;
+ * asking a different one the same question until something says yes is how a
+ * guard gets routed around.
+ */
+export async function generateWithFallback(
+  system: string,
+  userMessage: string,
+  primary?: ModelProvider
+): Promise<DraftAttempt> {
+  const first = primary ?? (await getProvider());
+  const result = await first.generate(system, userMessage);
+  if (result.ok || first.name === 'local' || result.reason === 'refusal' || result.reason === 'empty') {
+    return { ...result, provider: first.name, fellBack: false };
+  }
+
+  if (process.env.OLLAMA_HOST) {
+    const { ollamaProvider } = await import('./ollama');
+    const local = ollamaProvider();
+    const health = await Promise.race([
+      local.health(),
+      new Promise<{ ok: false; detail: string }>((resolve) =>
+        setTimeout(() => resolve({ ok: false, detail: 'timeout' }), 2_000)
+      )
+    ]);
+    if (health.ok) {
+      const second = await local.generate(system, userMessage);
+      if (second.ok) return { ...second, provider: 'local', fellBack: true };
+    }
+  }
+
+  return {
+    ok: false,
+    reason: 'unavailable',
+    model: result.model,
+    message:
+      'The note assistant is not answering right now. Write this one yourself — your entries are saved, and signing and the PDF work as normal.',
+    provider: first.name,
+    fellBack: false
   };
 }
