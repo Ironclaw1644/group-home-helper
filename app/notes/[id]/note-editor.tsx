@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, CloudOff, Loader2, PenLine, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowDown, Check, CloudOff, Loader2, PenLine, Sparkles, Trash2 } from 'lucide-react';
 import { FieldRenderer } from '@/components/form/FieldRenderer';
 import { OutcomeEntry } from '@/components/note/outcome-entry';
 import { SignaturePad, type SignatureMethod } from '@/components/form/SignaturePad';
-import { Alert, Button, Card } from '@/components/ui';
+import { Alert, Button, Card, StickyActionBar } from '@/components/ui';
 import { hasAnySelection, interpolate } from '@/lib/forms/interpolate';
 import { answeredOutcomes, unansweredOutcomes } from '@/lib/outcomes/answered';
 import { createAutosave, type Autosave } from '@/lib/notes/autosave';
@@ -254,6 +254,13 @@ export default function NoteEditor({
 
   const canDraft = hasAnySelection(template.schema, data);
 
+  // The pinned bar scrolls to these, so the next step is one tap away however
+  // far down the entries the DSP has got.
+  const narrativeRef = useRef<HTMLDivElement>(null);
+  const signatureRef = useRef<HTMLDivElement>(null);
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) =>
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   async function generateDraft() {
     setDrafting(true);
     setAiError(null);
@@ -288,6 +295,8 @@ export default function NoteEditor({
       }
       setNarrative(body.narrative);
       scheduleSave(data, body.narrative);
+      // Show them what was written: reviewing it is the next step.
+      scrollTo(narrativeRef);
       if (Array.isArray(body.unsupportedClaims) && body.unsupportedClaims.length > 0) {
         setAiFlags(body.unsupportedClaims);
       }
@@ -348,10 +357,13 @@ export default function NoteEditor({
 
       if (res.status === 409 && body?.code === 'duplicate_narrative') {
         setDuplicateWarning(body.similarity ?? 1);
+        // Signed from the pinned bar, the warning would be off screen.
+        scrollTo(signatureRef);
         return;
       }
       if (!res.ok) {
         setSignError(body?.error ?? 'Could not sign this note.');
+        scrollTo(signatureRef);
         return;
       }
 
@@ -390,8 +402,22 @@ export default function NoteEditor({
     !needsPrestageConfirm &&
     !isFutureShift;
 
+  // What the pinned bar offers: exactly one next step.
+  const hasNarrative = narrative.trim().length > 0;
+  const signHint = isFutureShift
+    ? `Can be signed on ${formatServiceDate(note.serviceDate)}.`
+    : needsPrestageConfirm
+      ? 'Confirm the prepared entries first.'
+      : stillUnanswered.length > 0
+        ? `${stillUnanswered.length} service-plan ${stillUnanswered.length === 1 ? 'outcome needs' : 'outcomes need'} an answer.`
+        : !attested
+          ? 'Sign, then tick the statement.'
+          : narrativeTooShort
+            ? 'Add a little more detail first.'
+            : null;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-28 lg:pb-0">
       {restored ? (
         <Alert tone="warning" title="Recovered an unsaved draft">
           This device had newer changes than the server. Review the note before signing.
@@ -435,17 +461,22 @@ export default function NoteEditor({
       ) : null}
 
       {/* The prompt questions, printed exactly as they appear on the form. */}
+      {/* Collapsed: the note is written to answer these, but the DSP answers
+          them by tapping what happened below, not by reading them first. */}
       <Card>
-        {/* Named from the template rather than from a literal: an Ohio DSP is
-            not filling in Form #680 and should not be told that they are. */}
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-brand-slate">
-          {template.formNumber ? `Form #${template.formNumber} prompts` : 'Form prompts'}
-        </p>
-        <ol className="list-decimal space-y-1 pl-5 text-sm text-brand-navy">
-          {template.schema.prompts.map((prompt, i) => (
-            <li key={i}>{label(prompt)}</li>
-          ))}
-        </ol>
+        <details>
+          {/* Named from the template rather than from a literal: an Ohio DSP is
+              not filling in Form #680 and should not be told that they are. */}
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.12em] text-brand-slate">
+            {template.formNumber ? `Form #${template.formNumber} questions` : 'Questions on the form'} (
+            {template.schema.prompts.length})
+          </summary>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-brand-navy">
+            {template.schema.prompts.map((prompt, i) => (
+              <li key={i}>{label(prompt)}</li>
+            ))}
+          </ol>
+        </details>
       </Card>
 
       {outcomes.length === 0 ? (
@@ -532,6 +563,7 @@ export default function NoteEditor({
         </Card>
       ))}
 
+      <div ref={narrativeRef} className="scroll-mt-4">
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
@@ -539,7 +571,7 @@ export default function NoteEditor({
           </h2>
           <Button variant="secondary" size="sm" onClick={generateDraft} disabled={!canDraft || drafting}>
             {drafting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {drafting ? 'Writing…' : 'Write from my entries'}
+            {drafting ? 'Writing…' : hasNarrative ? 'Rewrite from my entries' : 'Write my note'}
           </Button>
         </div>
 
@@ -606,7 +638,9 @@ export default function NoteEditor({
           <SaveIndicator state={saveState} />
         </div>
       </Card>
+      </div>
 
+      <div ref={signatureRef} className="scroll-mt-4">
       <Card>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-[0.12em] text-brand-slate">
           Signature
@@ -745,6 +779,43 @@ export default function NoteEditor({
           )}
         </div>
       </Card>
+      </div>
+
+      {/* One next step, pinned above the tab bar: write, then review, then sign. */}
+      <StickyActionBar className="lg:hidden">
+        {!hasNarrative ? (
+          <div className="flex items-center gap-3">
+            <Button
+              className="flex-1"
+              onClick={generateDraft}
+              disabled={!canDraft || drafting}
+            >
+              {drafting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {drafting ? 'Writing your note…' : 'Write my note'}
+            </Button>
+            {!canDraft ? (
+              <span className="max-w-[45%] text-xs text-brand-slate">Tap what happened first.</span>
+            ) : null}
+          </div>
+        ) : readyToSign ? (
+          <Button
+            className="w-full"
+            disabled={signing}
+            onClick={() => void submitSignature(overrodeDuplicate)}
+          >
+            {signing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+            {signing ? 'Signing…' : 'Sign and lock note'}
+          </Button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button className="flex-1" onClick={() => scrollTo(signatureRef)}>
+              <ArrowDown className="h-4 w-4" />
+              Review and sign
+            </Button>
+            {signHint ? <span className="max-w-[45%] text-xs text-brand-slate">{signHint}</span> : null}
+          </div>
+        )}
+      </StickyActionBar>
     </div>
   );
 }

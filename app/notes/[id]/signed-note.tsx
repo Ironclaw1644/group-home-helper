@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Download, FileCheck2, Loader2, Lock, Plus, Printer } from 'lucide-react';
+import { ArrowRight, Download, FileCheck2, Loader2, Lock, Plus, Printer } from 'lucide-react';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 import { interpolate } from '@/lib/forms/interpolate';
 import { outcomeStatus } from '@/lib/outcomes/answered';
@@ -19,6 +20,8 @@ import type { FormTemplate, Note, NoteAddendum, Resident } from '@/lib/types';
  * auditor expects to see and what the database enforces regardless.
  */
 export default function SignedNote({
+  nextUp = null,
+  backHref = '/',
   note,
   resident,
   template,
@@ -32,6 +35,9 @@ export default function SignedNote({
   activities,
   savedActivities
 }: {
+  /** The next unsigned note in the house that day, if any. */
+  nextUp?: { name: string; shiftLabel: string; href: string } | null;
+  backHref?: string;
   note: Note;
   resident: Resident;
   template: FormTemplate;
@@ -80,6 +86,31 @@ export default function SignedNote({
 
   return (
     <div className="space-y-5">
+      {/* Straight on to the next person, without going back through the roster. */}
+      {nextUp ? (
+        <Link
+          href={nextUp.href}
+          data-testid="next-note"
+          className="flex items-center justify-between gap-3 rounded-2xl bg-brand-navy px-5 py-4 text-white shadow-card transition hover:bg-brand-navy/90"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-white/70">Next</span>
+            <span className="block truncate text-base font-semibold">
+              {nextUp.name}&apos;s note · {nextUp.shiftLabel}
+            </span>
+          </span>
+          <ArrowRight className="h-5 w-5 shrink-0" />
+        </Link>
+      ) : (
+        <Link
+          href={backHref}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-status-signed/30 bg-white px-5 py-4 text-brand-navy"
+        >
+          <span className="text-sm font-semibold">Every note for this day is signed</span>
+          <ArrowRight className="h-5 w-5 shrink-0" />
+        </Link>
+      )}
+
       <Card className="mb-4 border-status-signed/30 bg-status-signed/10">
         <div className="flex flex-wrap items-start gap-3">
           <FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-status-signed" />

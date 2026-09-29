@@ -71,6 +71,38 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       status: entry.noteStatus
     }));
 
+  // After signing, the next thing a DSP does is the next person. Offer the next
+  // unsigned note on this shift, then any shift that day, starting after the
+  // current resident so it walks the house in roster order.
+  const order = roster.map((r) => r.residentId);
+  const after = (id: string) => {
+    const i = order.indexOf(id) - order.indexOf(note.residentId);
+    return i > 0 ? i : i + order.length;
+  };
+  const nextEntry = roster
+    .filter((r) => r.noteStatus !== 'signed' && !(r.residentId === note.residentId && r.shiftId === note.shiftId))
+    .sort(
+      (a, b) =>
+        Number(b.shiftId === note.shiftId) - Number(a.shiftId === note.shiftId) ||
+        after(a.residentId) - after(b.residentId) ||
+        a.shiftSort - b.shiftSort
+    )[0];
+  const nextUp = nextEntry
+    ? {
+        name: displayName({
+          firstName: nextEntry.residentFirstName,
+          preferredName: nextEntry.residentPreferredName
+        }),
+        shiftLabel: nextEntry.shiftLabel,
+        href: `/notes/new?${new URLSearchParams({
+          resident: nextEntry.residentId,
+          shift: nextEntry.shiftId,
+          date: note.serviceDate,
+          home: note.homeId
+        }).toString()}`
+      }
+    : null;
+
   return (
     <AppShell session={session}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -116,6 +148,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
       {note.status === 'signed' ? (
         <SignedNote
+          nextUp={nextUp}
+          backHref={backHref}
           note={note}
           resident={resident}
           template={template}
