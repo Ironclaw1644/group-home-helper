@@ -28,6 +28,9 @@ export function ImportPanel({
   const [parsed, setParsed] = useState<ParseResult | null>(null);
   const [reading, setReading] = useState(false);
   const [needsAi, setNeedsAi] = useState<string | null>(null);
+  // Set when the assistant is not offered on this setup: how to lay the list
+  // out so the spreadsheet reader can take it instead.
+  const [layoutHint, setLayoutHint] = useState<string | null>(null);
   const [usedAi, setUsedAi] = useState(false);
   const [skip, setSkip] = useState<Set<number>>(new Set());
   const [allowDuplicates, setAllowDuplicates] = useState(false);
@@ -73,6 +76,7 @@ export function ImportPanel({
       });
       setUsedAi(Boolean(body.usedAi));
       if (body.needsAi) setNeedsAi(body.aiHint ?? null);
+      setLayoutHint(!body.needsAi && body.aiHint ? body.aiHint : null);
     } catch {
       setError('Could not reach the server.');
     } finally {
@@ -257,6 +261,12 @@ export function ImportPanel({
           </span>
         </div>
       </Card>
+
+      {layoutHint ? (
+        <Alert tone="info" title="This is not laid out like a spreadsheet">
+          <p>{layoutHint}</p>
+        </Alert>
+      ) : null}
 
       {needsAi ? (
         <Alert tone="warning" title="This is not laid out like a spreadsheet">

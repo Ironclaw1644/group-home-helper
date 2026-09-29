@@ -4,6 +4,7 @@ import { getSession, isSupervisor } from '@/lib/auth/session';
 import { getProvider } from '@/lib/ai/provider';
 import { parseRoster } from '@/lib/residents/import';
 import { aiParseRoster } from '@/lib/residents/ai-parse';
+import { platformAiBaaInPlace } from '@/lib/importer/phi-gate';
 
 const Body = z.object({
   text: z.string().min(1).max(20_000),
@@ -44,10 +45,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ ...plain, usedAi: false, costCents: 0 });
   }
 
+  // A roster's payload is names. With a hosted model and no BAA between
+  // FlipBrief and that vendor, the assistant is not offered at all — consent
+  // from the agency cannot stand in for an agreement FlipBrief has not signed.
+  const provider = await getProvider();
+  if (provider.sendsDataOffMachine && !platformAiBaaInPlace(process.env)) {
+    return NextResponse.json({
+      ...plain,
+      usedAi: false,
+      costCents: 0,
+      needsAi: false,
+      aiHint:
+        'This does not look like a spreadsheet. Paste it with one person per line — first name, last name, then anything else, separated by commas or tabs — or upload the CSV your old system exports.'
+    });
+  }
+
   if (!parsed.data.allowAi) {
     // Tell the supervisor what actually happens to the paste, which is not the
     // same sentence in both configurations.
-    const provider = await getProvider();
     const aiHint = provider.sendsDataOffMachine
       ? 'This does not look like a spreadsheet. The assistant can read it. Medicaid IDs and dates of birth are removed before it is sent, and you add those yourself — but the names do go to the model provider.'
       : 'This does not look like a spreadsheet. The assistant can read it. The model runs on this machine, so nothing leaves it.';

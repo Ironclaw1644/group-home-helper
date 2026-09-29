@@ -2,6 +2,7 @@ import 'server-only';
 
 import { getProvider, type ModelProvider } from '@/lib/ai/provider';
 import { findResidualIdentifiers, scrubFreeText } from '@/lib/ai/deid';
+import { platformAiBaaInPlace } from '@/lib/importer/phi-gate';
 import { parsePronouns, type ParsedResident, type ParseResult } from './import';
 
 /**
@@ -125,6 +126,11 @@ export async function aiParseRoster(
   if (!trimmed) return { error: 'Nothing to read.' };
 
   const provider = injectedProvider ?? (await getProvider());
+  // Belt and braces for the route's check: names go out in this request, so a
+  // hosted model needs FlipBrief's own BAA with the vendor first.
+  if (!injectedProvider && provider.sendsDataOffMachine && !platformAiBaaInPlace(process.env)) {
+    return { error: 'Paste the list as a spreadsheet or CSV — the assistant does not read rosters on this setup.' };
+  }
   const health = await provider.health();
   if (!health.ok) {
     return { error: 'The assistant is not set up, so the list has to be a spreadsheet for now.' };
