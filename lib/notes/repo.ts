@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { decryptMedicaidId } from '@/lib/supabase/admin';
+import { createSupabaseAdminClient, decryptMedicaidId } from '@/lib/supabase/admin';
 import type {
   FormTemplate,
   FormTemplateSchema,
@@ -71,8 +71,15 @@ export function pickTemplate<T extends TemplateCandidate>(
  * to another jurisdiction, must not silently restyle records that are already
  * signed, locked, and filed.
  */
-export async function getTemplateById(templateId: string): Promise<FormTemplate | null> {
-  const supabase = await createSupabaseServerClient();
+export async function getTemplateById(
+  templateId: string,
+  orgId: string
+): Promise<FormTemplate | null> {
+  // Read with the service role. RLS only returns ACTIVE templates, so through
+  // the user's client a retired version came back null and a signed note
+  // quietly re-printed on the current layout — the opposite of the rule above.
+  // Ownership is checked here instead: a global row, or the caller's own org.
+  const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from('form_templates')
     .select(TEMPLATE_COLUMNS)
@@ -80,6 +87,7 @@ export async function getTemplateById(templateId: string): Promise<FormTemplate 
     .maybeSingle();
 
   if (error || !data) return null;
+  if (data.org_id !== null && data.org_id !== orgId) return null;
 
   return {
     id: data.id as string,
@@ -115,7 +123,7 @@ export async function getTemplateForNote(
   orgId: string
 ): Promise<FormTemplate> {
   if (note.status === 'signed') {
-    const pinned = await getTemplateById(note.templateId);
+    const pinned = await getTemplateById(note.templateId, orgId);
     if (pinned) return pinned;
   }
   return getTemplateForOrg(orgId);
