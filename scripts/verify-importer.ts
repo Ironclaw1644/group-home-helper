@@ -1,5 +1,5 @@
 /**
- * Offline checks for the form importer spike (spike/form-importer).
+ * Offline checks for the form importer.
  *
  *   npm run verify:importer
  *
@@ -18,6 +18,9 @@ import {
   residualIdentifiers
 } from '../lib/importer/presets';
 import { scoreAgainstGolden, type GoldenSpec } from '../lib/importer/score';
+import { normalizeEditable, renderConfigFor, schemaFor, toEditable } from '../lib/importer/editable';
+import { signFormNumber, verifyFormNumber } from '../lib/importer/form-number-proof';
+import type { FormTemplateSchema } from '../lib/types';
 import {
   buildDraftTemplate,
   buildDraftTemplates,
@@ -203,11 +206,87 @@ for (const kind of ['png', 'pdf']) {
   // regression in the pure layer shows up. Change them only after re-running
   // the spike and reading why the score moved.
   check(`[${kind}] prompts matched verbatim`, s.promptsMatched === 4, `got ${s.promptsMatched}`);
+  // Opus 5.5, 2026-09-29: every field the form prints, from the photos; the
+  // PDF run missed "Time". Locked as observed.
+  const wantIdentity = kind === 'png' ? 5 : 4;
+  check(
+    `[${kind}] printed fields found (${wantIdentity} of the form's 5)`,
+    s.identityFound.length === wantIdentity,
+    `found ${s.identityFound.join(',')}`
+  );
+  {
+    // The recorded draft survives the review screen's round trip unchanged in
+    // substance: what the admin confirms is what the model read.
+    const note = drafts.find((d) => !d.import_review.is_log_or_table)!;
+    const editable = toEditable(note, 'I attest.');
+    const n = normalizeEditable(JSON.parse(JSON.stringify(editable)));
+    check(`[${kind}] the draft round-trips through the review screen`, n.ok && n.form.prompts.length === 4);
+  }
   check(
     `[${kind}] the two IDs the state form does not print are not invented`,
     s.identityMissing.includes('medicaid_id') && s.identityMissing.includes('provider_id'),
     `missing=${s.identityMissing.join(',')}`
   );
+}
+
+// ---------------------------------------------------------------------------
+console.log('\nReview and confirm — what an edit can and cannot do');
+
+{
+  const base: FormTemplateSchema = {
+    prompts: ['Old question?'],
+    sections: [{ key: 'day', title: 'Day', fields: [{ key: 'mood', type: 'chips', label: 'Mood', multiple: false, options: [] }] }],
+    narrative: { key: 'narrative', type: 'narrative', label: 'Narrative', min_length: 40 },
+    signature: { key: 'signature', type: 'signature', attestation: 'Base attestation.' },
+    outcome_library: []
+  };
+  const edited = normalizeEditable({
+    title: '  Daily   Note ',
+    prompts: ['How was the day? ', '', 'Anything unusual?'],
+    fields: [
+      { label: 'Resident:', source: 'resident_legal_name', section: 'identity' },
+      { label: 'Also the name', source: 'resident_legal_name', section: 'identity' },
+      { label: 'Evil', source: 'process.env', section: 'meta' },
+      { label: '', source: 'service_date', section: 'meta' }
+    ],
+    signatureLabel: 'Staff Signature:',
+    attestation: 'I was there.',
+    formNumber: '4119',
+    formNumberProof: 'not-a-proof'
+  });
+  check('an edited form normalizes', edited.ok);
+  if (edited.ok) {
+    const f = edited.form;
+    check('whitespace is collapsed and empty questions dropped', f.title === 'Daily Note' && f.prompts.length === 2);
+    check('a label keeps no trailing colon of its own', f.fields[0].label === 'Resident');
+    check('a repeated source becomes an empty line', f.fields[1].source === null);
+    check('a source outside the closed set becomes an empty line', f.fields[2].source === null);
+    check('a box with no label is dropped', f.fields.length === 3);
+    const schema = schemaFor(f, base);
+    check(
+      'the recorded-shift sections stay the agency standard ones',
+      schema.sections === base.sections && schema.narrative.min_length === 40
+    );
+    check('the questions and attestation are the reviewed ones', schema.prompts[0] === 'How was the day?' && schema.signature.attestation === 'I was there.');
+    const rc = renderConfigFor(f, {
+      footer: { form_line: 'Some State Form', legal_citation: '12 XYZ 34' },
+      service_type: 'Homemaker'
+    });
+    check('a state footer line and citation are not carried onto the agency form', rc.footer === undefined);
+    check('the printed title is the form title', rc.header?.title === 'Daily Note');
+    check('the signature label prints as on the page', rc.signature_block?.label === 'Staff Signature: ');
+  }
+  check('no title is refused', !normalizeEditable({ title: ' ', prompts: ['x?'], attestation: 'a' }).ok);
+  check('no questions is refused', !normalizeEditable({ title: 't', prompts: [' '], attestation: 'a' }).ok);
+  check('no attestation is refused', !normalizeEditable({ title: 't', prompts: ['x?'], attestation: '' }).ok);
+
+  process.env.PHI_ENCRYPTION_KEY ??= 'verify-importer-test-secret';
+  const proof = signFormNumber('org-a', '4119');
+  check('a number the server resolved verifies for its org', verifyFormNumber('org-a', '4119', proof));
+  check('the same proof does not verify for another org', !verifyFormNumber('org-b', '4119', proof));
+  check('the proof does not verify another number', !verifyFormNumber('org-a', '4120', proof));
+  check('a made-up proof is refused', !verifyFormNumber('org-a', '4119', 'a'.repeat(64)));
+  check('no number, no proof', signFormNumber('org-a', null) === null && !verifyFormNumber('org-a', null, null));
 }
 
 // ---------------------------------------------------------------------------

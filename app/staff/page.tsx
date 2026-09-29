@@ -4,11 +4,17 @@ import { AppShell } from '@/components/app-shell';
 import { InvitePanel } from '@/components/onboarding/invite-panel';
 import { StaffRow } from '@/components/onboarding/staff-row';
 import { Card, PageHeader } from '@/components/ui';
+import { SetupSteps } from '@/components/onboarding/setup-steps';
 
 export const dynamic = 'force-dynamic';
 
-export default async function StaffPage() {
+export default async function StaffPage({
+  searchParams
+}: {
+  searchParams: Promise<{ onboarding?: string }>;
+}) {
   const session = await requireSupervisor();
+  const { onboarding } = await searchParams;
 
   const [staff, invitations] = await Promise.all([listStaff(), listInvitations()]);
 
@@ -20,6 +26,7 @@ export default async function StaffPage() {
 
   return (
     <AppShell session={session}>
+      {onboarding === '1' ? <SetupSteps current="staff" /> : null}
       <PageHeader
         title="Staff"
         subtitle={`${staff.length} ${staff.length === 1 ? 'person' : 'people'} with access`}

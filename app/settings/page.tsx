@@ -2,7 +2,7 @@ import { requireSession, isSupervisor } from '@/lib/auth/session';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/app-shell';
 import { SettingsForm } from '@/components/settings/settings-form';
-import { PageHeader } from '@/components/ui';
+import { Button, Card, PageHeader } from '@/components/ui';
 import { parseBranding } from '@/lib/branding/theme';
 import { parsePrintFields } from '@/lib/branding/print';
 import { listJurisdictions } from '@/lib/jurisdictions';
@@ -43,6 +43,22 @@ export default async function SettingsPage() {
         title="Settings"
         subtitle="Your details, and how your agency appears on every form"
       />
+
+      {isSupervisor(session.profile) ? (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-brand-navy">The form staff write on</p>
+              <p className="mt-0.5 text-xs text-brand-slate">
+                {previewForm?.title ?? 'Standard note'} — snap your own paper form to use it instead.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" href="/forms">
+              Your form
+            </Button>
+          </div>
+        </Card>
+      ) : null}
 
       <SettingsForm
         canEditAgency={isSupervisor(session.profile)}

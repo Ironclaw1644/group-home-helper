@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, FileBarChart, LayoutGrid, PenLine, Settings, Users } from 'lucide-react';
+import { CalendarDays, FileBarChart, FileText, LayoutGrid, PenLine, Settings, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -36,6 +36,7 @@ const ITEMS: Item[] = [
   { href: '/residents', label: 'Residents', icon: Users, onMobile: true },
   { href: '/reports', label: 'Reports', icon: FileBarChart, onMobile: true },
   { href: '/supervisor', label: 'Oversight', icon: LayoutGrid, supervisorOnly: true, onMobile: true },
+  { href: '/forms', label: 'Your form', icon: FileText, supervisorOnly: true },
   { href: '/settings', label: 'Settings', icon: Settings, supervisorOnly: true }
 ];
 

@@ -12,6 +12,8 @@ import { Card } from '@/components/ui';
  */
 
 export type SetupState = {
+  /** Staff write on the agency's own uploaded form. */
+  hasOwnForm: boolean;
   hasResidents: boolean;
   hasOutcomes: boolean;
   hasStaff: boolean;
@@ -21,6 +23,12 @@ export type SetupState = {
 
 export function SetupChecklist({ state }: { state: SetupState }) {
   const steps = [
+    {
+      done: state.hasOwnForm,
+      label: 'Snap the form your staff already fill in',
+      detail: 'A photo of the blank paper form. Notes are written on it from then on.',
+      href: '/forms?onboarding=1'
+    },
     {
       done: state.hasResidents,
       label: 'Add the people who live here',

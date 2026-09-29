@@ -15,10 +15,13 @@ import { TEMPLATE_CSV, type ParseResult } from '@/lib/residents/import';
  */
 export function ImportPanel({
   homes,
-  defaultHomeId
+  defaultHomeId,
+  nextHref = null
 }: {
   homes: Array<{ id: string; name: string }>;
   defaultHomeId: string;
+  /** First-run setup: where to go once the roster is in. */
+  nextHref?: string | null;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -168,8 +171,11 @@ export function ImportPanel({
           </Card>
         ) : null}
 
-        <div className="flex gap-2">
-          <Button href={`/residents?home=${homeId}`}>See the roster</Button>
+        <div className="flex flex-wrap gap-2">
+          {nextHref ? <Button href={nextHref}>Next: invite your staff</Button> : null}
+          <Button variant={nextHref ? 'ghost' : 'primary'} href={`/residents?home=${homeId}`}>
+            See the roster
+          </Button>
           <Button
             variant="ghost"
             onClick={() => {

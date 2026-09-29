@@ -123,7 +123,8 @@ export function SignupForm({ jurisdictions }: { jurisdictions: JurisdictionOptio
         }
       }
 
-      router.replace('/residents');
+      // First run: their own form, then their people, then their staff.
+      router.replace('/forms?onboarding=1');
       router.refresh();
     } catch {
       setError('Could not reach the server. Check your connection and try again.');

@@ -137,8 +137,15 @@ export default async function HomePage({
     ]);
 
     const branding = (org.data?.branding ?? {}) as Record<string, unknown>;
+    // An org-owned active template is the agency's own form (lib/importer).
+    const { count: ownFormCount } = await supabase
+      .from('form_templates')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', session.profile.orgId);
+    const ownForm = (ownFormCount ?? 0) > 0;
 
     setup = {
+      hasOwnForm: ownForm || signedCount > 0,
       hasResidents: residentCount > 0,
       hasOutcomes: outcomeCount > 0,
       // More than just the founder means someone has actually been invited.

@@ -129,3 +129,23 @@ export function Alert({
     </div>
   );
 }
+
+/**
+ * The one primary action on a long phone screen, pinned just above the tab
+ * bar so it is always under a thumb. On desktop it sits inline where it is
+ * rendered. Pages using it need bottom padding (pb-28) so the last card is
+ * not hidden behind it.
+ */
+export function StickyActionBar({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'fixed inset-x-0 z-30 border-t border-brand-navy/10 bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur',
+        'bottom-[calc(env(safe-area-inset-bottom)+62px)] lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none',
+        className
+      )}
+    >
+      <div className="mx-auto max-w-3xl">{children}</div>
+    </div>
+  );
+}
