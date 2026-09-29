@@ -657,7 +657,9 @@ function FormEditor({ form, onChange }: { form: EditableForm; onChange: (patch: 
               <div key={i} className="flex items-start gap-2">
                 <span className="mt-2.5 w-5 shrink-0 text-right text-xs font-semibold text-brand-slate">{i + 1}.</span>
                 <textarea
-                  className="field-input min-h-[64px] flex-1"
+                  className="field-input flex-1"
+                  // Tall enough to show the whole printed question on a phone.
+                  rows={Math.min(6, Math.max(2, Math.ceil(p.length / 32)))}
                   value={p}
                   maxLength={LIMITS.prompt}
                   onChange={(e) => onChange({ prompts: form.prompts.map((x, j) => (j === i ? e.target.value : x)) })}

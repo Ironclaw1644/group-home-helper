@@ -38,7 +38,12 @@ async function main() {
   const context = await browser.newContext({
     ...devices['iPhone 13'],
     extraHTTPHeaders: process.env.QA_BYPASS
-      ? { 'x-vercel-protection-bypass': process.env.QA_BYPASS, 'x-vercel-set-bypass-cookie': 'true' }
+      ? {
+          'x-vercel-protection-bypass': process.env.QA_BYPASS,
+          'x-vercel-set-bypass-cookie': 'true',
+          // The preview feedback toolbar floats over the page and eats taps.
+          'x-vercel-skip-toolbar': '1'
+        }
       : {}
   });
   const page = await context.newPage();
