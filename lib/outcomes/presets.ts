@@ -61,6 +61,18 @@ function toPreset(r: Record<string, unknown>): OrgOutcomePreset {
  * offering it, and an archived row stays readable so it is still possible to
  * see where an existing outcome's wording came from.
  */
+/**
+ * The table does not exist until migration 0043 is applied. Until then the
+ * service-plan page must still open — a missing optional feature is not a
+ * reason to lose the plan editor — so a missing relation reads as "no presets"
+ * and saving one says it is not switched on yet.
+ */
+export function presetsTableMissing(error: { code?: string; message?: string } | null): boolean {
+  return Boolean(
+    error && (error.code === '42P01' || error.code === 'PGRST205' || /org_outcome_presets/.test(error.message ?? ''))
+  );
+}
+
 export async function listPresets(): Promise<OrgOutcomePreset[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -70,6 +82,7 @@ export async function listPresets(): Promise<OrgOutcomePreset[]> {
     .order('category', { nullsFirst: false })
     .order('title');
 
+  if (presetsTableMissing(error)) return [];
   if (error) throw error;
   return ((data ?? []) as unknown as Array<Record<string, unknown>>).map(toPreset);
 }
@@ -85,6 +98,7 @@ export async function getPresets(ids: string[]): Promise<OrgOutcomePreset[]> {
     .in('id', ids)
     .is('archived_at', null);
 
+  if (presetsTableMissing(error)) return [];
   if (error) throw error;
   return ((data ?? []) as unknown as Array<Record<string, unknown>>).map(toPreset);
 }
@@ -125,6 +139,9 @@ export async function createPreset(
     .single();
 
   if (error) {
+    if (presetsTableMissing(error)) {
+      return { error: 'Saving presets is not switched on for this workspace yet.' };
+    }
     if (error.code === '42501') {
       return { error: 'Only a supervisor or administrator can save a preset.' };
     }
