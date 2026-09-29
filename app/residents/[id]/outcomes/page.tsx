@@ -5,6 +5,7 @@ import { requireSupervisor } from '@/lib/auth/session';
 import { getResident } from '@/lib/residents/repo';
 import { listActivities, listOutcomes } from '@/lib/outcomes/repo';
 import { libraryFor } from '@/lib/outcomes/library';
+import { listPresets } from '@/lib/outcomes/presets';
 import { getTemplateForOrg } from '@/lib/notes/repo';
 import { AppShell } from '@/components/app-shell';
 import { OutcomeManager } from '@/components/outcomes/outcome-manager';
@@ -29,6 +30,19 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
 
   // The starter plans this agency's own jurisdiction offers — never another's.
   const library = libraryFor(await getTemplateForOrg(session.profile.orgId));
+
+  // And the agency's own, saved out of plans they wrote themselves. RLS scopes
+  // these to the caller's organization.
+  const presets = await listPresets();
+
+  // Name and pronouns, so an outcome saved as a preset can have this person
+  // taken back out of it before it becomes an org-wide row.
+  const identity = {
+    firstName: resident.firstName,
+    lastName: resident.lastName,
+    preferredName: resident.preferredName,
+    pronouns: resident.pronouns
+  };
 
   return (
     <AppShell session={session}>
@@ -71,15 +85,28 @@ export default async function OutcomesPage({ params }: { params: Promise<{ id: s
         </div>
       </Card>
 
-      {outcomes.length === 0 && library.length > 0 ? (
+      {/* Offered whether or not the plan is empty. It used to appear only on a
+          blank plan, which was right when the only source was a fixed starter
+          set: you either started from it or you did not. An agency preset is
+          different — it is the wording a colleague already settled on, and the
+          reason to reach for one is as likely to be "add the cooking outcome
+          we use" to a plan halfway through as it is to be a new admission. */}
+      {library.length > 0 || presets.length > 0 ? (
         <div className="mb-4">
-          <LibraryPicker residentId={id} residentName={known} library={library} />
+          <LibraryPicker
+            residentId={id}
+            residentName={known}
+            pronouns={resident.pronouns}
+            library={library}
+            presets={presets}
+          />
         </div>
       ) : null}
 
       <OutcomeManager
         residentId={id}
         residentName={known}
+        identity={identity}
         outcomes={outcomes}
         activities={activities}
       />

@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Archive, Loader2, Plus, Target, X } from 'lucide-react';
+import { Archive, BookmarkPlus, Loader2, Plus, Target, X } from 'lucide-react';
 import { Alert, Badge, Button, Card } from '@/components/ui';
 import { ActivityManager } from '@/components/outcomes/activity-manager';
+import { SaveAsPreset } from '@/components/outcomes/save-as-preset';
+import type { NameIdentity } from '@/lib/outcomes/depersonalize';
 import type { Outcome, OutcomeActivity } from '@/lib/types';
 
 /**
@@ -18,17 +20,24 @@ import type { Outcome, OutcomeActivity } from '@/lib/types';
 export function OutcomeManager({
   residentId,
   residentName,
+  identity,
   outcomes,
   activities
 }: {
   residentId: string;
   residentName: string;
+  /**
+   * This person's name and pronouns, used to take them back out of an outcome
+   * being saved as an agency preset. See lib/outcomes/depersonalize.ts.
+   */
+  identity: NameIdentity;
   outcomes: Outcome[];
   activities: OutcomeActivity[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Outcome | null>(null);
+  const [savingPreset, setSavingPreset] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -289,6 +298,18 @@ export function OutcomeManager({
                   >
                     Edit
                   </button>
+                  {/* Reuse this wording for someone else. The resident's name
+                      and pronouns come out on the way — a preset is readable by
+                      the whole agency, including staff who have no access to
+                      this person's home. */}
+                  <button
+                    type="button"
+                    onClick={() => setSavingPreset(savingPreset === o.id ? null : o.id)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-brand-slate hover:text-brand-navy"
+                  >
+                    <BookmarkPlus className="h-3 w-3" />
+                    Save as a preset
+                  </button>
                   <button
                     type="button"
                     onClick={() => retire(o)}
@@ -298,6 +319,16 @@ export function OutcomeManager({
                     Retire
                   </button>
                 </div>
+              ) : null}
+
+              {savingPreset === o.id ? (
+                <SaveAsPreset
+                  residentId={residentId}
+                  identity={identity}
+                  outcome={o}
+                  activities={activities.filter((a) => a.outcomeId === o.id)}
+                  onClose={() => setSavingPreset(null)}
+                />
               ) : null}
             </Card>
           ))}

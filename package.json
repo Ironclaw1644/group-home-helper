@@ -20,6 +20,7 @@
     "verify:jurisdictions": "tsx --tsconfig scripts/tsconfig.json scripts/verify-jurisdictions.tsx",
     "verify:wv-form": "tsx --tsconfig scripts/tsconfig.json scripts/verify-wv-form.ts",
     "verify:schema": "tsx --tsconfig scripts/tsconfig.json scripts/verify-schema.ts",
+    "verify:presets": "tsx --tsconfig scripts/tsconfig.json scripts/verify-preset-privacy.ts",
     "bootstrap:admin": "tsx --tsconfig scripts/tsconfig.json scripts/bootstrap-admin.ts",
     "db:bundle": "tsx --tsconfig scripts/tsconfig.json scripts/bundle-migrations.ts",
     "db:verify": "tsx --tsconfig scripts/tsconfig.json scripts/verify-db.ts",

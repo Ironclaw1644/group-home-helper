@@ -524,6 +524,29 @@ export type LibraryOutcome = {
 };
 
 // ---------------------------------------------------------------------------
+// Agency presets
+//
+// The same drafting aid as the starter library, but authored by the agency out
+// of an outcome it already wrote, and shared across its own residents only.
+// Stored de-personalized — `{name}` and the pronoun placeholders, never the
+// resident the wording came from. See lib/outcomes/depersonalize.ts.
+// ---------------------------------------------------------------------------
+
+export type OrgOutcomePreset = {
+  id: string;
+  /** Agency-defined free text. Null means "no category", not "uncategorised". */
+  category: string | null;
+  title: string;
+  lens: 'independence' | 'integration' | 'quality_of_life' | null;
+  importantTo: string | null;
+  importantFor: string | null;
+  statement: string | null;
+  frequency: string | null;
+  activities: LibraryActivity[];
+  createdAt: string;
+};
+
+// ---------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
 
