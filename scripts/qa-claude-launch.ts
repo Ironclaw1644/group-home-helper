@@ -33,6 +33,8 @@ async function snap(page: Page, name: string, fullPage = false) {
   console.log(`  shot ${file.replace(`${OUT}/`, '')}`);
 }
 
+let lastPage: Page | null = null;
+
 async function main() {
   const browser = await chromium.launch();
   const context = await browser.newContext({
@@ -47,6 +49,8 @@ async function main() {
       : {}
   });
   const page = await context.newPage();
+  lastPage = page;
+  page.on('pageerror', (err) => console.log(`  PAGE ERROR: ${err.message}\n${(err.stack ?? '').split('\n').slice(0, 4).join('\n')}`));
   page.on('load', () => void page.addStyleTag({ content: 'nextjs-portal{display:none!important}' }).catch(() => {}));
 
   console.log(`· demo sandbox on ${BASE}`);
@@ -80,7 +84,9 @@ async function main() {
   await page.getByRole('button', { name: /something wrong\? fix it/i }).click();
   await page.waitForTimeout(800);
   await snap(page, 'form-fix-it');
-  await page.getByRole('button', { name: /done fixing/i }).click();
+  // Confirm straight from the editor: the bar is pinned, and clicking "Done
+  // fixing" while the editor's smooth scroll is still running can land on
+  // the neighbouring "Start over".
 
   await page.getByRole('button', { name: /looks right — use this form/i }).click();
   await page.getByTestId('import-done').waitFor({ timeout: 30_000 });
@@ -140,7 +146,8 @@ async function main() {
   await browser.close();
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error('walkthrough failed:', err instanceof Error ? err.message : err);
+  await lastPage?.screenshot({ path: join(OUT, 'FAILED.png'), fullPage: true }).catch(() => {});
   process.exit(1);
 });

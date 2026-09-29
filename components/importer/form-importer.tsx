@@ -630,7 +630,11 @@ function PaperPreview({
 function FormEditor({ form, onChange }: { form: EditableForm; onChange: (patch: Partial<EditableForm>) => void }) {
   // Opened from under the preview; bring it up rather than leave it below the fold.
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), []);
+  // A block body on purpose: newer browsers return a Promise from
+  // scrollIntoView, and React calls whatever an effect returns as its cleanup.
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   const usedSources = useMemo(() => new Set(form.fields.map((f) => f.source).filter(Boolean)), [form.fields]);
   const setField = (i: number, patch: Partial<EditableField>) =>
     onChange({ fields: form.fields.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
