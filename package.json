@@ -46,7 +46,8 @@
     "time:note": "tsx --tsconfig scripts/tsconfig.json scripts/time-a-note.ts",
     "video:capture": "tsx --tsconfig scripts/tsconfig.json scripts/capture-demo-video.ts",
     "video:build": "python3 scripts/build-demo-video.py",
-    "video:flow": "tsx --tsconfig scripts/tsconfig.json scripts/capture-flow.ts"
+    "video:flow": "tsx --tsconfig scripts/tsconfig.json scripts/capture-flow.ts",
+    "qa:claude-launch": "tsx --tsconfig scripts/tsconfig.json scripts/qa-claude-launch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

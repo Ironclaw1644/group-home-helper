@@ -500,16 +500,27 @@ proving the exemption did not become a blanket amnesty.
 
 ### Price per tier
 
-| Model | Input/Output per MTok | 360 notes/month |
-| --- | --- | --- |
-| `gpt-4o-mini` | $0.15 / $0.60 | **$0.05** (measured) |
-| `claude-haiku-4-5-20251001` | $1 / $5 | ~$1.50 (estimated) |
-| `gpt-4o` | $2.50 / $10 | ~$4 (estimated) |
-| `claude-sonnet-5` | $3 / $15 | ~$4.30 (estimated) |
-| `claude-opus-5` | $5 / $25 | ~$7.20 (estimated) |
+| Model | Input/Output per MTok | Grounding | Median | Per note | 360 notes/month |
+| --- | --- | --- | --- | --- | --- |
+| `gpt-4o-mini` (removed) | $0.15 / $0.60 | 48/50 | 1.4s | $0.0001 | **$0.05** |
+| `claude-haiku-4-5-20251001` | $1 / $5 | 6/6 | 1.8s | $0.0020 | **$0.70** |
+| `claude-sonnet-5-5` | $2 / $10 | 6/6 | 2.0s | $0.0033 | **$1.18** |
 
-Only the first row has been measured here. The system prompt is byte-identical
-on every note and sits first, so most input bills at the cached rate.
+Claude rows measured 2026-09-29 with `COMPARE_MODELS=… npm run compare:models`
+(2 cases × 3 runs, de-identified prompts), and `verify:ai` on Haiku passed 6/6
+at a 1.7 s median. **Haiku 4.5 is the default**: it passes the same guards,
+fastest and cheapest. Its minimum cacheable prefix is 4096 tokens and the note
+prompt is shorter, so Haiku bills every input token; Sonnet 5.5 caches it
+(1285 of ~1590 input tokens read from cache) and is still dearer.
+
+### Reading an agency's own form
+
+`/forms`: an admin photographs the BLANK paper form their staff already fill in
+and confirms the filled-in preview; it becomes an org-owned
+`ghh.form_templates` row. A blank form carries no information about anyone.
+Model: `claude-opus-5-5` (`ANTHROPIC_IMPORTER_MODEL`), about $0.07 and 20 s
+per import, measured on West Virginia's official form — see
+`scripts/fixtures/importer` and `npm run verify:importer`.
 
 ### Using the API is not the same as using a chatbot
 
@@ -674,7 +685,12 @@ plan if the database is hosted too).
 
 Until those are executed, leave `AI_DEIDENTIFY=true`: the model then receives a
 placeholder name and no identifiers, and the real name is restored locally
-after generation. The flag is ignored by the local provider, where there is
+after generation. "No identifiers" covers the resident's names wherever they
+appear (ISP outcome titles, daily questions, comments), colleagues, housemates,
+house names and addresses, the agency, Medicaid IDs, dates, phone numbers and
+emails — and a fail-closed check refuses to send if any survive. The date of
+service is never sent. The roster reader, whose payload is names, is not
+offered on a hosted model until `FLIPBRIEF_AI_PROVIDER_BAA_IN_PLACE=true`. The flag is ignored by the local provider, where there is
 nothing to protect against.
 
 ---
