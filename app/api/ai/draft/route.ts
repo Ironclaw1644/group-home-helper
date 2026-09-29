@@ -19,8 +19,16 @@ import {
   shiftHasConcern
 } from '@/lib/forms/interpolate';
 import { buildDraftUserMessage, buildExampleUserMessage, SYSTEM_PROMPT } from '@/lib/ai/prompts';
-import { getProvider } from '@/lib/ai/provider';
-import { deidentifyEnabled, findResidualIdentifiers, prepareName, scrubFreeText } from '@/lib/ai/deid';
+import { generateWithFallback, getProvider } from '@/lib/ai/provider';
+import {
+  buildRedactor,
+  deidentifyEnabled,
+  findResidualIdentifiers,
+  findResidualNames,
+  prepareName,
+  scrubFreeText
+} from '@/lib/ai/deid';
+import { loadRedactionNames } from '@/lib/ai/redaction-names';
 import { checkClosingSentence, checkGrounding } from '@/lib/ai/guard';
 import { finalizeNarrative } from '@/lib/ai/postprocess';
 import { logAccess } from '@/lib/audit';
@@ -107,14 +115,32 @@ export async function POST(req: Request) {
     pronouns: resident.pronouns
   };
 
+  // Names nobody typed into this note still reach the prompt: an outcome
+  // titled with the resident's name, a comment naming a colleague, a shift
+  // labelled with the house. Only loaded when something is being removed.
+  const redactor = buildRedactor(
+    {
+      resident: {
+        firstName: resident.firstName,
+        lastName: resident.lastName,
+        preferredName: resident.preferredName,
+        medicaidId: resident.medicaidId
+      },
+      ...(deidentified ? await loadRedactionNames(note.orgId, resident.id) : {})
+    },
+    offMachine
+  );
+  // Shape-based scrub first (IDs, dates, phones), then the names the record knows.
+  const outbound = (text: string) => redactor.redact(scrubFreeText(text, offMachine));
+
   let userMessage: string;
 
   if (mode === 'example') {
     userMessage = buildExampleUserMessage({
       residentName: outboundName,
       pronouns: resident.pronouns,
-      shiftLabel,
-      prompts: template.schema.prompts.map((p) => interpolate(p, outboundCtx)),
+      shiftLabel: outbound(shiftLabel),
+      prompts: template.schema.prompts.map((p) => outbound(interpolate(p, outboundCtx))),
       // Nudge each generation somewhere different so a trainer showing the
       // feature twice does not get the same note back.
       variation: `Vary the activity and time of day from a typical previous example. Seed: ${noteId.slice(0, 8)}`
@@ -128,7 +154,7 @@ export async function POST(req: Request) {
     }
 
     const selections = describeSelections(template.schema, note.structuredData, outboundCtx).map(
-      (sel) => ({ ...sel, values: sel.values.map((v) => scrubFreeText(v, offMachine)) })
+      (sel) => ({ ...sel, values: sel.values.map(outbound) })
     );
 
     // Outcome documentation, resolved to the labels a reader would use. Only
@@ -147,7 +173,8 @@ export async function POST(req: Request) {
     const outcomeInput = planOutcomes.map((o) => {
       const entry = documented.find((d) => d.outcomeId === o.id);
       return {
-        title: o.title,
+        // Plan text is written about this person, often by name.
+        title: outbound(o.title),
         // No row means nobody has answered. Coercing that to `false` would
         // tell the model that "not worked on this shift" was recorded, which
         // is a fact the DSP never entered.
@@ -156,7 +183,7 @@ export async function POST(req: Request) {
         progress: PROGRESS_LEVELS.find((pl) => pl.value === entry?.progress)?.label ?? null,
         // Free text the DSP wrote. Scrubbed on the same terms as everything
         // else when the provider sends data off the machine.
-        comment: entry?.comment ? scrubFreeText(entry.comment, offMachine) : null,
+        comment: entry?.comment ? outbound(entry.comment) : null,
         // Only answered activities are sent. An unanswered one is a gap in the
         // record, and describing it either way would be inventing.
         activities: planActivities
@@ -165,10 +192,10 @@ export async function POST(req: Request) {
             const answer = answeredActivities.find((x) => x.activityId === a.id);
             if (!answer || answer.completed === null) return null;
             return {
-              question: a.dailyQuestion || a.description,
+              question: outbound(a.dailyQuestion || a.description),
               answered: answer.completed,
               concern: answer.concern,
-              comment: answer.comment ? scrubFreeText(answer.comment, offMachine) : null
+              comment: answer.comment ? outbound(answer.comment) : null
             };
           })
           .filter((a): a is NonNullable<typeof a> => a !== null)
@@ -183,21 +210,24 @@ export async function POST(req: Request) {
     userMessage = buildDraftUserMessage({
       residentName: outboundName,
       pronouns: resident.pronouns,
-      shiftLabel,
+      shiftLabel: outbound(shiftLabel),
       hasConcern: shiftHasConcern(template.schema, note.structuredData),
       selections,
-      prompts: template.schema.prompts.map((p) => interpolate(p, outboundCtx)),
+      prompts: template.schema.prompts.map((p) => outbound(interpolate(p, outboundCtx))),
       outcomes: outcomeInput
     });
   }
 
   // Fail closed: if scrubbing regressed and an identifier is still in the
   // payload, do not send it.
-  const residual = findResidualIdentifiers(
-    userMessage,
-    [resident.firstName, resident.preferredName, resident.lastName, resident.medicaidId],
-    offMachine
-  );
+  const residual = [
+    ...findResidualIdentifiers(
+      userMessage,
+      [resident.firstName, resident.preferredName, resident.lastName, resident.medicaidId],
+      offMachine
+    ),
+    ...findResidualNames(userMessage, redactor.otherNames, offMachine)
+  ];
   if (residual.length > 0) {
     console.error('[ai] blocked outbound payload containing identifiers', residual.length);
     return NextResponse.json(
@@ -206,7 +236,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await provider.generate(SYSTEM_PROMPT, userMessage);
+  // Falls back to a local model only if one is configured and answering, and
+  // hands it the same already-scrubbed message; otherwise "write it yourself".
+  const result = await generateWithFallback(SYSTEM_PROMPT, userMessage, provider);
 
   // Record every call, successful or not. Transparency about AI assistance is
   // protective in an audit.
@@ -284,7 +316,8 @@ export async function POST(req: Request) {
     .eq('id', note.id);
 
   await logAccess(supabase, req, `ai.${mode}`, 'note', note.id, {
-    provider: provider.name,
+    provider: result.provider,
+    fell_back: result.fellBack,
     model: result.model,
     deidentified,
     unsupported_count: unsupported.length
@@ -294,7 +327,7 @@ export async function POST(req: Request) {
     narrative,
     unsupportedClaims: unsupported,
     deidentified,
-    provider: provider.name,
+    provider: result.provider,
     model: result.model,
     elapsedSeconds: result.usage.elapsedSeconds
   });

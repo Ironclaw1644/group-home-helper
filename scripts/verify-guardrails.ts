@@ -9,7 +9,15 @@
  * should be run on every change.
  */
 import { checkClosingSentence, checkGrounding } from '../lib/ai/guard';
-import { findResidualIdentifiers, prepareName, scrubFreeText } from '../lib/ai/deid';
+import {
+  buildRedactor,
+  findResidualIdentifiers,
+  findResidualNames,
+  prepareName,
+  scrubFreeText
+} from '../lib/ai/deid';
+import { buildDraftUserMessage } from '../lib/ai/prompts';
+import { generateWithFallback, type ModelProvider } from '../lib/ai/provider';
 import { finalizeNarrative } from '../lib/ai/postprocess';
 import { narrativeSimilarity, isLikelyDuplicate } from '../lib/notes/similarity';
 import { describeSelections, shiftHasConcern } from '../lib/forms/interpolate';
@@ -446,6 +454,84 @@ section('De-identification (AI_DEIDENTIFY=true)');
 }
 
 // ---------------------------------------------------------------------------
+section('De-identification: names nobody typed into the note');
+// ---------------------------------------------------------------------------
+{
+  process.env.AI_DEIDENTIFY = 'true';
+  // Synthetic Riverbend-style roster. No real person.
+  const redactor = buildRedactor({
+    resident: { firstName: 'Jordan', lastName: 'Blake', preferredName: 'Jo', medicaidId: 'VA20331847' },
+    staff: ['Maria Lopez', 'Will Grant'],
+    peers: ['Casey Moore', 'Jordan Blake'],
+    places: ['Maple House', '14 Riverbend Road', 'Riverbend Care LLC']
+  });
+  const out = (t: string) => redactor.redact(scrubFreeText(t));
+  const { outboundName, rehydrate } = prepareName('Jo');
+  const message = buildDraftUserMessage({
+    residentName: outboundName,
+    pronouns: { subject: 'they', object: 'them', possessive: 'their' },
+    shiftLabel: out('Maple House day shift'),
+    hasConcern: false,
+    selections: [{ section: 's', field: 'Other', values: [out('Walked to the store with Maria and Casey on 09/28/2026')] }],
+    prompts: [out('How did Jordan do today?')],
+    outcomes: [
+      {
+        title: out('Jordan will prepare lunch with verbal prompts'),
+        addressed: true,
+        comment: out('Jo made a sandwich; Will Grant helped. Medicaid VA20331847.'),
+        activities: [{ question: out('Did Jordan Blake wash hands?'), answered: true, concern: false }]
+      }
+    ]
+  });
+
+  const leaks = ['Jordan', 'Blake', 'Maria', 'Lopez', 'Casey', 'Moore', 'Grant', 'Maple House', 'Riverbend', 'VA20331847', '09/28/2026'];
+  check(
+    'no resident, colleague, housemate, house, ID or date of service reaches the prompt',
+    leaks.every((l) => !message.includes(l)),
+    leaks.filter((l) => message.includes(l)).join(', ')
+  );
+  check(
+    'the fail-closed checks agree the payload is clean',
+    findResidualIdentifiers(message, redactor.residentTerms).length === 0 &&
+      findResidualNames(message, redactor.otherNames).length === 0
+  );
+  check('a colleague called Will does not eat the word "will"', message.includes('R. will prepare lunch'), message);
+  check('an outcome written by name reads as the placeholder', message.includes('R. will prepare lunch'));
+  check('the name comes back in the finished note', rehydrate('R. made a sandwich.') === 'Jo made a sandwich.');
+  check(
+    'a whole-word check does not fire on a longer word',
+    findResidualIdentifiers('An annual review.', ['Ann']).length === 0
+  );
+  check(
+    'a name the redactor was never told about is still caught by the resident check',
+    findResidualIdentifiers('Jordan went out.', redactor.residentTerms).length === 1
+  );
+}
+
+// ---------------------------------------------------------------------------
+section('Fallback never sends anywhere new');
+// ---------------------------------------------------------------------------
+const fallbackChecks = (async () => {
+  const saved = process.env.OLLAMA_HOST;
+  delete process.env.OLLAMA_HOST;
+  const failing = (reason: 'error' | 'refusal'): ModelProvider => ({
+    name: 'anthropic',
+    model: 'test',
+    sendsDataOffMachine: true,
+    health: async () => ({ ok: true, detail: '' }),
+    generate: async () => ({ ok: false, reason, message: 'x', model: 'test' })
+  });
+  const errored = await generateWithFallback('s', 'u', failing('error'));
+  check(
+    'a hosted failure with no local model configured says "write it yourself"',
+    !errored.ok && errored.reason === 'unavailable' && !errored.fellBack && /yourself/.test(errored.message)
+  );
+  const refused = await generateWithFallback('s', 'u', failing('refusal'));
+  check('a refusal is not retried on another model', !refused.ok && refused.reason === 'refusal' && !refused.fellBack);
+  if (saved !== undefined) process.env.OLLAMA_HOST = saved;
+})();
+
+// ---------------------------------------------------------------------------
 section('De-identification disabled (post-BAA)');
 // ---------------------------------------------------------------------------
 {
@@ -504,9 +590,11 @@ section('Selection flattening (what the model receives)');
   );
 }
 
-console.log(
-  failures === 0
-    ? '\nAll guardrail checks passed.\n'
-    : `\n${failures} guardrail check(s) FAILED.\n`
-);
-process.exit(failures === 0 ? 0 : 1);
+void fallbackChecks.then(() => {
+  console.log(
+    failures === 0
+      ? '\nAll guardrail checks passed.\n'
+      : `\n${failures} guardrail check(s) FAILED.\n`
+  );
+  process.exit(failures === 0 ? 0 : 1);
+});

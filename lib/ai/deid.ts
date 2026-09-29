@@ -121,8 +121,136 @@ export function findResidualIdentifiers(
   if (!deidentifyEnabled(sendsDataOffMachine)) return [];
   const hits: string[] = [];
   for (const term of forbidden) {
-    if (!term || term.length < 3) continue;
-    if (payload.toLowerCase().includes(term.toLowerCase())) hits.push(term);
+    if (!term || term.trim().length < 2) continue;
+    // Whole words, any case. A substring test blocked every note for a
+    // resident called Ann whose plan mentioned an announcement, and the
+    // redactor below replaces whole words — so this checks what it removes.
+    if (wordPattern(term.trim(), 'i').test(payload)) hits.push(term);
   }
   return hits;
+}
+
+/**
+ * Colleagues, housemates, the house and the agency: names that are not the
+ * resident's but identify them just as well.
+ *
+ * Checked case-sensitively, because these are only removed where they are
+ * written as names. A staff member called Will must not turn "R. will cook"
+ * into "R. staff cook", and so must not make a lowercase "will" a leak either.
+ */
+export function findResidualNames(
+  payload: string,
+  names: Array<string | null | undefined>,
+  sendsDataOffMachine = true
+): string[] {
+  if (!deidentifyEnabled(sendsDataOffMachine)) return [];
+  return names.filter(
+    (n): n is string => Boolean(n && n.trim().length >= 3 && wordPattern(n.trim(), '').test(payload))
+  );
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** A term as a whole word: "Ann" matches "Ann." and "Ann's", never "Annual". */
+function wordPattern(term: string, flags: string): RegExp {
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(term)}(?![\\p{L}\\p{N}])`, `gu${flags}`);
+}
+
+export type RedactionInput = {
+  /** The person the note is about: every form of their name becomes "R.". */
+  resident: {
+    firstName: string;
+    lastName?: string | null;
+    preferredName?: string | null;
+    medicaidId?: string | null;
+  };
+  /** Staff at the agency. Written as "staff". */
+  staff?: Array<string | null | undefined>;
+  /** Other residents. Written as "a peer". */
+  peers?: Array<string | null | undefined>;
+  /** House names and addresses, the agency's name. Written as "the home". */
+  places?: Array<string | null | undefined>;
+};
+
+export type Redactor = {
+  /** Apply to every string that will be sent. Identity when de-id is off. */
+  redact: (text: string) => string;
+  /** Resident identifiers, for findResidualIdentifiers. */
+  residentTerms: string[];
+  /** Everyone and everywhere else, for findResidualNames. */
+  otherNames: string[];
+};
+
+/** "Maria del Carmen Ruiz" → the full string and each part long enough to be a name. */
+function nameForms(full: string | null | undefined, min = 3): string[] {
+  const t = (full ?? '').trim().replace(/\s+/g, ' ');
+  if (!t) return [];
+  const parts = t.split(' ').filter((p) => p.length >= min);
+  return [t, ...parts];
+}
+
+/**
+ * Remove the names the record knows about from outbound text.
+ *
+ * scrubFreeText catches identifiers by shape — digit runs, dates, phone
+ * numbers. It cannot catch a name, and names reach the prompt in places nobody
+ * types into the note: an ISP outcome titled "Jordan will prepare lunch", a
+ * daily question, a DSP's comment "walked to the store with Maria", a shift
+ * the agency labelled with a house name. Those are replaced here with the same
+ * placeholders the note already uses, longest name first so "Jordan Blake" is
+ * not half-replaced as "R. Blake".
+ */
+export function buildRedactor(input: RedactionInput, sendsDataOffMachine = true): Redactor {
+  // Two letters for the resident's own names: "Jo" is a preferred name, and
+  // the cost of also replacing a stray "jo" is nothing.
+  const residentTerms = [
+    ...nameForms([input.resident.firstName, input.resident.lastName].filter(Boolean).join(' '), 2),
+    ...nameForms(input.resident.preferredName, 2),
+    ...(input.resident.medicaidId ? [input.resident.medicaidId] : [])
+  ];
+
+  if (!deidentifyEnabled(sendsDataOffMachine)) {
+    return { redact: (t) => t, residentTerms: [], otherNames: [] };
+  }
+
+  const own = new Set(residentTerms.map((t) => t.toLowerCase()));
+  type Rule = { term: string; to: string; flags: string };
+  const rules: Rule[] = [];
+
+  if (input.resident.medicaidId?.trim()) {
+    rules.push({ term: input.resident.medicaidId.trim(), to: '[id]', flags: 'i' });
+  }
+  for (const t of residentTerms) {
+    if (t !== input.resident.medicaidId) rules.push({ term: t, to: PLACEHOLDER, flags: 'i' });
+  }
+  const others = (list: Array<string | null | undefined> | undefined, to: string, whole = false) => {
+    for (const n of list ?? []) {
+      // Places only as written in full: splitting "12 Oak Road" into words
+      // would strip every "Road" out of every note.
+      const forms = whole ? nameForms(n).slice(0, 1) : nameForms(n);
+      for (const form of forms) {
+        // A colleague who shares the resident's first name is the resident,
+        // as far as the text can tell. The resident rule has already run.
+        if (own.has(form.toLowerCase())) continue;
+        rules.push({ term: form, to, flags: '' });
+      }
+    }
+  };
+  others(input.staff, 'staff');
+  others(input.peers, 'a peer');
+  others(input.places, 'the home', true);
+
+  // Longest first, so a full name goes before its parts.
+  rules.sort((a, b) => b.term.length - a.term.length);
+
+  const otherNames = Array.from(new Set(rules.filter((r) => r.flags === '').map((r) => r.term)));
+
+  return {
+    residentTerms,
+    otherNames,
+    redact: (text: string) =>
+      rules.reduce((acc, r) => acc.replace(wordPattern(r.term, r.flags), r.to), text)
+  };
 }
