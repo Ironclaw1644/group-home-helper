@@ -22,9 +22,18 @@ export async function POST(req: Request) {
   const admin = createSupabaseAdminClient();
   const { data: org } = await admin
     .from('organizations')
-    .select('name')
+    .select('name, is_demo')
     .eq('id', session.profile.orgId)
     .maybeSingle();
+
+  // The demo sandbox is fictional and deletes itself. Taking a real card for
+  // it would bill someone for a workspace that is about to disappear.
+  if (org?.is_demo) {
+    return NextResponse.json(
+      { error: 'This is the demo workspace, so it cannot be subscribed. Set up your own workspace first.' },
+      { status: 403 }
+    );
+  }
 
   const origin = new URL(req.url).origin;
 

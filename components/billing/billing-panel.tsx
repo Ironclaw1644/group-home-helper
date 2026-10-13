@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { CreditCard, ExternalLink, Loader2 } from 'lucide-react';
 import { Alert, Button } from '@/components/ui';
+import { FREE_ALLOWANCE } from '@/lib/billing/plan';
 
 /**
  * Start or manage the subscription.
@@ -12,10 +14,13 @@ import { Alert, Button } from '@/components/ui';
  */
 export function BillingPanel({
   hasSubscription,
-  configured
+  configured,
+  isDemo = false
 }: {
   hasSubscription: boolean;
   configured: boolean;
+  /** The sandbox deletes itself, so it is never offered a real checkout. */
+  isDemo?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +53,20 @@ export function BillingPanel({
         <p>
           An administrator needs to add the Stripe keys before subscriptions can be started.
           Everything else in the app works as normal.
+        </p>
+      </Alert>
+    );
+  }
+
+  if (isDemo) {
+    return (
+      <Alert tone="info" title="This is the demo workspace">
+        <p>
+          It is fictional and deletes itself, so it cannot be subscribed.{' '}
+          <Link href="/signup" className="font-semibold underline">
+            Set up your own workspace
+          </Link>{' '}
+          to start the subscription. Your first {FREE_ALLOWANCE} drafts are free.
         </p>
       </Alert>
     );

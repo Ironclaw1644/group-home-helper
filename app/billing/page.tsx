@@ -1,5 +1,6 @@
 import { Check, Sparkles } from 'lucide-react';
 import { requireSupervisor } from '@/lib/auth/session';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getBillingState, getPlanPrice, stripeConfigured } from '@/lib/billing/stripe';
 import { AppShell } from '@/components/app-shell';
 import { BillingPanel } from '@/components/billing/billing-panel';
@@ -24,9 +25,15 @@ export default async function BillingPage({
   const session = await requireSupervisor();
   const params = await searchParams;
 
-  const [billing, price] = await Promise.all([
+  const [billing, price, org] = await Promise.all([
     getBillingState(session.profile.orgId),
-    getPlanPrice(session.profile.orgId)
+    getPlanPrice(session.profile.orgId),
+    createSupabaseAdminClient()
+      .from('organizations')
+      .select('is_demo')
+      .eq('id', session.profile.orgId)
+      .maybeSingle()
+      .then(({ data }) => data)
   ]);
 
   const status = billing.isPlatformOwner
@@ -94,7 +101,11 @@ export default async function BillingPage({
           </div>
         )}
 
-        <BillingPanel hasSubscription={billing.hasCustomer} configured={stripeConfigured()} />
+        <BillingPanel
+            hasSubscription={billing.hasCustomer}
+            configured={stripeConfigured()}
+            isDemo={Boolean(org?.is_demo)}
+          />
       </Card>
 
       <Card className="mb-4">
