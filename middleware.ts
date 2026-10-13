@@ -125,6 +125,9 @@ export const config = {
   // offline behaviour. `.apk` matters for the same reason as /download — an
   // unauthenticated phone has to be able to fetch it.
   //
+  // `robots.txt` and `sitemap.xml` are for crawlers, who are never signed in;
+  // both used to redirect to /login, so Google read the login page as robots.
+  //
   // `demo/` and `.mp4` are here for the same reason and were missed: the four
   // films on the public page live in public/demo, and every one of them
   // redirected to /login?next=... for exactly the people they are meant to
@@ -132,6 +135,6 @@ export const config = {
   // fine and play nothing — the failure was invisible until somebody pressed
   // play.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4)$).*)'
+    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4)$).*)'
   ]
 };

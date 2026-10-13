@@ -47,5 +47,8 @@ export const signatureFont = Allura({
   subsets: ['latin'],
   weight: '400',
   display: 'swap',
+  // Only the signing screen and the PDF show it. Preloading it on every page
+  // made it compete with Archivo, which the first paint of text waits on.
+  preload: false,
   variable: '--font-fb-signature'
 });

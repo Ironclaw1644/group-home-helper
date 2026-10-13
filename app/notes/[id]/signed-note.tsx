@@ -33,7 +33,8 @@ export default function SignedNote({
   outcomes,
   savedOutcomes,
   activities,
-  savedActivities
+  savedActivities,
+  timeZone
 }: {
   /** The next unsigned note in the house that day, if any. */
   nextUp?: { name: string; shiftLabel: string; href: string } | null;
@@ -50,12 +51,24 @@ export default function SignedNote({
   savedOutcomes: NoteOutcome[];
   activities: OutcomeActivity[];
   savedActivities: NoteActivity[];
+  /** The agency's timezone. This renders on the server too, which runs in
+   *  UTC, so a bare toLocaleString() showed a different signing time there
+   *  than in the browser (and React flagged the mismatch). */
+  timeZone: string;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const stamp = (iso: string) =>
+    new Date(iso).toLocaleString('en-US', {
+      timeZone,
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZoneName: 'short'
+    });
 
   const label = (text: string) =>
     interpolate(text, { name: displayName(resident), pronouns: resident.pronouns });
@@ -149,7 +162,7 @@ export default function SignedNote({
       <Card>
         <div className="mb-4 flex items-center gap-2 text-xs font-semibold text-status-signed">
           <Lock className="h-4 w-4" />
-          Signed {note.signedAt ? new Date(note.signedAt).toLocaleString() : ''} — this note is final
+          Signed {note.signedAt ? stamp(note.signedAt) : ''} — this note is final
         </div>
 
         <ol className="mb-5 list-decimal space-y-1 rounded-xl bg-brand-sand/60 p-4 pl-9 text-sm text-brand-navy">
@@ -260,7 +273,7 @@ export default function SignedNote({
               <li key={a.id} className="border-l-2 border-brand-teal/40 pl-4">
                 <p className="whitespace-pre-wrap text-sm leading-6 text-brand-navy">{a.body}</p>
                 <p className="mt-1 text-xs text-brand-slate">
-                  {a.signatureName} · {a.signatureTitle} · {new Date(a.createdAt).toLocaleString()}
+                  {a.signatureName} · {a.signatureTitle} · {stamp(a.createdAt)}
                 </p>
               </li>
             ))}

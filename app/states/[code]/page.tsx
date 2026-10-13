@@ -34,15 +34,43 @@ async function findState(code: string) {
   return details.find((d) => d.code.toUpperCase() === wanted) ?? null;
 }
 
+/** A search snippet shows about this much before it cuts off. */
+const DESCRIPTION_LIMIT = 155;
+
+function clip(text: string): string {
+  if (text.length <= DESCRIPTION_LIMIT) return text;
+  const cut = text.slice(0, DESCRIPTION_LIMIT - 1);
+  return `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+}
+
+/**
+ * The snippet under the search result. Built only from the citation text the
+ * printed form already carries, so it can claim nothing the form does not.
+ */
+function describe(state: { name: string; citation: string | null }): string {
+  const citation = state.citation?.trim();
+  if (!citation) {
+    return `${state.name}: a complete progress note that makes no claim about state regulations.`;
+  }
+  // "Reproduces the WV I/DD Waiver ... Not issued by the state."
+  if (/^Reproduces /.test(citation)) {
+    return clip(`${state.name}: FlipBrief ${citation.charAt(0).toLowerCase()}${citation.slice(1)}`);
+  }
+  const rule = citation.replace(/^Layout built to satisfy /, '').replace(/ Not a state-issued form\.$/, '');
+  return clip(`${state.name} group home progress note, laid out to satisfy ${rule}`);
+}
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { code } = await params;
   const state = await findState(code);
   if (!state) return { title: 'State not found' };
   return {
-    title: `What FlipBrief prints in ${state.name}`,
-    description: state.citation
-      ? `${state.name}: the printed note cites ${state.citation.replace(/^Layout built to satisfy /, '').replace(/ Not a state-issued form\.$/, '')}`
-      : `${state.name}: a complete progress note that makes no claim about state regulations.`
+    title: `${state.name} group home progress note form | FlipBrief`,
+    description: describe(state),
+    // Public, and the root layout's noindex would otherwise hide it.
+    robots: { index: true, follow: true },
+    alternates: { canonical: `/states/${state.code}` },
+    openGraph: { images: ['/og.png'] }
   };
 }
 

@@ -15,6 +15,14 @@ import { Card, EmptyState, PageHeader } from '@/components/ui';
 import { addDays, formatServiceDate, todayInTimeZone } from '@/lib/utils';
 import { displayName } from '@/lib/types';
 
+/** The link-preview card: public/og.png, 1200x630. */
+const OG_IMAGE = {
+  url: '/og.png',
+  width: 1200,
+  height: 630,
+  alt: 'FlipBrief: tap what happened, the note writes itself'
+};
+
 export const dynamic = 'force-dynamic';
 
 /**
@@ -53,8 +61,9 @@ export async function generateMetadata(): Promise<Metadata> {
     // The one page on this deployment that should be indexed. Everything else
     // holds PHI and stays out of every index via the root layout.
     robots: { index: true, follow: true },
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary_large_image', title, description }
+    alternates: { canonical: '/' },
+    openGraph: { title, description, type: 'website', url: '/', siteName: 'FlipBrief', images: [OG_IMAGE] },
+    twitter: { card: 'summary_large_image', title, description, images: [OG_IMAGE.url] }
   };
 }
 

@@ -162,6 +162,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
           savedOutcomes={savedOutcomes}
           activities={activities}
           savedActivities={savedActivities}
+          timeZone={await orgTimeZoneFor(session.profile.orgId)}
         />
       ) : (
         <NoteEditor

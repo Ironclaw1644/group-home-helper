@@ -25,7 +25,11 @@ import { SiteMenu } from '@/components/marketing/site-menu';
  */
 
 export const metadata: Metadata = {
-  title: 'What FlipBrief prints in your state',
+  title: 'Group home progress notes for every state and DC | FlipBrief',
+  // Public, and the root layout's noindex would otherwise hide it.
+  robots: { index: true, follow: true },
+  alternates: { canonical: '/states' },
+  openGraph: { images: ['/og.png'] },
   description:
     'Every state and DC. Which ones cite your own documentation rule on the printed page, which reproduce your state’s form, and which print a general-purpose note that claims nothing.'
 };

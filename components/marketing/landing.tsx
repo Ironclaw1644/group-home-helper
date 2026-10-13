@@ -145,9 +145,63 @@ const FAQ = [
   }
 ];
 
+/**
+ * What a search engine reads about the page, built from the same FAQ and price
+ * the page shows, so the two cannot disagree.
+ */
+function structuredData() {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': 'https://flipbrief.com/#org',
+        name: 'FlipBrief',
+        url: 'https://flipbrief.com/',
+        logo: 'https://flipbrief.com/icon-512.png'
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'FlipBrief',
+        url: 'https://flipbrief.com/',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web, Android',
+        description:
+          'Progress-note documentation for small group homes. Staff tap what happened, the note drafts itself, they sign on their phone, and it prints on the agency’s letterhead.',
+        publisher: { '@id': 'https://flipbrief.com/#org' },
+        offers: {
+          '@type': 'Offer',
+          price: '100',
+          priceCurrency: 'USD',
+          priceSpecification: {
+            '@type': 'UnitPriceSpecification',
+            price: '100',
+            priceCurrency: 'USD',
+            unitText: 'MONTH'
+          }
+        }
+      },
+      {
+        '@type': 'FAQPage',
+        mainEntity: FAQ.map(({ q, a }) => ({
+          '@type': 'Question',
+          name: q,
+          acceptedAnswer: { '@type': 'Answer', text: a }
+        }))
+      }
+    ]
+  };
+}
+
 export function Landing() {
   return (
     <div className="fb min-h-dvh bg-flip-paper font-flip text-flip-ink">
+      <script
+        type="application/ld+json"
+        // Static content from this file; `<` is escaped so no string in it can
+        // close the script tag.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()).replace(/</g, '\\u003c') }}
+      />
       <SiteHeader />
 
       <main>
@@ -222,7 +276,7 @@ function Section({
             <p
               className={cn(
                 'fb-label mt-2.5 leading-[1.5]',
-                dark ? 'text-flip-paper/50' : 'text-flip-forest/45'
+                dark ? 'text-flip-paper/70' : 'text-flip-forest/70'
               )}
             >
               {label}
@@ -473,14 +527,14 @@ function HowItWorks() {
       title="What the screenshots do not show."
       lede="You have just watched the whole product. There is no implementation phase, no configuration project and no week of training, because there is not enough here to need one — so this is the part that does not photograph."
     >
-      {/* Four films of the real product, above the prose.
+      {/* Five films of the real product, above the prose.
           They were shot, cut and committed a day before anything linked to
           them, so a reader could be told a signed note cannot be edited and
           had no way to watch one refuse. */}
       <div className="mb-12">
         <h3 className="fb-label text-flip-amber">Watch it happen</h3>
         <p className="mt-2 max-w-[46ch] text-[0.95rem] leading-relaxed text-flip-slate">
-          Four short films, each answering a different question. Nothing in them
+          Five short films, each answering a different question. Nothing in them
           is a mockup — every one is a recording of the demo you can open
           yourself.
         </p>
@@ -794,14 +848,14 @@ function SiteFooter() {
           </nav>
         </div>
 
-        <p className="mt-8 max-w-[62ch] text-[0.8rem] leading-relaxed text-flip-paper/55">
+        <p className="mt-8 max-w-[62ch] text-[0.8rem] leading-relaxed text-flip-paper/75">
           Documentation software for small group homes and behavioural and elder care agencies.
           FlipBrief prints a progress note for every state and DC, citing your state’s own
           documentation rule where one exists. Staff joining an agency need an invitation from
           their supervisor.
         </p>
 
-        <p className="mt-6 text-[0.8rem] leading-relaxed text-flip-paper/55">
+        <p className="mt-6 text-[0.8rem] leading-relaxed text-flip-paper/75">
           <a
             href="https://luziq.ai/?ref=flipbrief"
             target="_blank"

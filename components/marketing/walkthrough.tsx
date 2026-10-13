@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -150,13 +151,15 @@ export function Walkthrough({ className }: { className?: string }) {
                   i === index ? 'opacity-100' : 'pointer-events-none opacity-0'
                 )}
               >
-                <img
+                {/* next/image serves these as WebP at the size shown: the first
+                    frame went from a 168 KB PNG to about 40 KB. */}
+                <Image
                   src={frame.src}
                   width={frame.width}
                   height={frame.height}
                   alt={`${frame.step}. ${frame.caption}`}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
+                  priority={i === 0}
+                  sizes="(max-width: 640px) 60vw, 360px"
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -239,13 +242,12 @@ export function Walkthrough({ className }: { className?: string }) {
             <p className="mt-1.5 max-w-[46ch] text-[0.92rem] leading-[1.55] text-flip-slate">
               {frame.caption}
             </p>
-            <img
+            <Image
               src={frame.src}
               width={frame.width}
               height={frame.height}
               alt=""
-              loading="lazy"
-              decoding="async"
+              sizes="320px"
               className={cn(
                 'mt-4 w-full max-w-[15rem] object-contain',
                 frame.kind === 'phone'

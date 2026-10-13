@@ -99,6 +99,9 @@ export function Films({ className }: { className?: string }) {
                 poster={`/demo/poster-${film.key}.jpg`}
                 controls
                 autoPlay
+                // The films have no audio track; muted keeps iOS from
+                // refusing to autoplay after the tap.
+                muted
                 playsInline
                 preload="metadata"
               />

@@ -6,6 +6,9 @@ import { appFont, signatureFont } from '@/lib/fonts';
 import { ServiceWorkerBridge } from '@/components/service-worker';
 
 export const metadata: Metadata = {
+  // Resolves canonical and share-image paths on every page to the real domain
+  // rather than whichever deployment URL served the request.
+  metadataBase: new URL('https://flipbrief.com'),
   // The product's name, not a customer's. Several agencies use this
   // deployment and the browser tab used to read as one of them.
   title: 'FlipBrief',
