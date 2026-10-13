@@ -3,6 +3,7 @@
  *
  *   QA_BASE=https://<preview> QA_BYPASS=<secret> npm run qa:claude-launch
  *   QA_BASE=http://localhost:3000 npm run qa:claude-launch
+ *   QA_BROWSER=webkit QA_BASE=... npm run qa:claude-launch
  *
  * Runs as the Riverbend demo sandbox — a fictional agency with fictional
  * residents that expires on its own — so no real person is involved. Uploads
@@ -16,7 +17,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { chromium, devices, type Page } from 'playwright';
+import { chromium, devices, webkit, type Page } from 'playwright';
 
 const BASE = (process.env.QA_BASE || 'http://localhost:3000').replace(/\/$/, '');
 const OUT = join(__dirname, '..', 'qa-shots', 'claude-launch');
@@ -36,7 +37,9 @@ async function snap(page: Page, name: string, fullPage = false) {
 let lastPage: Page | null = null;
 
 async function main() {
-  const browser = await chromium.launch();
+  // QA_BROWSER=webkit runs it in Safari's engine, which is what most DSPs'
+  // phones are and which rejects some date options Chromium accepts.
+  const browser = await (process.env.QA_BROWSER === 'webkit' ? webkit : chromium).launch();
   const context = await browser.newContext({
     ...devices['iPhone 13'],
     extraHTTPHeaders: process.env.QA_BYPASS
@@ -93,7 +96,12 @@ async function main() {
   await snap(page, 'form-confirmed');
 
   console.log('· write a note on it');
-  await page.goto(BASE, { waitUntil: 'networkidle' });
+  // Confirming refreshes the forms page; in WebKit that can still be landing
+  // when we leave, and interrupts the next navigation. Let it settle, retry once.
+  await page.waitForLoadState('networkidle');
+  await page.goto(BASE, { waitUntil: 'networkidle' }).catch(() =>
+    page.goto(BASE, { waitUntil: 'networkidle' })
+  );
   await snap(page, 'today-after');
   await page.getByRole('link', { name: /start .* note/i }).first().click();
   await page.waitForURL(/\/notes\/[0-9a-f-]{36}/, { timeout: 60_000 });
