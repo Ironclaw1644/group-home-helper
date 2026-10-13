@@ -803,12 +803,12 @@ function SiteFooter() {
 
         <p className="mt-6 text-[0.8rem] leading-relaxed text-flip-paper/55">
           <a
-            href="https://luziq.ai/websites/"
+            href="https://luziq.ai/?ref=flipbrief"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener"
             className="hover:text-flip-paper hover:underline"
           >
-            Website powered by Luziq
+            Powered by Luziq
           </a>
         </p>
       </Shell>

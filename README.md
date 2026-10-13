@@ -505,13 +505,17 @@ proving the exemption did not become a blanket amnesty.
 | `gpt-4o-mini` (removed) | $0.15 / $0.60 | 48/50 | 1.4s | $0.0001 | **$0.05** |
 | `claude-haiku-4-5-20251001` | $1 / $5 | 6/6 | 1.8s | $0.0020 | **$0.70** |
 | `claude-sonnet-5-5` | $2 / $10 | 6/6 | 2.0s | $0.0033 | **$1.18** |
+| `claude-opus-5-5` | $4 / $20 | 8/8 | 2.8s | $0.0058 | **$2.10** |
 
-Claude rows measured 2026-09-29 with `COMPARE_MODELS=… npm run compare:models`
-(2 cases × 3 runs, de-identified prompts), and `verify:ai` on Haiku passed 6/6
-at a 1.7 s median. **Haiku 4.5 is the default**: it passes the same guards,
-fastest and cheapest. Its minimum cacheable prefix is 4096 tokens and the note
-prompt is shorter, so Haiku bills every input token; Sonnet 5.5 caches it
-(1285 of ~1590 input tokens read from cache) and is still dearer.
+Haiku and Sonnet rows measured 2026-09-29 with `COMPARE_MODELS=… npm run
+compare:models` (2 cases × 3 runs, de-identified prompts). The Opus row was
+measured 2026-10-12 (2 cases × 4 runs; Haiku re-ran alongside at $0.0019 and
+2.3 s), and `verify:ai` on Opus passed 6/6 at a 2.7 s median.
+
+**Opus 5.5 is the default** (owner's call, 2026-10-12: one model for notes and
+the importer, no Haiku). It caches the system prompt (1542 of ~1850 input
+tokens read from cache), so it costs about 3x Haiku per note rather than 4x.
+`ANTHROPIC_MODEL` still overrides it.
 
 ### Reading an agency's own form
 

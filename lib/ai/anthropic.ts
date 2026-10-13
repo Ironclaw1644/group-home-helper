@@ -30,8 +30,12 @@ import type { DraftResult, ModelProvider, StructuredResult } from './provider';
  * the deterministic guards in guard.ts catch what a weaker model gets wrong.
  * So the model is a cost dial, not an architectural choice. See the model
  * comparison in the README for measured pass rates per tier.
+ *
+ * Opus 5.5 by the owner's call (2026-10-12): one model for notes and the form
+ * importer, no Haiku anywhere. Measured at about $0.006 a note and 2.8 s; its
+ * 512-token cache minimum means the system prompt is read from cache.
  */
-export const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
+export const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-5-5';
 
 /**
  * How hard the model thinks before writing, per model.
