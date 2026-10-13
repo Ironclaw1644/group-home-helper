@@ -24,7 +24,7 @@ const FIX = join(__dirname, 'fixtures', 'importer', 'wv');
 
 mkdirSync(OUT, { recursive: true });
 
-const timings: Record<string, number> = {};
+const timings: Record<string, number | string | boolean | null> = {};
 let shot = 0;
 async function snap(page: Page, name: string, fullPage = false) {
   shot++;
@@ -111,8 +111,18 @@ async function main() {
   await page.waitForTimeout(400);
   await snap(page, 'note-entries');
 
+  // Who wrote it: the route reports the provider that answered, so a fallback
+  // to a local model shows up here as `local`.
+  const draftResponse = page.waitForResponse((r) => r.url().includes('/api/ai/draft'), { timeout: 60_000 });
   started = Date.now();
   await page.getByRole('button', { name: 'Write my note' }).last().click();
+  const drafted = (await (await draftResponse).json()) as Record<string, unknown>;
+  timings.draftProvider = drafted.provider as never;
+  timings.draftModel = drafted.model as never;
+  timings.draftModelSeconds = drafted.elapsedSeconds as never;
+  timings.draftDeidentified = drafted.deidentified as never;
+  console.log(`  draft by ${drafted.provider} ${drafted.model} in ${drafted.elapsedSeconds}s, de-identified: ${drafted.deidentified}`);
+  if (drafted.provider !== 'anthropic') throw new Error(`draft came from ${drafted.provider}, not Claude`);
   await page.waitForFunction(
     () => ((document.querySelector('textarea.field-input') as HTMLTextAreaElement | null)?.value ?? '').length > 40,
     null,

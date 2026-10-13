@@ -41,8 +41,34 @@ const Body = z.object({
   mode: z.enum(['draft_assist', 'example'])
 });
 
+/**
+ * Where a draft's time goes, as a Server-Timing header.
+ *
+ * The model answers in about 2.5 s, but drafts were measured on screen at
+ * anywhere from 4 to 20 s. This splits the request into its phases so the
+ * browser's network panel (or a probe script) shows which one stalled. Phase
+ * names and durations only; nothing about the note.
+ */
+function phaseTimer() {
+  const started = Date.now();
+  let last = started;
+  const phases: string[] = [];
+  return {
+    mark(name: string) {
+      const now = Date.now();
+      phases.push(`${name};dur=${now - last}`);
+      last = now;
+    },
+    header() {
+      return [...phases, `total;dur=${Date.now() - started}`].join(', ');
+    }
+  };
+}
+
 export async function POST(req: Request) {
+  const timer = phaseTimer();
   const session = await getSession();
+  timer.mark('session');
   if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
@@ -65,6 +91,7 @@ export async function POST(req: Request) {
   if (!resident) return NextResponse.json({ error: 'Resident not found' }, { status: 404 });
 
   const shiftLabel = shifts.find((s) => s.id === note.shiftId)?.label ?? '';
+  timer.mark('load');
 
   // A training example invents a plausible shift. That is only acceptable for
   // a fictional resident — inventing a shift for a real person would put a
@@ -86,6 +113,7 @@ export async function POST(req: Request) {
   // shift over a card decline would leave a resident with no record of their
   // care that day.
   const billing = await getBillingState(session.profile.orgId);
+  timer.mark('billing');
   if (!billing.entitled) {
     return NextResponse.json(
       {
@@ -236,9 +264,12 @@ export async function POST(req: Request) {
     );
   }
 
+  timer.mark('prepare');
+
   // Falls back to a local model only if one is configured and answering, and
   // hands it the same already-scrubbed message; otherwise "write it yourself".
   const result = await generateWithFallback(SYSTEM_PROMPT, userMessage, provider);
+  timer.mark('model');
 
   // Record every call, successful or not. Transparency about AI assistance is
   // protective in an audit.
@@ -301,34 +332,37 @@ export async function POST(req: Request) {
       : [];
 
   const unsupported = findings.map((f) => f.detail);
-  await logGeneration(unsupported, false);
 
-  // Counted only now, after a draft actually came back. A model error must not
-  // burn a free generation the agency never received.
-  await recordGeneration(session.profile.orgId);
-
-  // Mark the note as AI-assisted. Saving the narrative itself stays with the
-  // DSP's autosave, so nothing is written to the record they have not seen.
+  // Four independent writes, run together rather than one after another: a
+  // DSP is waiting on all of them before the draft appears.
   const supabase = await createSupabaseServerClient();
-  await supabase
-    .from('notes')
-    .update({ ai_assisted: true, ai_mode: mode })
-    .eq('id', note.id);
+  await Promise.all([
+    logGeneration(unsupported, false),
+    // Counted only now, after a draft actually came back. A model error must
+    // not burn a free generation the agency never received.
+    recordGeneration(session.profile.orgId),
+    // Mark the note as AI-assisted. Saving the narrative itself stays with the
+    // DSP's autosave, so nothing is written to the record they have not seen.
+    supabase.from('notes').update({ ai_assisted: true, ai_mode: mode }).eq('id', note.id),
+    logAccess(supabase, req, `ai.${mode}`, 'note', note.id, {
+      provider: result.provider,
+      fell_back: result.fellBack,
+      model: result.model,
+      deidentified,
+      unsupported_count: unsupported.length
+    })
+  ]);
+  timer.mark('save');
 
-  await logAccess(supabase, req, `ai.${mode}`, 'note', note.id, {
-    provider: result.provider,
-    fell_back: result.fellBack,
-    model: result.model,
-    deidentified,
-    unsupported_count: unsupported.length
-  });
-
-  return NextResponse.json({
-    narrative,
-    unsupportedClaims: unsupported,
-    deidentified,
-    provider: result.provider,
-    model: result.model,
-    elapsedSeconds: result.usage.elapsedSeconds
-  });
+  return NextResponse.json(
+    {
+      narrative,
+      unsupportedClaims: unsupported,
+      deidentified,
+      provider: result.provider,
+      model: result.model,
+      elapsedSeconds: result.usage.elapsedSeconds
+    },
+    { headers: { 'Server-Timing': timer.header() } }
+  );
 }
