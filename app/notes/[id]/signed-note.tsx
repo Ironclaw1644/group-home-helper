@@ -63,10 +63,15 @@ export default function SignedNote({
   const [error, setError] = useState<string | null>(null);
 
   const stamp = (iso: string) =>
+    // Spelled out field by field: Safari throws on dateStyle/timeStyle
+    // combined with timeZoneName, which crashed the signed note on iPhones.
     new Date(iso).toLocaleString('en-US', {
       timeZone,
-      dateStyle: 'short',
-      timeStyle: 'short',
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
       timeZoneName: 'short'
     });
 
