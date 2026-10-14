@@ -275,8 +275,14 @@ function Section({
             />
             <p
               className={cn(
+                // /75 and not /70 on paper: forest at 70% blends to #597B6A,
+                // which is 4.44:1 against the paper ground and fails WCAG AA
+                // for 11px text by the width of a rounding error. Lighthouse
+                // flagged it four times on the live landing page — once per
+                // section caption. 75% is 5.08:1 and the smallest change that
+                // clears it. The dark variant is already 5.93:1, so it stays.
                 'fb-label mt-2.5 leading-[1.5]',
-                dark ? 'text-flip-paper/70' : 'text-flip-forest/70'
+                dark ? 'text-flip-paper/70' : 'text-flip-forest/75'
               )}
             >
               {label}

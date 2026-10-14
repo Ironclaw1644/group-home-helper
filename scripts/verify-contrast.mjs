@@ -41,13 +41,34 @@ function ratio(fg, bg) {
 }
 
 /**
- * fg, bg, the minimum it must clear, and where it is rendered.
+ * Flatten `fg` at `alpha` over `bg`, the way a browser composites a Tailwind
+ * opacity suffix such as `text-flip-forest/75`.
+ *
+ * Opacity was the hole in this gate. Every pair below was measured neat and
+ * passed, while the live landing page set its four section captions in
+ * `text-flip-forest/70` -- forest blended to #597B6A, 4.44:1, failing AA for
+ * 11px text. The gate was right that the palette was fine; what shipped was a
+ * colour the palette does not contain. Any pair rendered through an opacity
+ * suffix belongs here with that alpha, not at full strength.
+ */
+function flatten(fg, bg, alpha) {
+  if (alpha === 1) return fg;
+  const ch = (hex, i) => parseInt(hex.replace('#', '').slice(i * 2, i * 2 + 2), 16);
+  const mix = (i) => Math.round(ch(bg, i) + alpha * (ch(fg, i) - ch(bg, i)));
+  return `#${[0, 1, 2].map((i) => mix(i).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/**
+ * fg, bg, the minimum it must clear, where it is rendered, and -- optionally --
+ * the opacity it is rendered at. Omitted means the colour is used neat.
  *
  * 4.5 is AA for normal text. 3.0 is AA for large text -- 18.66px bold or 24px
  * plain -- and is used only where the type genuinely is that big. `fb-label` is
  * small and letter-spaced, so it gets 4.5 no matter how short the string is.
  */
 const PAIRS = [
+  ['forest', 'paper', 4.5, 'landing section captions', 0.75],
+  ['paper', 'forest', 4.5, 'landing section captions, on the dark band', 0.7],
   ['amber', 'paper', 4.5, 'fb-label eyebrows on the landing page and walkthrough'],
   ['amber', 'card', 4.5, 'fb-label on a card ground'],
   ['amber', 'paper', 4.5, 'the FAQ +/- sign'],
@@ -62,13 +83,14 @@ const PAIRS = [
 
 let failed = 0;
 console.log();
-for (const [fg, bg, min, use] of PAIRS) {
-  const value = ratio(FLIP[fg], FLIP[bg]);
+for (const [fg, bg, min, use, alpha = 1] of PAIRS) {
+  const value = ratio(flatten(FLIP[fg], FLIP[bg], alpha), FLIP[bg]);
   const ok = value >= min;
   if (!ok) failed += 1;
   const mark = ok ? 'ok  ' : 'FAIL';
+  const label = alpha === 1 ? `${fg} on ${bg}` : `${fg}/${alpha * 100} on ${bg}`;
   console.log(
-    `  ${mark}  ${fg} on ${bg}`.padEnd(34) +
+    `  ${mark}  ${label}`.padEnd(34) +
       `${value.toFixed(2)}:1 (needs ${min.toFixed(1)})  ${use}`
   );
 }
