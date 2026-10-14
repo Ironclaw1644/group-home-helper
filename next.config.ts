@@ -1,10 +1,21 @@
 import type { NextConfig } from 'next';
 
 /** Public pages that may appear in search. Everything else stays noindex. */
-const INDEXABLE = ['/', '/states', '/states/:code'];
+const INDEXABLE = ['/', '/states', '/states/:code', '/guides/:slug*'];
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Put <title> and the meta tags in <head> for every visitor, not only for
+  // the short list of crawlers Next recognises. Since 15.2 Next streams the
+  // metadata of a dynamic page into <body> unless the user agent is on that
+  // list — and Googlebot is not on it, because Google renders JavaScript. The
+  // landing page is dynamic (it is the roster when signed in), so its title
+  // and description arrived ~70 KB into the body for everybody, Googlebot
+  // included. Lighthouse reported "Document does not have a meta description"
+  // on a page that has one, and any crawler that reads only <head> saw none.
+  // The cost is that the head waits for generateMetadata, which on the
+  // landing page is the session lookup the page needs anyway.
+  htmlLimitedBots: /.*/,
   // PHI must never be cached by an intermediary or indexed.
   async headers() {
     return [

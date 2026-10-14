@@ -39,6 +39,7 @@ const SECTIONS: readonly Entry[] = [
 
 const PAGES: readonly Entry[] = [
   ['Your state', '/states', 'What we print in each of the fifty states'],
+  ['Writing a shift note', '/guides/dsp-shift-notes', 'What state rules ask of every note'],
   ['Help', '/help', 'How a note is written, signed and printed'],
   ['Get the app', '/download', 'Install it on a phone']
 ];

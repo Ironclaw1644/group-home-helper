@@ -5,6 +5,8 @@ import { FormPreview } from '@/components/branding/branding-editor';
 import { DEFAULT_BRAND } from '@/lib/branding/theme';
 import { listJurisdictions, listJurisdictionDetails } from '@/lib/jurisdictions';
 import { SiteMenu } from '@/components/marketing/site-menu';
+import { JsonLd, breadcrumbs } from '@/components/marketing/json-ld';
+import { checkedOnLabel, stateRule } from '@/lib/state-page-rules';
 
 /**
  * The form one state actually prints, before anybody signs up.
@@ -47,10 +49,21 @@ function clip(text: string): string {
  * The snippet under the search result. Built only from the citation text the
  * printed form already carries, so it can claim nothing the form does not.
  */
-function describe(state: { name: string; citation: string | null }): string {
+function describe(state: { code: string; name: string; citation: string | null }): string {
   const citation = state.citation?.trim();
   if (!citation) {
     return `${state.name}: a complete progress note that makes no claim about state regulations.`;
+  }
+  // A state whose rule we re-read gets the snippet a searcher is looking for:
+  // that the page says what the rule asks for, not just which rule it is.
+  const checked = stateRule(state.code, citation);
+  if (checked && checked.elements.length >= 3 && state.code !== 'US-WV') {
+    // A long manual title would be clipped mid-name, which reads worse than
+    // not naming it; the page itself names it in full.
+    const which = checked.citation.length <= 40 ? checked.citation : 'the state’s rule';
+    return clip(
+      `${state.name} group home progress notes: what ${which} asks a note to show, checked against the source, and the form we print.`
+    );
   }
   // "Reproduces the WV I/DD Waiver ... Not issued by the state."
   if (/^Reproduces /.test(citation)) {
@@ -65,7 +78,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const state = await findState(code);
   if (!state) return { title: 'State not found' };
   return {
-    title: `${state.name} group home progress note form | FlipBrief`,
+    // "Requirements" only where the page names a rule: a state that cites
+    // nothing gets a title that promises nothing.
+    title: state.citation
+      ? `${state.name} group home progress note requirements | FlipBrief`
+      : `${state.name} group home progress notes | FlipBrief`,
     description: describe(state),
     // Public, and the root layout's noindex would otherwise hide it.
     robots: { index: true, follow: true },
@@ -87,18 +104,37 @@ export default async function StateFormPage({ params }: Params) {
   const citation = state.citation
     ?.replace(/^Layout built to satisfy /, '')
     .replace(/ Not a state-issued form\.$/, '');
+  const rule = stateRule(state.code, state.citation);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl bg-flip-paper px-5 py-10">
+      <JsonLd
+        data={breadcrumbs([
+          ['FlipBrief', '/'],
+          ['States', '/states'],
+          [state.name, `/states/${state.code}`]
+        ])}
+      />
       <div className="flex items-center justify-between gap-4">
-        <Link href="/states" className="text-sm font-semibold text-flip-moss hover:underline">
-          ← All states
-        </Link>
+        <nav aria-label="Breadcrumb" className="text-sm font-semibold text-flip-moss">
+          <Link href="/" className="hover:underline">FlipBrief</Link>
+          <span className="px-1.5 text-flip-slate" aria-hidden>/</span>
+          <Link href="/states" className="hover:underline">All states</Link>
+        </nav>
         <SiteMenu />
       </div>
 
+      {/*
+        The heading used to be the state's name and nothing else, which told a
+        searcher nothing about what the page answers. It now says it, and the
+        word "requirements" appears only where the page names a rule.
+      */}
       <h1 className="fb-display mt-6 text-[2rem] font-medium leading-[1.05] text-flip-forest sm:text-[2.5rem]">
-        {state.name}
+        {state.citation ? (
+          <>{state.name} group home progress note requirements</>
+        ) : (
+          <>Group home progress notes in {state.name}</>
+        )}
       </h1>
 
       {/*
@@ -142,6 +178,58 @@ export default async function StateFormPage({ params }: Params) {
           the honest thing to print when there is no rule to point at.
         </p>
       )}
+
+      {rule ? (
+        <section aria-labelledby="rule-heading">
+          <h2 id="rule-heading" className="mt-10 text-[1.25rem] font-semibold text-flip-forest">
+            What the rule says
+          </h2>
+          <p className="mt-1 text-[0.9rem] text-flip-slate">
+            {rule.citation}
+            {rule.citationTitle ? <> — {rule.citationTitle}</> : null}
+          </p>
+          <blockquote className="mt-3 border-l-4 border-flip-moss/40 pl-4 text-[1rem] italic leading-relaxed text-flip-forest">
+            “{rule.quote}”
+          </blockquote>
+          {rule.elements.length ? (
+            <>
+              <h3 className="mt-6 text-[1.05rem] font-semibold text-flip-forest">
+                What it asks a note to show
+              </h3>
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[0.95rem] leading-relaxed text-flip-slate">
+                {rule.elements.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+          {/*
+            Said on the page because it is true and a reader deciding whether
+            to trust this list should know it: anything we could not find in
+            the source on the day we checked was left off rather than kept.
+          */}
+          <p className="mt-4 text-[0.85rem] leading-relaxed text-flip-slate">
+            Checked against{' '}
+            <a href={rule.sourceUrl} className="font-semibold text-flip-moss underline" rel="noopener">
+              the source document
+            </a>{' '}
+            on {checkedOnLabel()}.
+            {rule.elementsDropped > 0
+              ? ' Anything our research listed that we could not find in that document on the day was left off.'
+              : ''}{' '}
+            This is a summary to help you find the rule, not legal advice; your
+            licensing specialist reads the rule itself.
+          </p>
+        </section>
+      ) : null}
+
+      <p className="mt-8 text-[0.95rem] leading-relaxed text-flip-slate">
+        New to writing these?{' '}
+        <Link href="/guides/dsp-shift-notes" className="font-semibold text-flip-moss underline">
+          How to write a DSP shift note
+        </Link>{' '}
+        covers what the rules we have read ask of every note.
+      </p>
 
       <h2 className="mt-10 text-sm font-semibold uppercase tracking-[0.12em] text-flip-slate">
         The top of the page

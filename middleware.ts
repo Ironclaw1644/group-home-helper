@@ -41,6 +41,10 @@ const PUBLIC_PATHS = [
   // first question a provider asks, and it holds only template metadata: no
   // organization, resident or note data appears on it.
   '/states',
+  // Guides answer the questions a provider searches before they have heard of
+  // us — "how do I write a shift note". Each is static copy built from state
+  // rules we re-read; none reads a session or any agency's data.
+  '/guides',
   '/api/app-version',
   '/join',
   '/signup',
@@ -52,6 +56,34 @@ const PUBLIC_PATHS = [
   '/api/webhooks/stripe'
 ];
 
+/**
+ * Every top-level segment the app actually has.
+ *
+ * Anything else is not a page, and a signed-out request for it used to be
+ * redirected to /login like any other gated path — so a URL that does not
+ * exist answered 307 and then 200 with a login form. Google calls that a soft
+ * 404, and this domain gets a lot of it: its previous owner published sitemaps
+ * of ~100,000 spam URLs under /zhishi/ that crawlers still ask for.
+ *
+ * So an unknown first segment now gets a real 404 instead of a login page. It
+ * fails closed: the request is rewritten to a path that can never be a route
+ * (app/_* folders are private), so a section added later and forgotten here
+ * shows a 404 to a stranger — never the section itself — until it is listed.
+ */
+const APP_SECTIONS = new Set([
+  'api', 'auth', 'billing', 'download', 'forgot', 'forms', 'guides', 'help', 'join', 'login',
+  'notes', 'reports', 'reset', 'residents', 'settings', 'signup', 'staff', 'states', 'supervisor',
+  // Static folders under public/ whose files are not all excluded by the
+  // matcher's extension list, and Next's and Vercel's own prefixes.
+  'walkthrough', 'apk', 'brand', 'demo', '_next', '_vercel',
+  // Next's own routes for the metadata files, which the matcher already skips
+  // but which are listed so this set reads as complete.
+  'robots.txt', 'sitemap.xml', 'manifest.webmanifest', 'icon.png', 'apple-icon.png', 'opengraph-image'
+]);
+
+/** The previous owner's spam paths. Gone for good, and saying so. */
+const GONE_PREFIXES = ['/zhishi'];
+
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 /**
@@ -61,6 +93,17 @@ type CookieToSet = { name: string; value: string; options?: CookieOptions };
  * request that slips past this still cannot read another home's residents.
  */
 export async function middleware(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  // Answered before any session work: a 410 tells a crawler to drop the URL
+  // faster than a 404 does, and these were never ours.
+  if (GONE_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
+    return new NextResponse('Gone', { status: 410, headers: { 'X-Robots-Tag': 'noindex' } });
+  }
+  const section = path.split('/')[1] ?? '';
+  if (section !== '' && !APP_SECTIONS.has(section)) {
+    return NextResponse.rewrite(new URL('/_not-a-route', req.url));
+  }
+
   let response = NextResponse.next({ request: req });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -128,6 +171,11 @@ export const config = {
   // `robots.txt` and `sitemap.xml` are for crawlers, who are never signed in;
   // both used to redirect to /login, so Google read the login page as robots.
   //
+  // `.txt` is here for the IndexNow key file at the root (public/<key>.txt),
+  // which Bing fetches to confirm a ping came from this site. Without it the
+  // file 404s under the unknown-path rule above — or, for a signed-out
+  // crawler, redirected to /login before that rule existed.
+  //
   // `demo/` and `.mp4` are here for the same reason and were missed: the four
   // films on the public page live in public/demo, and every one of them
   // redirected to /login?next=... for exactly the people they are meant to
@@ -135,6 +183,6 @@ export const config = {
   // fine and play nothing — the failure was invisible until somebody pressed
   // play.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4)$).*)'
+    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4|txt)$).*)'
   ]
 };
