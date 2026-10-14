@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   // The product's name, not a customer's. Several agencies use this
   // deployment and the browser tab used to read as one of them.
   title: 'FlipBrief',
-  description: 'Daily progress notes for group home and behavioural care staff.',
+  description: 'Daily progress notes for group home and behavioral care staff.',
   // This app is staff-only and holds PHI. Keep it out of every index.
   robots: { index: false, follow: false, nocache: true },
   // Lets staff "Add to Home Screen" so the app gets a real icon and opens

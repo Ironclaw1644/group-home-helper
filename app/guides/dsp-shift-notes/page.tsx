@@ -117,7 +117,7 @@ const POINTS: { title: string; body: string; refs: Ref[] }[] = [
   {
     title: 'Describe anything unusual, and what you did about it',
     refs: [{ guide: 'tx-incident' }, { code: 'US-LA', element: /change in the recipient's medical condition/ }],
-    body: 'A seizure, an illness, a behaviour — what happened and how staff responded belongs in the note, not only in a separate incident report.'
+    body: 'A seizure, an illness, a behavior — what happened and how staff responded belongs in the note, not only in a separate incident report.'
   },
   {
     title: 'Sign it, with your title',

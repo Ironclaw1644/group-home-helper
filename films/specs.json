@@ -70,7 +70,7 @@
   },
   "form": {
     "question": "Can staff write on our own form?",
-    "title": "Bring your own form",
+    "title": "Any form, rebuilt for your staff",
     "segments": [
       {
         "from": "start-0.8",
@@ -83,18 +83,34 @@
       },
       {
         "from": "read-0.6",
-        "to": "end+0.4"
+        "to": "end+1.4"
+      },
+      {
+        "src": "form-any",
+        "from": "start+0.3",
+        "to": "reading+1.0"
+      },
+      {
+        "src": "form-any",
+        "from": "reading+1.0",
+        "to": "read-0.5",
+        "speed": 4
+      },
+      {
+        "src": "form-any",
+        "from": "read-0.5",
+        "to": "preview+6.0"
       }
     ],
     "captions": [
       {
         "at": "start-0.8",
-        "text": "Start with the blank form\nyour staff already fill in.",
+        "text": "Start with any blank form\nyour staff already fill in.",
         "zoom": 1
       },
       {
         "at": "pages-0.6",
-        "text": "Photos or a PDF. Here: West Virginia's\nblank form, WV-BMS-IDD-7.",
+        "text": "Here: West Virginia's\nblank form, WV-BMS-IDD-7.",
         "y": 360
       },
       {
@@ -103,16 +119,16 @@
         "y": 280
       },
       {
-        "at": "read",
+        "at": "read-0.6",
         "text": "Three forms in those pages.\nPick the one staff write on.",
         "y": 300
       },
       {
-        "at": "preview",
+        "at": "preview+1.0",
         "text": "Shown back filled in,\nwith a made-up person."
       },
       {
-        "at": "made-up-0.4",
+        "at": "made-up-2.4",
         "text": "Something wrong?\nFix it before anyone uses it."
       },
       {
@@ -122,15 +138,38 @@
       {
         "at": "done",
         "text": "Every new note is written on it.\nSigned notes keep their form."
+      },
+      {
+        "src": "form-any",
+        "at": "start+0.3",
+        "text": "A different form? Same steps.\nHere: DC's daily notes, as a PDF.",
+        "y": 330
+      },
+      {
+        "src": "form-any",
+        "at": "read",
+        "text": "Its own title and every one\nof its questions, rebuilt.",
+        "y": 200
+      },
+      {
+        "src": "form-any",
+        "at": "preview+2.0",
+        "text": "Your form, rebuilt\nfor your staff to write on."
       }
     ],
     "focus": [
       {
         "at": "start+0.6",
         "y": 330
+      },
+      {
+        "src": "form-any",
+        "at": "pages",
+        "y": 420
       }
     ],
-    "poster": 4
+    "poster": 4,
+    "subtitle": "Snap a photo of it, or upload the PDF."
   },
   "setup": {
     "question": "Do I have to retype everyone?",
@@ -185,7 +224,7 @@
   },
   "letterhead": {
     "question": "Will it look like my agency?",
-    "title": "Your letterhead, your colours",
+    "title": "Your letterhead, your colors",
     "segments": [
       {
         "from": "before-0.8",
@@ -208,7 +247,7 @@
       },
       {
         "at": "colours",
-        "text": "Your colours."
+        "text": "Your colors."
       },
       {
         "at": "after",

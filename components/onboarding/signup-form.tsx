@@ -252,7 +252,7 @@ export function SignupForm({ jurisdictions }: { jurisdictions: JurisdictionOptio
                 Brand your printed forms
               </span>
               <span className="block text-xs text-brand-slate">
-                Optional — your legal name, logo and colours. Changeable later.
+                Optional — your legal name, logo and colors. Changeable later.
               </span>
             </span>
             {showBranding ? (
@@ -276,7 +276,7 @@ export function SignupForm({ jurisdictions }: { jurisdictions: JurisdictionOptio
                   placeholder="Your Agency, LLC"
                 />
                 <p className="mt-1.5 text-xs text-brand-slate">
-                  Printed at the top of every form. Use the name on your licence.
+                  Printed at the top of every form. Use the name on your license.
                 </p>
               </div>
 
@@ -334,7 +334,7 @@ export function SignupForm({ jurisdictions }: { jurisdictions: JurisdictionOptio
 
               <div>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="field-label mb-0">Colours</span>
+                  <span className="field-label mb-0">Colors</span>
                   <ResetColorsButton value={branding} onChange={setBranding} />
                 </div>
                 <ColorFields value={branding} onChange={setBranding} />

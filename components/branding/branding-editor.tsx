@@ -338,7 +338,7 @@ export function IdentityFields({
         />
         <p className="mt-1.5 text-xs text-brand-slate">
           Printed at the top of every form. This is the name a Medicaid reviewer reads, so use the
-          one on your licence.
+          one on your license.
         </p>
       </div>
 
@@ -353,7 +353,7 @@ export function IdentityFields({
           placeholder="Residential Support Program"
           className={inputClass}
         />
-        <p className="mt-1.5 text-xs text-brand-slate">A division or programme, under the name.</p>
+        <p className="mt-1.5 text-xs text-brand-slate">A division or program, under the name.</p>
       </div>
 
       <div>
@@ -415,7 +415,7 @@ function ColorSample({ colors, name }: { colors: Record<string, string>; name: s
     <div
       className="mb-4 rounded-xl border border-brand-navy/10 p-4 transition-colors"
       style={{ background: sand }}
-      aria-label="How your colours look"
+      aria-label="How your colors look"
     >
       <p className="text-sm font-semibold leading-tight" style={{ color: navy }}>
         {name?.trim() || 'Your agency name'}

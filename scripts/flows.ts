@@ -59,7 +59,7 @@ const branding: Flow = {
     before: 'This is the form today.',
     identity: 'Your legal name, your address,\nyour provider number.',
     logo: 'Upload your logo.',
-    colours: 'Pick your colours.',
+    colours: 'Pick your colors.',
     after: 'Same form. Your agency.',
     saved: 'Saved. Every note prints this way now.'
   },
@@ -146,7 +146,7 @@ const branding: Flow = {
       // scrollIntoViewIfNeeded refuses to move an element it already counts as
       // partly visible, which left the sample clipped off the top while the
       // swatch list filled the frame. Centre it explicitly.
-      const sample = page.locator('[aria-label="How your colours look"]').first();
+      const sample = page.locator('[aria-label="How your colors look"]').first();
       if (await sample.count()) {
         await sample.evaluate((el) =>
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })

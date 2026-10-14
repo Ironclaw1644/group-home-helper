@@ -540,9 +540,7 @@ function HowItWorks() {
       <div className="mb-12">
         <h3 className="fb-label text-flip-amber">Watch it happen</h3>
         <p className="mt-2 max-w-[46ch] text-[0.95rem] leading-relaxed text-flip-slate">
-          Four short films, each answering a different question. Nothing in them
-          is a mockup — every one is a recording of the demo you can open
-          yourself.
+          Four short films, each answering a different question.
         </p>
         <Films className="mt-6" />
       </div>
@@ -710,7 +708,7 @@ function Pricing() {
         <Reveal delay={90} className="rounded-2xl border border-flip-sand/60 bg-flip-sand/20 p-6 sm:p-8">
           <p className="fb-label text-flip-amber">Who this is for</p>
           <p className="mt-4 text-[0.95rem] leading-[1.6] text-flip-slate">
-            A four-to-twenty bed group home or behavioural care agency, where the person choosing
+            A four-to-twenty bed group home or behavioral care agency, where the person choosing
             the software is also the person who will be sitting across from the licensing
             specialist. If you have an IT department, you are not who this was built for and it will
             feel too small to you.
@@ -855,7 +853,7 @@ function SiteFooter() {
         </div>
 
         <p className="mt-8 max-w-[62ch] text-[0.8rem] leading-relaxed text-flip-paper/75">
-          Documentation software for small group homes and behavioural and elder care agencies.
+          Documentation software for small group homes and behavioral and elder care agencies.
           FlipBrief prints a progress note for every state and DC, citing your state’s own
           documentation rule where one exists. Staff joining an agency need an invitation from
           their supervisor.

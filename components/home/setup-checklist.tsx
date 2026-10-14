@@ -49,7 +49,7 @@ export function SetupChecklist({ state }: { state: SetupState }) {
     },
     {
       done: state.hasBranding,
-      label: 'Add your logo and colours',
+      label: 'Add your logo and colors',
       detail: 'So the printed form carries your agency, not ours.',
       href: '/settings'
     },

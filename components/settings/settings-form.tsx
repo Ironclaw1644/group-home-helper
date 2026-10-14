@@ -168,8 +168,8 @@ export function SettingsForm({
             </h2>
             <p className="mb-4 text-xs text-brand-slate">
               {previewForm
-                ? `The top of ${previewForm.formLine}, with your name, logo and colours.`
-                : 'The top of your form, with your name, logo and colours.'}
+                ? `The top of ${previewForm.formLine}, with your name, logo and colors.`
+                : 'The top of your form, with your name, logo and colors.'}
             </p>
             <FormPreview value={branding} form={previewForm} />
           </Card>
@@ -269,7 +269,7 @@ export function SettingsForm({
 
           <Card>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-brand-navy">Colours</h2>
+              <h2 className="text-sm font-semibold text-brand-navy">Colors</h2>
               <ResetColorsButton value={branding} onChange={setBranding} />
             </div>
             <ColorFields value={branding} onChange={setBranding} />
@@ -279,7 +279,7 @@ export function SettingsForm({
       ) : (
         <Alert tone="info" title="Agency settings are not on this account">
           <p>
-            The agency name, logo and colours are changed by a supervisor or administrator. The
+            The agency name, logo and colors are changed by a supervisor or administrator. The
             fields above are your own name and title only — putting the agency name there would
             print it on your signature line.
           </p>

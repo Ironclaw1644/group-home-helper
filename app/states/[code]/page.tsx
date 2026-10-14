@@ -235,7 +235,7 @@ export default async function StateFormPage({ params }: Params) {
         The top of the page
       </h2>
       <p className="mt-1 text-[0.9rem] text-flip-slate">
-        Your own name, logo and colours go here. This is the real preview, the
+        Your own name, logo and colors go here. This is the real preview, the
         one the app uses.
       </p>
 

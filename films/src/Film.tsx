@@ -25,8 +25,15 @@ import {
 export const FPS = 30;
 export const W = 1080;
 export const H = 1920;
-/** Frames of intro before the recording starts playing. */
-export const B0 = 72;
+/**
+ * Frames of intro before the recording starts playing. The title is up by
+ * frame ~44 and the whole card by ~54; it holds until INTRO_OUT (about 3 s
+ * of title) and fades out before the phone rises. At 72 frames it was gone
+ * before anyone could read it.
+ */
+export const B0 = 180;
+/** Where the intro starts to fade out; it is gone by B0 - 18. */
+const INTRO_OUT = B0 - 44;
 export const OUTRO = 100;
 
 export const C = {
@@ -44,6 +51,8 @@ export type Events = {
   flow: string;
   question: string;
   title: string;
+  /** A line under the title on the intro card. */
+  subtitle?: string | null;
   seconds: number;
   view: { width: number; height: number };
   taps: { t: number; x: number; y: number }[];
@@ -353,8 +362,8 @@ export const Film: React.FC<{ ev: Events }> = ({ ev }) => {
   const cam = cams[Math.min(f, cams.length - 1)];
 
   // Intro out, phone in.
-  const introOut = tw(f, B0 - 18, B0 + 2, EINOUT);
-  const phoneIn = spring({ frame: f - (B0 - 22), fps: FPS, config: { damping: 16, stiffness: 90, mass: 0.9 } });
+  const introOut = tw(f, INTRO_OUT, B0 - 18, EINOUT);
+  const phoneIn = spring({ frame: f - (B0 - 18), fps: FPS, config: { damping: 16, stiffness: 90, mass: 0.9 } });
   // Phone out, outro in.
   const phoneOut = tw(f, end + 4, end + 26, EINOUT);
   const outroIn = f - (end + 16);
@@ -371,7 +380,7 @@ export const Film: React.FC<{ ev: Events }> = ({ ev }) => {
       />
 
       {/* The phone, on its camera. */}
-      {f >= B0 - 24 && f < end + 30 ? (
+      {f >= B0 - 20 && f < end + 30 ? (
         <div
           style={{
             position: 'absolute', inset: 0, opacity: Math.min(clamp(phoneIn * 1.4, 0, 1), 1 - phoneOut),
@@ -417,9 +426,11 @@ export const Film: React.FC<{ ev: Events }> = ({ ev }) => {
                 );
               })}
             </div>
-            <div style={{ marginTop: 40, font: `500 34px/1.35 ${FONT}`, color: C.slate, opacity: tw(f, 30, 44) }}>
-              A recording of the demo you can open yourself.
-            </div>
+            {ev.subtitle ? (
+              <div style={{ marginTop: 40, font: `500 40px/1.35 ${FONT}`, color: C.slate, opacity: tw(f, 40, 54) }}>
+                {ev.subtitle}
+              </div>
+            ) : null}
           </div>
         </AbsoluteFill>
       ) : null}
@@ -430,12 +441,7 @@ export const Film: React.FC<{ ev: Events }> = ({ ev }) => {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginTop: -80 }}>
             <Mark size={130} f={outroIn} animate />
             <div style={{ marginTop: 56, font: `760 84px/1.06 ${FONT}`, fontStretch: '106%', letterSpacing: '-0.025em', color: C.forest, opacity: tw(outroIn, 8, 22), transform: `translateY(${(1 - tw(outroIn, 8, 22)) * 22}px)` }}>
-              Nothing here
-              <br />
-              was a mockup.
-            </div>
-            <div style={{ marginTop: 34, font: `500 36px/1.4 ${FONT}`, color: C.slate, opacity: tw(outroIn, 18, 32) }}>
-              Open the same demo yourself.
+              FlipBrief
             </div>
             <div
               style={{

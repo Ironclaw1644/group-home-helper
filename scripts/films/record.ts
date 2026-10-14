@@ -211,6 +211,51 @@ const FLOWS: Record<string, (c: Ctx) => Promise<void>> = {
   },
 
   /**
+   * A second, unrelated form through the same importer, so the form film can
+   * show it is not built around West Virginia's: the District of Columbia
+   * DDS daily notes template (a table and open questions, not checkboxes),
+   * sent as the PDF itself rather than photos. Spliced onto the end of the
+   * form film (films/specs.json, `src: "form-any"`).
+   */
+  async 'form-any'({ page, tap, mark, scrollTo, scrollBy, wait, go }) {
+    await go('/forms?onboarding=1');
+    await wait(1200);
+    mark('start');
+    await wait(1200);
+
+    const [chooser] = await Promise.all([
+      page.waitForEvent('filechooser', { timeout: 20_000 }),
+      tap(page.getByRole('button', { name: /choose photos or a pdf/i }).first())
+    ]);
+    await chooser.setFiles([path.join(FIX, 'importer', 'dc', 'dc-dds-ids-daily-notes.pdf')]);
+    const readBtn = page.getByRole('button', { name: /read my form/i });
+    await page.waitForFunction(
+      () => [...document.querySelectorAll('button')].some((b) => /read my form/i.test(b.textContent ?? '') && !b.disabled),
+      null,
+      { timeout: 30_000 }
+    );
+    await wait(900);
+    mark('pages');
+    await wait(2200);
+
+    await tap(readBtn);
+    await page.getByTestId('import-reading').waitFor();
+    mark('reading');
+    await page.getByTestId('paper-preview').waitFor({ timeout: 180_000 });
+    mark('read');
+    await wait(1200);
+    await scrollTo(page.getByTestId('paper-preview'), 'start');
+    await wait(1600);
+    mark('preview');
+    for (let i = 0; i < 4; i++) {
+      await scrollBy(330);
+      await wait(1500);
+    }
+    mark('bottom');
+    await wait(1800);
+  },
+
+  /**
    * Setup: the three steps, with the people pasted from a spreadsheet and a
    * staff invite link at the end.
    */
@@ -331,7 +376,7 @@ const FLOWS: Record<string, (c: Ctx) => Promise<void>> = {
     mark('colours');
     await tap(palette);
     await wait(900);
-    const sample = page.locator('[aria-label="How your colours look"]').first();
+    const sample = page.locator('[aria-label="How your colors look"]').first();
     if (await sample.count()) {
       await scrollTo(sample, 'center');
       await wait(2600);

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils';
 
 /**
@@ -29,11 +30,19 @@ import { cn } from '@/lib/utils';
  *
  * NOTHING PRELOADS
  *
- * The four are about seventeen megabytes together and the reader is on a
+ * The four are about eighteen megabytes together and the reader is on a
  * phone, often on cellular, and has not decided to spend anything on us yet.
  * Each one loads a poster and nothing else until it is tapped;
  * `preload="metadata"` and no autoplay are the whole reason this is a client
  * component.
+ *
+ * SOUND
+ *
+ * Each film has a quiet music bed. A tap is the only thing that starts a
+ * film, so it starts with sound: the <video> is mounted synchronously inside
+ * the tap (flushSync) and play() is called there, which iOS counts as the
+ * user's gesture. If a browser still refuses, it plays muted and the
+ * controls can turn the sound on.
  */
 
 type Film = {
@@ -46,31 +55,32 @@ type Film = {
 // `length` is typed in rather than read off the file, so it has to be updated
 // when a film is recut. Check it against `ffprobe public/demo/flipbrief-*.mp4`
 // after a rebuild — the note film ran 0:57 here for a while after it became
-// 1:04. (10-14 cut: 71.1, 43.7, 49.6, 41.9 s.)
+// 1:04. (10-14 v2 cut, with the longer title card: 74.7, 66.5, 53.2,
+// 45.6 s.)
 const FILMS: Film[] = [
   {
     key: 'note',
     title: 'A shift note, start to finish',
     question: 'Will my staff actually use it?',
-    length: '1:11'
+    length: '1:15'
   },
   {
     key: 'form',
-    title: 'Bring your own form',
+    title: 'Any form, rebuilt for your staff',
     question: 'Can staff write on our own form?',
-    length: '0:44'
+    length: '1:06'
   },
   {
     key: 'setup',
     title: 'Set up in three steps',
     question: 'Do I have to retype everyone?',
-    length: '0:50'
+    length: '0:53'
   },
   {
     key: 'letterhead',
-    title: 'Your letterhead, your colours',
+    title: 'Your letterhead, your colors',
     question: 'Will it look like my agency?',
-    length: '0:42'
+    length: '0:46'
   }
 ];
 
@@ -78,6 +88,18 @@ export function Films({ className }: { className?: string }) {
   // Which film has been tapped. Until then the <video> is not even rendered,
   // so nothing is fetched beyond the poster image.
   const [playing, setPlaying] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const play = (key: string) => {
+    flushSync(() => setPlaying(key));
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    v.play().catch(() => {
+      v.muted = true;
+      void v.play().catch(() => {});
+    });
+  };
 
   return (
     <div className={cn('grid gap-5 sm:grid-cols-2', className)}>
@@ -86,14 +108,11 @@ export function Films({ className }: { className?: string }) {
           <div className="relative aspect-[9/16] bg-flip-forest">
             {playing === film.key ? (
               <video
+                ref={videoRef}
                 className="h-full w-full"
                 src={`/demo/flipbrief-${film.key}.mp4`}
                 poster={`/demo/poster-${film.key}.jpg`}
                 controls
-                autoPlay
-                // The films have no audio track; muted keeps iOS from
-                // refusing to autoplay after the tap.
-                muted
                 playsInline
                 preload="metadata"
               >
@@ -104,7 +123,7 @@ export function Films({ className }: { className?: string }) {
             ) : (
               <button
                 type="button"
-                onClick={() => setPlaying(film.key)}
+                onClick={() => play(film.key)}
                 className="group absolute inset-0 h-full w-full"
                 aria-label={`Play: ${film.title}, ${film.length}`}
               >
