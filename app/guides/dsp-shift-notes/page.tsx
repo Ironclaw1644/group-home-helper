@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SiteMenu } from '@/components/marketing/site-menu';
 import { JsonLd, breadcrumbs } from '@/components/marketing/json-ld';
-import rules from '@/data/state-page-rules.json';
+import rules from '@/lib/state-page-rules.data.json';
 import { checkedOnLabel, type StatePageRule } from '@/lib/state-page-rules';
 
 /**
@@ -14,7 +14,7 @@ import { checkedOnLabel, type StatePageRule } from '@/lib/state-page-rules';
  * is written down: in the documentation rules of the states we have read.
  *
  * So every point on this page rests on a passage from a state's own rule, and
- * every passage comes from data/state-page-rules.json, which
+ * every passage comes from lib/state-page-rules.data.json, which
  * scripts/build-state-page-rules.py fills only with text it found in the
  * source document on the day it ran. A point whose evidence did not survive
  * that check is not rendered — there is no fallback copy for it, on purpose.

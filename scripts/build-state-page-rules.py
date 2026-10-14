@@ -27,7 +27,9 @@ Hampshire, New York on 2026-10-14) gets no entry, and its page shows only the
 citation it already carried. Demoted states never get one: the app cites
 nothing for them, so neither does the page.
 
-Output: data/state-page-rules.json. Commit it with the date it was checked.
+Output: lib/state-page-rules.data.json. Commit it with the date it was checked.
+It lives in lib/, not data/, because .vercelignore keeps data/ out of the
+deploy; lib/ is also already a surface verify:wv-form scans for form numbers.
 """
 from __future__ import annotations
 
@@ -43,7 +45,7 @@ import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESEARCH = os.path.join(ROOT, 'data', 'state-documentation-rules.json')
-OUT = os.path.join(ROOT, 'data', 'state-page-rules.json')
+OUT = os.path.join(ROOT, 'lib', 'state-page-rules.data.json')
 CACHE = os.path.join(tempfile.gettempdir(), 'flipbrief-state-sources')
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/129.0 Safari/537.36')

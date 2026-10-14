@@ -1,4 +1,4 @@
-import rules from '@/data/state-page-rules.json';
+import rules from '@/lib/state-page-rules.data.json';
 
 /**
  * What a state's public page may say about its rule, beyond the citation.
