@@ -527,14 +527,14 @@ function HowItWorks() {
       title="What the screenshots do not show."
       lede="You have just watched the whole product. There is no implementation phase, no configuration project and no week of training, because there is not enough here to need one — so this is the part that does not photograph."
     >
-      {/* Five films of the real product, above the prose.
+      {/* Four films of the real product, above the prose.
           They were shot, cut and committed a day before anything linked to
           them, so a reader could be told a signed note cannot be edited and
           had no way to watch one refuse. */}
       <div className="mb-12">
         <h3 className="fb-label text-flip-amber">Watch it happen</h3>
         <p className="mt-2 max-w-[46ch] text-[0.95rem] leading-relaxed text-flip-slate">
-          Five short films, each answering a different question. Nothing in them
+          Four short films, each answering a different question. Nothing in them
           is a mockup — every one is a recording of the demo you can open
           yourself.
         </p>

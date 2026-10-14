@@ -45,3 +45,11 @@ brand-concepts/
 audit-shots/
 marketing-shots/
 review-shots/
+
+# Film studio: dependencies and the working clips assemble.py writes. The
+# rendered films are committed under public/demo/.
+films/node_modules
+films/public/note
+films/public/form
+films/public/setup
+films/public/letterhead

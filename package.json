@@ -47,6 +47,9 @@
     "video:capture": "tsx --tsconfig scripts/tsconfig.json scripts/capture-demo-video.ts",
     "video:build": "python3 scripts/build-demo-video.py",
     "video:flow": "tsx --tsconfig scripts/tsconfig.json scripts/capture-flow.ts",
+    "films:record": "tsx --tsconfig scripts/tsconfig.json scripts/films/record.ts",
+    "films:assemble": "python3 films/assemble.py",
+    "films:render": "npm --prefix films ci && node films/render.mjs",
     "qa:claude-launch": "tsx --tsconfig scripts/tsconfig.json scripts/qa-claude-launch.ts"
   },
   "dependencies": {

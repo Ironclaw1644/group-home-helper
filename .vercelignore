@@ -21,3 +21,7 @@ tmp
 .env
 .env.local
 .env.*.local
+
+# The film studio (Remotion, its own node_modules). The site ships only the
+# rendered public/demo/flipbrief-*.mp4.
+films

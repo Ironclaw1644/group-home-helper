@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FlipBrief">
+  <title>FlipBrief</title>
+  <!--
+    An F whose middle arm lifts at its end, like a page being turned.
+    The letterform itself stays solid so the mark still reads as an F at
+    favicon size; only the tip carries the flip. Two flat colours, no
+    gradients — it has to survive a 16px tab and a one-colour PDF letterhead.
+  -->
+  <g fill-rule="evenodd">
+    <!-- stem -->
+    <path fill="#14452F" d="M12 8h12v48H12z" />
+    <!-- top arm -->
+    <path fill="#14452F" d="M12 8h34v12H12z" />
+    <!-- middle arm -->
+    <path fill="#14452F" d="M12 30h26v11H12z" />
+    <!-- the lifting tip -->
+    <path fill="#D9B382" d="M38 30h4l12-9v11l-12 9h-4z" />
+  </g>
+</svg>

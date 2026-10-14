@@ -4,38 +4,36 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * The five demo films, on the public page.
+ * The four demo films, on the public page.
  *
- * They existed for a day before anyone could watch them: shot, cut, committed
- * to public/demo, and linked from nowhere. A prospect could read that signed
- * notes cannot be edited and had no way to watch one refuse.
+ * WHY FOUR AND NOT ONE
  *
- * WHY FIVE AND NOT ONE
+ * An owner deciding on this is not asking one question, they are asking
+ * several, and the answers do not compress into a single film:
  *
- * An owner deciding on this is not asking one question, they are asking five,
- * and the answers do not compress into a single film:
- *
- *   will my staff actually use it      -> the note
- *   do I have to retype everything     -> the roster
+ *   will my staff actually use it      -> the note, drafted, signed, locked
+ *   can staff write on OUR form        -> the importer
+ *   do I have to retype everyone       -> setup: form, people, staff
  *   will it look like OUR agency       -> the letterhead
- *   can somebody fake a record         -> the audit
- *   which form will it print for me    -> the state picker
  *
- * One reel forces the order; five lets somebody watch the one they are worried
- * about. The audit film is the one that closes an audit-frightened buyer, and
- * it is deliberately not buried at the end of a four-minute cut.
+ * One reel forces the order; four lets somebody watch the one they are worried
+ * about. "Could someone change a signed note" used to be its own film; the note
+ * film now ends on the lock and the addendum, which is where a DSP meets it.
  *
- * The state film could not honestly be made until the picker showed the
- * citation. Before that, changing the state moved nothing on screen for
- * fifty-one of the fifty-two options, so a film of somebody using it showed the
- * same document over and over.
+ * HOW THEY ARE MADE
+ *
+ * scripts/films/record.ts drives the real demo sandbox through "Try it
+ * yourself" and records the screen; films/ (Remotion) puts a phone, a camera,
+ * captions and the intro and outro cards around that footage, and nothing
+ * inside the screen is drawn. See films/README.md.
  *
  * NOTHING PRELOADS
  *
- * Five films is about thirteen megabytes and the reader is on a phone, often on
- * cellular, and has not decided to spend anything on us yet. Each one loads a
- * poster and nothing else until it is tapped; `preload="metadata"` and no
- * autoplay are the whole reason this is a client component.
+ * The four are about seventeen megabytes together and the reader is on a
+ * phone, often on cellular, and has not decided to spend anything on us yet.
+ * Each one loads a poster and nothing else until it is tapped;
+ * `preload="metadata"` and no autoplay are the whole reason this is a client
+ * component.
  */
 
 type Film = {
@@ -48,37 +46,31 @@ type Film = {
 // `length` is typed in rather than read off the file, so it has to be updated
 // when a film is recut. Check it against `ffprobe public/demo/flipbrief-*.mp4`
 // after a rebuild — the note film ran 0:57 here for a while after it became
-// 1:04.
+// 1:04. (10-14 cut: 71.1, 43.7, 49.6, 41.9 s.)
 const FILMS: Film[] = [
   {
-    key: 'demo',
+    key: 'note',
     title: 'A shift note, start to finish',
     question: 'Will my staff actually use it?',
-    length: '1:00'
+    length: '1:11'
   },
   {
-    key: 'roster',
-    title: 'Moving your roster over',
+    key: 'form',
+    title: 'Bring your own form',
+    question: 'Can staff write on our own form?',
+    length: '0:44'
+  },
+  {
+    key: 'setup',
+    title: 'Set up in three steps',
     question: 'Do I have to retype everyone?',
-    length: '0:41'
+    length: '0:50'
   },
   {
-    key: 'branding',
+    key: 'letterhead',
     title: 'Your letterhead, your colours',
     question: 'Will it look like my agency?',
-    length: '0:41'
-  },
-  {
-    key: 'forms',
-    title: 'Your state, on the page',
-    question: 'Which form will it print for me?',
-    length: '0:33'
-  },
-  {
-    key: 'oversight',
-    title: 'What an auditor sees',
-    question: 'Could someone change a signed note?',
-    length: '0:21'
+    length: '0:42'
   }
 ];
 
@@ -104,7 +96,11 @@ export function Films({ className }: { className?: string }) {
                 muted
                 playsInline
                 preload="metadata"
-              />
+              >
+                {/* The captions are burned in; this track is the same words
+                    for screen readers, off unless someone turns it on. */}
+                <track kind="captions" srcLang="en" label="English" src={`/demo/flipbrief-${film.key}.vtt`} />
+              </video>
             ) : (
               <button
                 type="button"

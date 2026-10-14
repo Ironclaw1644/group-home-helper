@@ -1,0 +1,232 @@
+{
+  "_readme": "One entry per film. Times are beat names from tmp/films/<flow>/capture.json, optionally +/- seconds. Segments play in order; anything between them is cut. A segment with speed > 1 is labelled on screen with its speed and its real length. Every caption must be on screen in the app or in memory/2026-09-09-flipbrief-claim-register.md.",
+  "note": {
+    "question": "Will my staff actually use it?",
+    "title": "A shift note, start to finish",
+    "segments": [
+      {
+        "from": "today-0.6",
+        "to": "end+0.4"
+      }
+    ],
+    "timer": {
+      "from": "drafting-0.3",
+      "to": "drafted",
+      "label": "Writing the note"
+    },
+    "captions": [
+      {
+        "at": "today-0.6",
+        "text": "Today shows who still\nneeds a note.",
+        "zoom": 1
+      },
+      {
+        "at": "opened-0.4",
+        "text": "One tap opens it.",
+        "y": 250
+      },
+      {
+        "at": "plan",
+        "text": "Answer the service plan\nby tapping."
+      },
+      {
+        "at": "chips",
+        "text": "Then tap what happened\non the shift."
+      },
+      {
+        "at": "write-0.3",
+        "text": "Tap Write my note. It drafts\nfrom what you tapped."
+      },
+      {
+        "at": "drafted+0.2",
+        "text": "Read it. Change anything\nthat is not right."
+      },
+      {
+        "at": "sign",
+        "text": "Type your name, or sign\non the glass."
+      },
+      {
+        "at": "signed",
+        "text": "Signed and locked,\nwith the time to the minute.",
+        "y": 300
+      },
+      {
+        "at": "locked",
+        "text": "It cannot be edited.\nA fix goes on as an addendum."
+      },
+      {
+        "at": "next",
+        "text": "Then straight on to\nthe next person.",
+        "y": 260
+      }
+    ],
+    "focus": [
+      {
+        "at": "today+1.0",
+        "y": 200
+      }
+    ],
+    "poster": 5
+  },
+  "form": {
+    "question": "Can staff write on our own form?",
+    "title": "Bring your own form",
+    "segments": [
+      {
+        "from": "start-0.8",
+        "to": "reading+1.4"
+      },
+      {
+        "from": "reading+1.4",
+        "to": "read-0.6",
+        "speed": 4
+      },
+      {
+        "from": "read-0.6",
+        "to": "end+0.4"
+      }
+    ],
+    "captions": [
+      {
+        "at": "start-0.8",
+        "text": "Start with the blank form\nyour staff already fill in.",
+        "zoom": 1
+      },
+      {
+        "at": "pages-0.6",
+        "text": "Photos or a PDF. Here: West Virginia's\nblank form, WV-BMS-IDD-7.",
+        "y": 360
+      },
+      {
+        "at": "reading",
+        "text": "It reads every question\nand every box.",
+        "y": 280
+      },
+      {
+        "at": "read",
+        "text": "Three forms in those pages.\nPick the one staff write on.",
+        "y": 300
+      },
+      {
+        "at": "preview",
+        "text": "Shown back filled in,\nwith a made-up person."
+      },
+      {
+        "at": "made-up-0.4",
+        "text": "Something wrong?\nFix it before anyone uses it."
+      },
+      {
+        "at": "confirm",
+        "text": "Looks right? Use it."
+      },
+      {
+        "at": "done",
+        "text": "Every new note is written on it.\nSigned notes keep their form."
+      }
+    ],
+    "focus": [
+      {
+        "at": "start+0.6",
+        "y": 330
+      }
+    ],
+    "poster": 4
+  },
+  "setup": {
+    "question": "Do I have to retype everyone?",
+    "title": "Set up in three steps",
+    "segments": [
+      {
+        "from": "steps-0.8",
+        "to": "end+0.4"
+      }
+    ],
+    "captions": [
+      {
+        "at": "steps-0.8",
+        "text": "Three steps: your form,\nyour people, your staff.",
+        "zoom": 1
+      },
+      {
+        "at": "people-0.4",
+        "text": "Your people: paste the roster\nyour old system exports.",
+        "y": 300
+      },
+      {
+        "at": "check",
+        "text": "Check what it read\nbefore anything is added.",
+        "y": 280
+      },
+      {
+        "at": "added",
+        "text": "Four people added.\nNobody retyped a thing."
+      },
+      {
+        "at": "staff-0.3",
+        "text": "Then your staff.",
+        "y": 250
+      },
+      {
+        "at": "invite-1.6",
+        "text": "Their role, and the title\nthey sign with."
+      },
+      {
+        "at": "link",
+        "text": "Send them the link.\nIt works once per person."
+      }
+    ],
+    "focus": [
+      {
+        "at": "steps+0.6",
+        "y": 180
+      }
+    ],
+    "poster": 2
+  },
+  "letterhead": {
+    "question": "Will it look like my agency?",
+    "title": "Your letterhead, your colours",
+    "segments": [
+      {
+        "from": "before-0.8",
+        "to": "end+0.4"
+      }
+    ],
+    "captions": [
+      {
+        "at": "before-0.8",
+        "text": "This is the printed form\nbefore you change anything.",
+        "zoom": 1
+      },
+      {
+        "at": "identity",
+        "text": "Your legal name\nand your address."
+      },
+      {
+        "at": "logo",
+        "text": "Your logo."
+      },
+      {
+        "at": "colours",
+        "text": "Your colours."
+      },
+      {
+        "at": "after",
+        "text": "Same form.\nYour agency.",
+        "y": 220
+      },
+      {
+        "at": "saved",
+        "text": "Saved. New notes\nprint this way.",
+        "y": 220
+      }
+    ],
+    "focus": [
+      {
+        "at": "before+0.6",
+        "y": 200
+      }
+    ],
+    "poster": 4
+  }
+}
