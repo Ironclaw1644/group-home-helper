@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { listJurisdictionDetails } from '@/lib/jurisdictions';
 import { SiteMenu } from '@/components/marketing/site-menu';
+import { JsonLd, breadcrumbs } from '@/components/marketing/json-ld';
 
 /**
  * What your state gets — public, and deliberately unflattering where it should
@@ -25,7 +26,9 @@ import { SiteMenu } from '@/components/marketing/site-menu';
  */
 
 export const metadata: Metadata = {
-  title: 'Group home progress notes for every state and DC | FlipBrief',
+  // Worded the way providers search for it. Each state's page now shows what
+  // its rule asks for, so "requirements" is what a click actually finds.
+  title: 'Group home progress note requirements by state | FlipBrief',
   // Public, and the root layout's noindex would otherwise hide it.
   robots: { index: true, follow: true },
   alternates: { canonical: '/states' },
@@ -50,6 +53,12 @@ export default async function StatesPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl bg-flip-paper px-5 py-10">
+      <JsonLd
+        data={breadcrumbs([
+          ['FlipBrief', '/'],
+          ['States', '/states']
+        ])}
+      />
       {/* This page carried a back link and nothing else, so the only way on
           from it was backwards. The menu is the one the landing header has. */}
       <div className="flex items-center justify-between gap-4">
@@ -79,6 +88,14 @@ export default async function StatesPage() {
         contain and leave the page to you — so the useful question is not
         whether we “support” your state, it is whether the document we print
         cites the rule you are actually held to.
+      </p>
+      <p className="mt-3 max-w-[54ch] text-[0.95rem] leading-relaxed text-flip-slate">
+        Open your state to see what its rule asks a note to show, quoted from
+        the source. What the rules agree on is in{' '}
+        <Link href="/guides/dsp-shift-notes" className="font-semibold text-flip-moss underline">
+          how to write a DSP shift note
+        </Link>
+        .
       </p>
 
       <Group

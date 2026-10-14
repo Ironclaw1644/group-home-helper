@@ -152,7 +152,10 @@ const allowed = new Set(registry.verified.map((v) => v.number));
 // letterhead for two days after 7af6d2b purged that caption from everywhere a
 // grep of app/components/lib could see. The PDF you hand a prospect is a
 // customer surface even though no route serves it.
-const CUSTOMER_SURFACES = ["app", "components", "lib", "scripts"];
+// data/state-page-rules.json is rendered word for word on /states/:code, so it
+// is a customer surface even though it is data. The research file beside it is
+// not rendered and carries Texas form numbers in its notes, so it stays out.
+const CUSTOMER_SURFACES = ["app", "components", "lib", "scripts", "data/state-page-rules.json"];
 // This file names the number in order to ban it; it cannot also be its own
 // violation. lib/db/migrations.generated.ts is the append-only migration
 // history bundled, so it is out for the same reason 0004 is.
