@@ -171,6 +171,11 @@ export const config = {
   // `robots.txt` and `sitemap.xml` are for crawlers, who are never signed in;
   // both used to redirect to /login, so Google read the login page as robots.
   //
+  // `.txt` is here for the IndexNow key file at the root (public/<key>.txt),
+  // which Bing fetches to confirm a ping came from this site. Without it the
+  // file 404s under the unknown-path rule above — or, for a signed-out
+  // crawler, redirected to /login before that rule existed.
+  //
   // `demo/` and `.mp4` are here for the same reason and were missed: the four
   // films on the public page live in public/demo, and every one of them
   // redirected to /login?next=... for exactly the people they are meant to
@@ -178,6 +183,6 @@ export const config = {
   // fine and play nothing — the failure was invisible until somebody pressed
   // play.
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4)$).*)'
+    '/((?!_next/static|_next/image|favicon.ico|brand/|demo/|apk/|sw\\.js|offline\\.html|site\\.webmanifest|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webmanifest|apk|mp4|txt)$).*)'
   ]
 };
