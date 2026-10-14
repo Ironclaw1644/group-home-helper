@@ -3,7 +3,8 @@
  *
  * Agencies keep their roster in a spreadsheet, so import has to survive what a
  * spreadsheet export actually looks like: a UTF-8 BOM from Excel, CRLF endings,
- * quoted fields containing commas, and header names nobody agreed on.
+ * quoted fields containing commas, cells pasted straight out of Excel or Google
+ * Sheets (tab-separated), and header names nobody agreed on.
  *
  * Parsing is deliberately separate from writing. The UI parses, shows the
  * supervisor exactly what it understood, and only then writes — importing a
@@ -34,16 +35,64 @@ export type ParseResult = {
   unknownColumns: string[];
 };
 
-/** RFC4180-ish: handles quoted fields, escaped quotes, and embedded newlines. */
-export function parseCsv(text: string): string[][] {
+export type Delimiter = ',' | '\t' | ';';
+
+/**
+ * Which character separates the columns.
+ *
+ * Cells copied straight out of Excel or Google Sheets arrive tab-separated, not
+ * comma-separated, and a European export uses semicolons. Read off the header
+ * row, outside quotes: the separator it uses most is the one the file uses.
+ * Ties go tab, then comma — a tab is never typed into a header by accident, and
+ * comma is what every file read before this guess existed was parsed as.
+ */
+export function detectDelimiter(text: string): Delimiter {
+  const input = text.replace(/^\uFEFF/, '');
+  const counts: Record<Delimiter, number> = { '\t': 0, ',': 0, ';': 0 };
+  let inQuotes = false;
+  let sawCell = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (!inQuotes && (ch === '\n' || ch === '\r')) {
+      // Skip blank lines above the header rather than reading them as it.
+      if (sawCell) break;
+    } else if (!inQuotes && ch in counts) {
+      counts[ch as Delimiter]++;
+      sawCell = true;
+    } else if (ch.trim()) {
+      sawCell = true;
+    }
+  }
+
+  // A single-column file has no separator to find; read it as before.
+  if (counts['\t'] + counts[','] + counts[';'] === 0) return ',';
+  const order: Delimiter[] = ['\t', ',', ';'];
+  return order.reduce((best, d) => (counts[d] > counts[best] ? d : best));
+}
+
+/**
+ * RFC4180-ish: handles quoted fields, escaped quotes, and embedded newlines.
+ * The separator is detected unless given (see detectDelimiter).
+ */
+export function parseCsv(text: string, delimiter: Delimiter = detectDelimiter(text)): string[][] {
   // Excel writes a BOM. Left in place it becomes part of the first header name,
   // so "first_name" stops matching and every row loses its first column.
-  const input = text.replace(/^﻿/, '');
+  const input = text.replace(/^\uFEFF/, '');
+
+  // A pasted cell is free text — `Alexander "AJ" Rivera` — and Excel and Sheets
+  // only quote a cell that holds a tab, newline or quote, from its first
+  // character. So for a paste a quote opens a quoted field only at the start of
+  // one. Comma files keep the rule they have always been read with.
+  const quoteOnlyAtFieldStart = delimiter !== ',';
 
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
   let inQuotes = false;
+  let fieldStarted = false;
 
   for (let i = 0; i < input.length; i++) {
     const ch = input[i];
@@ -62,20 +111,25 @@ export function parseCsv(text: string): string[][] {
       continue;
     }
 
-    if (ch === '"') {
+    if (ch === '"' && !(quoteOnlyAtFieldStart && fieldStarted)) {
       inQuotes = true;
-    } else if (ch === ',') {
+      fieldStarted = true;
+    } else if (ch === delimiter) {
       row.push(field);
       field = '';
-    } else if (ch === '\r') {
+      fieldStarted = false;
+    } else if (ch === '\r' && input[i + 1] === '\n') {
       // Swallow; the \n that follows ends the row.
-    } else if (ch === '\n') {
+    } else if (ch === '\n' || ch === '\r') {
+      // A lone \r is a line ending too: Excel for Mac puts it on the clipboard.
       row.push(field);
       rows.push(row);
       row = [];
       field = '';
+      fieldStarted = false;
     } else {
       field += ch;
+      fieldStarted = true;
     }
   }
 

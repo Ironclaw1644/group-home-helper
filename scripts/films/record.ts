@@ -229,8 +229,8 @@ const FLOWS: Record<string, (c: Ctx) => Promise<void>> = {
 
     // A roster as an old system exports it: comma-separated, header row
     // first. Pasted, not typed, because that is what a paste looks like.
-    // (Cells copied straight out of Excel arrive tab-separated, and the
-    // importer reads those as "not laid out like a spreadsheet" today.)
+    // (Cells copied straight out of Excel arrive tab-separated; the importer
+    // reads those too since 10-14.)
     const rows = [
       ['First name', 'Last name', 'Room', 'Pronouns', 'Date of birth'],
       ['Dana', 'Okafor', '2A', 'she/her', '03/14/1979'],

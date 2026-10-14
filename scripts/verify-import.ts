@@ -13,7 +13,9 @@
  * into the template rows — which is where the libraries now are, and which
  * covers every jurisdiction rather than only Virginia.
  */
-import { parseCsv, parseRoster } from '../lib/residents/import';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { detectDelimiter, parseCsv, parseRoster } from '../lib/residents/import';
 
 let passed = 0;
 let failed = 0;
@@ -116,6 +118,92 @@ check(
   result.errors.length === 1 && result.residents.length === 1,
   `errors=${result.errors.length} residents=${result.residents.length}`
 );
+
+console.log('\nCells pasted from a spreadsheet');
+
+// Copying cells out of Excel or Google Sheets puts tab-separated text on the
+// clipboard, not CSV. Until 10-14 every such paste was read as one column and
+// came back "not laid out like a spreadsheet".
+const fixture = (name: string) =>
+  readFileSync(join(__dirname, 'fixtures/roster', name), 'utf8');
+
+const excelPaste = fixture('excel-paste.tsv');
+check('an Excel paste is read as tab-separated', detectDelimiter(excelPaste) === '\t');
+result = parseRoster(excelPaste);
+check(
+  'an Excel paste: every person, CRLF and trailing blank lines ignored',
+  result.residents.length === 4 && result.errors.length === 0,
+  `residents=${result.residents.length} errors=${JSON.stringify(result.errors)}`
+);
+check(
+  'an Excel paste: a comma inside a cell stays in that cell',
+  result.residents[1]?.lastName === 'Ferreira, Jr.' && result.residents[1]?.preferredName === 'Lu',
+  JSON.stringify(result.residents[1])
+);
+check(
+  'an Excel paste: a quoted cell keeps its doubled quotes and its line break',
+  result.residents[2]?.preferredName === 'Sammy "S"' && result.residents[2]?.grouping === 'South\nAnnex',
+  JSON.stringify(result.residents[2])
+);
+check(
+  'an Excel paste: dates, pronouns and Medicaid IDs land in their columns',
+  result.residents[0]?.dob === '1979-03-14' &&
+    result.residents[0]?.pronouns.subject === 'she' &&
+    result.residents[0]?.medicaidId === '100000000021' &&
+    result.residents[3]?.dob === '1965-01-30' &&
+    result.residents[3]?.medicaidId === null,
+  JSON.stringify([result.residents[0], result.residents[3]])
+);
+
+const sheetsPaste = fixture('google-sheets-paste.tsv');
+result = parseRoster(sheetsPaste);
+check(
+  'a Google Sheets paste: every person, the all-tabs row and trailing empty columns ignored',
+  result.residents.length === 4 && result.errors.length === 0,
+  `residents=${result.residents.length} errors=${JSON.stringify(result.errors)}`
+);
+check(
+  'a Google Sheets paste: the last row, with no newline after it, is read',
+  result.residents[3]?.firstName === 'Grace' && result.residents[3]?.room === '5B',
+  JSON.stringify(result.residents[3])
+);
+check(
+  'a Google Sheets paste: quotes in the middle of a cell do not swallow the row',
+  result.residents[0]?.room === '2A' && result.residents[1]?.firstName === 'Luis',
+  JSON.stringify(result.residents.slice(0, 2))
+);
+check(
+  'a Google Sheets paste: unknown columns are reported, blank headers are not',
+  JSON.stringify(result.unknownColumns) === '["Notes"]',
+  JSON.stringify(result.unknownColumns)
+);
+
+result = parseRoster('First\tLast\tRoom\r\nAna\tDiaz\t1\rBo\tLee\t2\r');
+check(
+  'old Excel for Mac line endings (a lone CR) end a row',
+  result.residents.length === 2 && result.residents[1]?.room === '2',
+  JSON.stringify(result.residents)
+);
+
+result = parseRoster('Last Name;First Name;Room\nRivera;Alexander;2B\n');
+check(
+  'a semicolon export is read by its separator',
+  result.residents[0]?.firstName === 'Alexander' && result.residents[0]?.room === '2B',
+  JSON.stringify(result.residents)
+);
+check(
+  'a comma file stays comma with a semicolon inside a quoted header',
+  detectDelimiter('"Room; bed; wing",First,Last\n1,A,B\n') === ','
+);
+check(
+  'a comma file keeps its old quote rule',
+  parseCsv('a,b"c,d"e\n')[0].length === 2,
+  JSON.stringify(parseCsv('a,b"c,d"e\n'))
+);
+
+// The ragged paste the assistant exists for must still fall through to it.
+result = parseRoster('Alexander Rivera (Alex), room 2B, he/him, DOB 4/12/85\nMaria Ochoa — 3A — she/her\n');
+check('a ragged list is still not taken for a spreadsheet', result.residents.length === 0);
 
 console.log(`\n${'='.repeat(50)}`);
 console.log(`${passed} passed, ${failed} failed`);
