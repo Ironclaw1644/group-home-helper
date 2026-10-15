@@ -77,6 +77,7 @@ const PAIRS = [
   ['forest', 'paper', 4.5, 'headings and body copy'],
   ['moss', 'paper', 4.5, 'links and interactive accents'],
   ['paper', 'forest', 4.5, 'body text on the dark footer'],
+  ['paper', 'forest', 4.5, 'footer small print and the "made by Luziq" line', 0.75],
   ['sand', 'forest', 4.5, 'the dark footer eyebrow'],
   ['forest', 'sand', 4.5, 'text on a sand highlight']
 ];

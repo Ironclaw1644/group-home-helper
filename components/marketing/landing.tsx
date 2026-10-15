@@ -145,6 +145,9 @@ const FAQ = [
   }
 ];
 
+/** luziq.ai's own Organization @id (see its seo-static.js), reused verbatim. */
+const LUZIQ_ORG_ID = 'https://luziq.ai/#org';
+
 /**
  * What a search engine reads about the page, built from the same FAQ and price
  * the page shows, so the two cannot disagree.
@@ -158,7 +161,17 @@ function structuredData() {
         '@id': 'https://flipbrief.com/#org',
         name: 'FlipBrief',
         url: 'https://flipbrief.com/',
-        logo: 'https://flipbrief.com/icon-512.png'
+        logo: 'https://flipbrief.com/icon-512.png',
+        parentOrganization: { '@id': LUZIQ_ORG_ID }
+      },
+      {
+        // The studio that makes FlipBrief. Same @id luziq.ai uses for itself,
+        // so the two sites describe one organization, not two.
+        '@type': 'Organization',
+        '@id': LUZIQ_ORG_ID,
+        name: 'Luziq',
+        url: 'https://luziq.ai',
+        sameAs: ['https://www.instagram.com/luziq.ai/']
       },
       {
         '@type': 'SoftwareApplication',
@@ -168,7 +181,8 @@ function structuredData() {
         operatingSystem: 'Web, Android',
         description:
           'Progress-note documentation for small group homes. Staff tap what happened, the note drafts itself, they sign on their phone, and it prints on the agency’s letterhead.',
-        publisher: { '@id': 'https://flipbrief.com/#org' },
+        publisher: { '@id': LUZIQ_ORG_ID },
+        brand: { '@id': 'https://flipbrief.com/#org' },
         offers: {
           '@type': 'Offer',
           price: '100',
@@ -859,14 +873,18 @@ function SiteFooter() {
           their supervisor.
         </p>
 
+        {/* FlipBrief is the product; Luziq is the studio behind it. The link
+            sits inside a sentence, so it is underlined rather than told apart
+            by colour alone. */}
         <p className="mt-6 text-[0.8rem] leading-relaxed text-flip-paper/75">
+          FlipBrief is made by Luziq ·{' '}
           <a
-            href="https://luziq.ai/?ref=flipbrief"
+            href="https://luziq.ai/flipbrief/?ref=flipbrief-footer"
             target="_blank"
             rel="noopener"
-            className="hover:text-flip-paper hover:underline"
+            className="font-semibold text-flip-paper underline underline-offset-2 hover:no-underline"
           >
-            Powered by Luziq
+            luziq.ai
           </a>
         </p>
       </Shell>
